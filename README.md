@@ -5,5 +5,7 @@
 text...
 
 Code:
-''' code '''
+```
+code 
+```
 
