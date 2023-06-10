@@ -22,6 +22,10 @@ if( (NOT GISMO_BUILD_LIB) )
   endif()
 endif()
 
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} "${PROJECT_SOURCE_DIR}/src"
+  CACHE INTERNAL "Gismo include directories")
+  
+include_directories(${GISMO_INCLUDE_DIRS})
 include_directories(../unsupported/src) # (!) Currently depends on UNSUPPORTED
 
 # Add object library
@@ -41,7 +45,7 @@ set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${PROJECT_NAME}>
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/src"
   DESTINATION include/gismo
-  FILES_MATCHING PATTERN "*.h" )
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 
 # add filedata folder
 add_definitions(-DELAST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/")
