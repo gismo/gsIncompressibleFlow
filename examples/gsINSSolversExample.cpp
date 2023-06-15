@@ -109,9 +109,9 @@ int main(int argc, char *argv[])
     refineBasis_step(basis, numRefine, 0, 0, 0, 0, 2, a, b);
     
     std::vector< gsMultiBasis<> >  discreteBases;
-    discreteBases.push_back(basis);//Basis for velocity
-    discreteBases.push_back(basis);//Basis for pressure
-    discreteBases[0].degreeElevate(1); //elevate the velocity space
+    discreteBases.push_back(basis); // basis for velocity
+    discreteBases.push_back(basis); // basis for pressure
+    discreteBases[0].degreeElevate(1); // elevate the velocity space (Taylor-Hood element type)
 
 
     // ========================================= Solve ========================================= 
@@ -221,6 +221,9 @@ void solveProblem(gsINSSolverBase<real_t>& NSsolver, int maxIt, real_t tol, bool
     NSsolver.initialize();
 
     NSsolver.solve(maxIt, tol);
+
+    //NSsolver.solveStokes(); // solve the Stokes problem
+    //NSsolver.solveGeneralizedStokes(maxIt, tol); // solve the time-dependent Stokes problem (only in unsteady solvers)
 
     gsInfo << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
     gsInfo << "Solve time:" << NSsolver.getSolveTime() << "\n";

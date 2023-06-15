@@ -6,4 +6,5 @@
 namespace gismo
 {
     CLASS_TEMPLATE_INST gsINSSolverUnsteady<real_t>;
+    CLASS_TEMPLATE_INST gsINSSolverUnsteadyIter<real_t, gsGMRes<real_t> >;
 } 

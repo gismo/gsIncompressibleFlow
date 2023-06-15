@@ -30,17 +30,20 @@ public:
 
 protected: // *** Class members ***
 
-    T m_time;
+    T m_time, m_timeStepSize;
     T m_innerIter, m_avgPicardIter;
     T m_innerTol;
 
  protected: // *** Base class members ***
+
     using Base::m_pAssembler;
     using Base::m_solution;
     using Base::m_iterationNumber;
     using Base::m_clock;
     using Base::m_assembT;
-
+    using Base::m_solsetupT;
+    using Base::m_solveT;
+    using Base::m_solver;
 
 public: // *** Constructor/destructor ***
 
@@ -54,6 +57,7 @@ public: // *** Constructor/destructor ***
 
         initMembers();
 
+        m_timeStepSize = params.options().getReal("timeStep");
         m_innerIter = params.options().getInt("maxIt_picard");
         m_innerTol = params.options().getReal("tol_picard");
         m_avgPicardIter = 0;
@@ -137,6 +141,12 @@ public: // *** Member functions ***
     /// @param[in] minIterations    the minimum number of time steps
     virtual void solveWithAnimation(const int totalIter, const int iterStep, const T epsilon = 1e-3, unsigned plotPts = 10000, const int minIterations = 1);
 
+protected: // *** Member functions ***
+
+    /// @brief Initialize the generalized Stokes problem solution.
+    /// @param[out] stokesMatrix    the generalized Stokes matrix
+    void initGeneralizedStokesSolution(gsSparseMatrix<T>& stokesMatrix, gsMatrix<T>& stokesRhs);
+
 public: // *** Getters/setters ***
 
     /// @brief Set a given solution vector as the initial solution and set the simulation time to zero.
@@ -152,10 +162,16 @@ public: // *** Getters/setters ***
     /// @brief Compute solution of the Stokes problem and set it as the initial solution.
     void setStokesInitialCondition()
     {
-        this->setStokesSolution();
+        gsInfo << "Setting Stokes solution as initial condition...\n";
 
+        Base::solveStokes();
+
+        m_iterationNumber = 0;
         m_time = 0;
     }
+
+    /// @brief Solve the generalized Stokes problem.
+    virtual void solveGeneralizedStokes(const int maxIterations, const T epsilon, const int minIterations = 1);
 
     /// @brief Change the time step size.
     /// @param[in] timeStepSize the new time step size
@@ -218,6 +234,14 @@ protected: // *** Base class members ***
 
     using Base::m_avgPicardIter;
     using Base::m_time;
+    using Base::m_timeStepSize;
+    using BaseIter::m_matrices;
+    using BaseIter::m_precType;
+    using BaseIter::m_matGammaPart;
+    using BaseIter::m_rhsGammaPart;
+    using BaseIter::m_pPrec;
+    using BaseIter::m_maxLinIter;
+    using BaseIter::m_linTol;
     using gsINSSolverBase<T>::m_solution;
     using gsINSSolverBase<T>::m_iterationNumber;
 
@@ -238,20 +262,25 @@ public: // *** Constructor/destructor ***
 
 public: // *** Member functions ***
 
-    /// @brief Compute solution of the Stokes problem and set it as initial solution.
-    virtual void setStokesSolution()
+    /// @brief Compute the Stokes problem.
+    virtual void solveStokes()
     {
         m_solution = BaseIter::getStokesSolution();
-        m_iterationNumber = 0;
     }
 
     /// @brief Compute solution of the Stokes problem and set it as the initial solution.
     void setStokesInitialCondition()
     {
-        setStokesSolution();
+        gsInfo << "Setting Stokes solution as initial condition...\n";
 
+        m_solution = BaseIter::getStokesSolution();
+
+        m_iterationNumber = 0;
         m_time = 0;
     }
+
+    /// @brief Solve the generalized Stokes problem.
+    virtual void solveGeneralizedStokes(const int maxIterations, const T epsilon, const int minIterations = 1);
 
     /// @brief Prepare for the solution process.
     virtual void initIteration()

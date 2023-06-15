@@ -108,11 +108,10 @@ public: // *** Constructor/destructor ***
 
 public: // *** Member functions ***
 
-    /// @brief Compute solution of the Stokes problem and set it as initial solution.
-    virtual void setStokesSolution()
+    /// @brief Compute the Stokes problem.
+    virtual void solveStokes()
     {
         m_solution = BaseIter::getStokesSolution();
-        m_iterationNumber = 0;
     }
 
     /// @brief Prepare for the solution process.

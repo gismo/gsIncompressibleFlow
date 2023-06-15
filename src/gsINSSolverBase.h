@@ -103,9 +103,6 @@ public: // *** Member functions ***
         m_solsetupT += m_clock.stop();
     }
 
-    /// @brief Compute solution of the Stokes problem and set it as initial solution.
-    virtual void setStokesSolution();
-
     /// @brief Solve the linear system.
     /// @param[out] solution a reference to the vector, where the computed solution will be stored
     virtual void applySolver(gsMatrix<T>& solution);
@@ -134,6 +131,13 @@ public: // *** Member functions ***
     /// @param[in] epsilon          the stopping tolerance
     /// @param[in] minIterations    the minimum number of iterations/time steps
     void solve(const int maxIterations, const T epsilon = 1e-3, const int minIterations = 1);
+
+    /// @brief Compute the Stokes problem.
+    virtual void solveStokes();
+
+    /// @brief Solve the generalized Stokes problem.
+    virtual void solveGeneralizedStokes(const int maxIterations, const T epsilon, const int minIterations = 1)
+    { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Update the assembler with current solution.
     virtual void updateAssembler()
@@ -313,7 +317,7 @@ public: // *** Member functions ***
     /// @param[in]  alpha_p     pressure relaxation parameter
     virtual void applySolver(gsMatrix<T>& solution, real_t alpha_u, real_t alpha_p);
 
-    /// @brief Compute and return solution of the Stokes problem.
+    /// @brief Compute and return the solution of the Stokes problem.
     virtual gsMatrix<T> getStokesSolution();
 
 

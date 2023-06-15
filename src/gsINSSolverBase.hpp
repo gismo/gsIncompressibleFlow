@@ -32,33 +32,6 @@ void gsINSSolverBase<T>::initMembers()
 
 
 template<class T>
-void gsINSSolverBase<T>::setStokesSolution()
-{
-    GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
-
-    gsInfo << "Setting Stokes initial condition...\n";
-
-    #ifdef GISMO_WITH_PARDISO
-    typename gsSparseSolver<T>::PardisoLU solver;
-    pardisoSetup(solver);
-    #else
-    typename gsSparseSolver<T>::LU solver;
-    #endif 
-
-    gsSparseMatrix<T> stokesMatrix;
-    gsMatrix<T> stokesRhs;
-
-    getAssembler()->fillStokesSystem_into(stokesMatrix, stokesRhs);
-    
-    solver.analyzePattern(stokesMatrix);
-    solver.factorize(stokesMatrix);
-    m_solution = solver.solve(stokesRhs);
-
-    m_iterationNumber = 0;
-}
-
-
-template<class T>
 void gsINSSolverBase<T>::applySolver(gsMatrix<T>& solution)
 {
     m_clock.restart();
@@ -108,6 +81,24 @@ void gsINSSolverBase<T>::solve(const int maxIterations, const T epsilon, const i
 
         iter++;
     }
+}
+
+
+template<class T>
+void gsINSSolverBase<T>::solveStokes()
+{
+    GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
+
+    gsInfo << "Computing the steady Stokes problem...\n";
+
+    gsSparseMatrix<T> stokesMatrix;
+    gsMatrix<T> stokesRhs;
+
+    getAssembler()->fillStokesSystem_into(stokesMatrix, stokesRhs);
+    
+    m_solver.analyzePattern(stokesMatrix);
+    m_solver.factorize(stokesMatrix);
+    m_solution = m_solver.solve(stokesRhs);
 }
 
 
@@ -312,10 +303,10 @@ gsMatrix<T> gsINSSolverBaseIter<T,SolverType>::getStokesSolution()
 {
     GISMO_ASSERT(m_assemblerRef.isInitialized(), "Assembler must be initialized first, call initialize()");
 
-    gsInfo << "Setting Stokes initial condition...\n";
+    gsInfo << "Computing the steady Stokes problem...\n";
 
     gsSparseMatrix<T> stokesMatrix;
-    gsMatrix<T> stokesRhs;
+    gsMatrix<T> stokesRhs, stokesSol;
 
     m_assemblerRef.fillStokesSystem_into(stokesMatrix, stokesRhs);
     
@@ -338,10 +329,9 @@ gsMatrix<T> gsINSSolverBaseIter<T,SolverType>::getStokesSolution()
     solver.setMaxIterations(m_maxLinIter);
     solver.setTolerance(m_linTol);
 
-    gsMatrix<T> solution;
-    solver.solve(stokesRhs, solution);
+    solver.solve(stokesRhs, stokesSol);
 
-    return solution;
+    return stokesSol;
 }
 
 
