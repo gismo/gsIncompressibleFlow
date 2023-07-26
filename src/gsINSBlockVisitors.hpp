@@ -99,7 +99,7 @@ void gsINSBlockAVisitor<T>::assemble(const gsMapData<T> & mapData,
         transformGradients(mapData, k, m_basisGradsU, m_physGradU);
 
         // Local block A
-        m_localMat.template triangularView<Eigen::Upper>() += weight * m_viscosity * (m_physGradU.transpose() * m_physGradU);
+        m_localMat.template triangularView<gsEigen::Upper>() += weight * m_viscosity * (m_physGradU.transpose() * m_physGradU);
     }
 }
 
@@ -431,7 +431,7 @@ void gsINSBlockMVisitor<T>::assemble(const gsMapData<T> & mapData,
     {
         const T weight = quWeights(k) * mapData.measure(k);
 
-        m_localMat.template triangularView<Eigen::Upper>() += weight * (basisValsU.col(k) * basisValsU.col(k).transpose());
+        m_localMat.template triangularView<gsEigen::Upper>() += weight * (basisValsU.col(k) * basisValsU.col(k).transpose());
     }
 }
 
@@ -497,7 +497,7 @@ void gsINSBlockApVisitor<T>::assemble(const gsMapData<T> & mapData,
 
         transformGradients(mapData, k, m_basisGradsP, m_physGradP);
 
-        m_localMat.template triangularView<Eigen::Upper>() += weight * (m_physGradP.transpose() * m_physGradP);
+        m_localMat.template triangularView<gsEigen::Upper>() += weight * (m_physGradP.transpose() * m_physGradP);
     }
 }
 
@@ -623,7 +623,7 @@ void gsINSBlockMpVisitor<T>::assemble(const gsMapData<T> & mapData,
     {
         const T weight = quWeights(k) * mapData.measure(k);
 
-        m_localMat.template triangularView<Eigen::Upper>() += weight * (bVals_p.col(k) * bVals_p.col(k).transpose());
+        m_localMat.template triangularView<gsEigen::Upper>() += weight * (bVals_p.col(k) * bVals_p.col(k).transpose());
     }
 }
 

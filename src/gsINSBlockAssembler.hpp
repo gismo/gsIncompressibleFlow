@@ -231,7 +231,7 @@ void gsINSBlockAssembler<T>::assembleLinearStokesPart()
     // blocks assembly
     blockAsym.reserve(gsVector<int>::Constant(m_udofs, m_nonZerosPerColU));
     Base::template assembleBlock< gsINSBlockAVisitor<T> >(blockAsym, m_rhsA, m_nonZerosPerColU);
-    m_blockA = blockAsym.template selfadjointView<Eigen::Upper>();
+    m_blockA = blockAsym.template selfadjointView<gsEigen::Upper>();
     // if (getAssemblerOptions().intStrategy == iFace::dg) 
     // {
     //     gsSparseMatrix<T> blockAdg(m_udofs, m_udofs);
@@ -259,7 +259,7 @@ void gsINSBlockAssembler<T>::assembleLinearStokesPart()
     }
 
     for (int s = 0; s < m_tarDim; ++s) {
-        m_blockMinusBT[s] = gsSparseMatrix<T, Eigen::ColMajor>(-m_blockB[s].transpose());
+        m_blockMinusBT[s] = gsSparseMatrix<T, gsEigen::ColMajor>(-m_blockB[s].transpose());
         m_blockMinusBT[s].makeCompressed();
     }
 
@@ -310,7 +310,7 @@ void gsINSBlockAssembler<T>::assembleMassMatrix()
     // blocks assembly
     blockMsym.reserve(gsVector<int>::Constant(m_udofs, m_nonZerosPerColU));
     Base::template assembleBlock< gsINSBlockMVisitor<T> >(blockMsym, m_rhsM, m_nonZerosPerColU);
-    m_blockM = blockMsym.template selfadjointView<Eigen::Upper>();
+    m_blockM = blockMsym.template selfadjointView<gsEigen::Upper>();
     m_blockM.makeCompressed();
 }
 
@@ -326,7 +326,7 @@ void gsINSBlockAssembler<T>::assemblePressureMassMatrix()
     // blocks assembly
     blockMpsym.reserve(gsVector<int>::Constant(m_pdofs, m_nonZerosPerColP));
     Base::template assembleBlock< gsINSBlockMpVisitor<T> >(blockMpsym, m_rhsMp, m_nonZerosPerColP);
-    m_blockMp = blockMpsym.template selfadjointView<Eigen::Upper>();
+    m_blockMp = blockMpsym.template selfadjointView<gsEigen::Upper>();
     m_blockMp.makeCompressed();
 }
 
@@ -429,7 +429,7 @@ void gsINSBlockAssembler<T>::assemblePressurePoisson()
     // block assembly
     blockApsym.reserve(gsVector<int>::Constant(m_pdofs, m_nonZerosPerColP));
     Base::template assembleBlock< gsINSBlockApVisitor<T> >(blockApsym, m_rhsAp, m_nonZerosPerColP);
-    m_blockAp = blockApsym.template selfadjointView<Eigen::Upper>();
+    m_blockAp = blockApsym.template selfadjointView<gsEigen::Upper>();
     // if (getAssemblerOptions().intStrategy == iFace::dg) {
     //     gsSparseMatrix<T> blocksApdg(m_pdofs, m_pdofs);
     //     blocksApdg.reserve(gsVector<int>::Constant(m_pdofs, m_nonZerosPerColP));
