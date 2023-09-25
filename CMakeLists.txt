@@ -26,7 +26,6 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} "${PROJECT_SOURCE_DIR}/src"
   CACHE INTERNAL "Gismo include directories")
   
 include_directories(${GISMO_INCLUDE_DIRS})
-include_directories(../unsupported/src) # (!) Currently depends on UNSUPPORTED
 
 # Add object library
 add_library(${PROJECT_NAME} OBJECT
@@ -57,7 +56,7 @@ foreach(file ${FILES})
     get_filename_component(tarname ${file} NAME_WE) # name without extension
     set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
     set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
-    target_link_libraries(${tarname} gismo gismo_dev)
+    target_link_libraries(${tarname} gismo)
     # install the example executables (optionally)
     install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
