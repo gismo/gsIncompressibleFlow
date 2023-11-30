@@ -57,14 +57,6 @@ public: // *** Constructor/destructor ***
         m_precOpt = gsINSPreconditioner<T>::defaultOptions();
     }
 
-    /// @brief Constructor of the object with given options for the solver.
-    /// @param pde an incompressible Navier-Stokes problem
-    /// @param bases vector of discretization bases (velocity, pressure)
-    /// @param opt list of options for the solver
-    gsINSSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases, gsOptionList opt)
-        : m_opt(opt)
-    { }
-
     ~gsINSSolverParams()
     {
     }
@@ -97,6 +89,19 @@ public: // *** Static functions ***
 
         return opt;
     }
+
+
+public: // *** Member functions ***
+
+    /// @brief Creates DOF mappers for velocity and pressure.
+    void createDofMappers(std::vector<gsDofMapper>& mappers)
+    {
+        mappers.resize(2);
+    
+        m_bases.front().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pde.bc(), mappers.front(), 0);
+        m_bases.back().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy,  m_pde.bc(), mappers.back(), 1);
+    }
+
 
 public: // *** Getters/setters ***
 
@@ -146,6 +151,7 @@ public: // *** Getters/setters ***
 
     /// @brief Set INS solver options given in \a opt.
     void setOptions(const gsOptionList& opt) { m_opt = opt; }
+
 
 }; // class gsINSSolverParams
 
