@@ -85,7 +85,7 @@ public: // *** Static functions ***
 
         opt.addString("precType", "Preconditioner to be used with iterative linear solver", "PCDmod_FdiagEqual");
 
-        //opt.addSwitch("", "", true);
+        opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
 
         return opt;
     }

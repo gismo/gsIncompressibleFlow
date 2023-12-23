@@ -16,100 +16,8 @@
 namespace gismo
 {
 
-// ===================================================================================================================
-
-/// @brief      A class computing individual terms of the weak formulation appearing in incompressible flow problems.
-/// @tparam T   coefficient type
-template <class T>
-class gsINSTerm
-{
-
-protected: // *** Class members ***
-
-    unsigned m_geoFlags, m_testFunFlags, m_shapeFunFlags; // evaluation flags
-    gsVector<T> m_coeff; // coefficient of the term (size = number of quadrature points)
-
-
-public: // *** Constructor/destructor ***
-
-    gsINSTerm()
-    {
-        m_geoFlags = 0;
-        m_testFunFlags = 0;
-        m_shapeFunFlags = 0;
-    }
-
-
-public: // *** Member functions ***
-
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
-    { GISMO_NO_IMPLEMENTATION }
-
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
-    { GISMO_NO_IMPLEMENTATION }
-
-    void updateEvalFlags(unsigned& geoFlags, unsigned& testFunFlags, unsigned& shapeFunFlags)
-    { 
-        geoFlags |= m_geoFlags;
-        testFunFlags |= m_testFunFlags;
-        shapeFunFlags |= m_shapeFunFlags;
-    }
-
-
-protected: // *** Member functions ***
-
-    virtual void computeCoeff(const gsMapData<T>& mapData, real_t constValue = 1.0)
-    { 
-        m_coeff.resize(mapData.points.cols());
-        m_coeff.setConstant(constValue);
-    }
-
-};
-
-// ===================================================================================================================
-
-/// @brief      
-/// @tparam T   coefficient type
-template <class T>
-class gsINSTermNonlin : public gsINSTerm<T>
-{
-
-public:
-    typedef gsINSTerm<T> Base;
-
-protected: // *** Class members ***
-
-    gsField<T> m_currentSolU;
-    bool m_isCurrentSolSet;
-    gsMatrix<T> m_solUVals;
-
-
-public: // *** Constructor/destructor ***
-
-    gsINSTermNonlin()
-    { }
-
-
-public: // *** Member functions ***
-
-    void setCurrentSolution(std::vector<gsField<T> >& solutions)
-    { 
-        m_currentSolU = solutions.front();
-        m_isCurrentSolSet = true;
-    }
-
-
-protected: // *** Member functions ***
-
-    virtual void computeCoeffSolU(const gsMapData<T>& mapData)
-    { 
-        GISMO_ASSERT(m_isCurrentSolSet, "No velocity solution set in the gsINSTermNonlin visitor.");
-
-        m_solUVals.resize(mapData.dim, mapData.points.cols());
-        m_solUVals = m_currentSolU.value(mapData.points, mapData.patchID);
-    }
-
-};
+template <class T> class gsINSTerm;
+template <class T> class gsINSTermNonlin;
 
 // ===================================================================================================================
 
@@ -121,6 +29,7 @@ class gsINSTermValVal : public gsINSTerm<T>
 
 public:
     typedef gsINSTerm<T> Base;
+
 
 protected: // *** Base class members ***
 
@@ -152,6 +61,39 @@ public: // *** Member functions ***
             const T weight = m_coeff(k) * quWeights(k) * mapData.measure(k);
             localMat += weight * (testFunVals.col(k) * shapeFunVals.col(k).transpose());
         }
+    }
+
+};
+
+// ===================================================================================================================
+
+/// @brief 
+/// @tparam T 
+template <class T>
+class gsINSTermTimeDiscr : public gsINSTermValVal<T>
+{
+
+public:
+    typedef gsINSTermValVal<T> Base;
+
+
+protected: // *** Class members ***
+
+    real_t m_timeStep;
+
+
+public: // *** Constructor/destructor ***
+
+    gsINSTermTimeDiscr(real_t timeStep) :
+    m_timeStep(timeStep)
+    { }
+
+
+protected: // *** Member functions ***
+
+    virtual void computeCoeff(const gsMapData<T>& mapData, real_t constValue = 1.0)
+    { 
+        Base::computeCoeff(mapData, 1./m_timeStep);
     }
 
 };
@@ -211,6 +153,36 @@ public: // *** Member functions ***
 /// @brief 
 /// @tparam T 
 template <class T>
+class gsINSTermDiffusion : public gsINSTermGradGrad<T>
+{
+
+public:
+    typedef gsINSTermGradGrad<T> Base;
+
+protected: // *** Class members ***
+
+    real_t m_viscosity;
+
+public: // *** Constructor/destructor ***
+
+    gsINSTermDiffusion(real_t viscosity) :
+    m_viscosity(viscosity)
+    { }
+
+
+protected: // *** Member functions ***
+
+    virtual void computeCoeff(const gsMapData<T>& mapData, real_t constValue = 1.0)
+    { 
+        Base::computeCoeff(mapData, m_viscosity);
+    }
+};
+
+// ===================================================================================================================
+
+/// @brief 
+/// @tparam T 
+template <class T>
 class gsINSTermPvalUdiv : public gsINSTerm<T> // order: shape, test
 {
 
@@ -251,7 +223,7 @@ public: // *** Member functions ***
             transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
 
             for (size_t i = 0; i != localMat.size(); ++i)
-                localMat[i].noalias() += weight * (shapeFunVals.col(k) * testFunPhysGrad.row(i));
+                localMat[i].noalias() += weight * (shapeFunVals.col(k) * testFunPhysGrad.row(i)).transpose();
         }
     }
 
@@ -285,7 +257,7 @@ public: // *** Constructor/destructor ***
 
 public: // *** Member functions ***
 
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
     { 
         this->computeCoeff(mapData);
         this->computeCoeffSolU(mapData);
@@ -299,7 +271,7 @@ public: // *** Member functions ***
 
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            const T weight = m_coeff(k) * m_quWeights(k) * mapData.measure(k);
+            const T weight = m_coeff(k) * quWeights(k) * mapData.measure(k);
 
             transformGradients(mapData, k, shapeFunGrads, shapeFunPhysGrad);
 
@@ -354,6 +326,135 @@ public: // *** Member functions ***
     { 
         geoFlags |= m_geoFlags;
         testFunFlags |= m_testFunFlags;
+    }
+
+};
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+/// @brief      A class computing individual terms of the weak formulation appearing in incompressible flow problems.
+/// @tparam T   coefficient type
+template <class T>
+class gsINSTerm
+{
+
+public: // *** Smart pointers ***
+
+    typedef memory::shared_ptr<gsINSTerm> Ptr; 
+    typedef memory::unique_ptr<gsINSTerm> uPtr;
+
+
+public: // *** Type definitions ***
+
+    typedef gsINSTermValVal<T>      MassTerm;
+    typedef gsINSTermPvalUdiv<T>    PressureGradTerm;
+
+
+protected: // *** Class members ***
+
+    unsigned m_geoFlags, m_testFunFlags, m_shapeFunFlags; // evaluation flags
+    gsVector<T> m_coeff; // coefficient of the term (size = number of quadrature points)
+
+
+public: // *** Constructor/destructor ***
+
+    gsINSTerm()
+    {
+        m_geoFlags = 0;
+        m_testFunFlags = 0;
+        m_shapeFunFlags = 0;
+    }
+
+
+public: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
+    { GISMO_NO_IMPLEMENTATION }
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
+    { GISMO_NO_IMPLEMENTATION }
+
+    void updateEvalFlags(unsigned& geoFlags, unsigned& testFunFlags, unsigned& shapeFunFlags)
+    { 
+        geoFlags |= m_geoFlags;
+        testFunFlags |= m_testFunFlags;
+        shapeFunFlags |= m_shapeFunFlags;
+    }
+
+
+protected: // *** Member functions ***
+
+    virtual void computeCoeff(const gsMapData<T>& mapData, real_t constValue = 1.0)
+    { 
+        m_coeff.resize(mapData.points.cols());
+        m_coeff.setConstant(constValue);
+    }
+
+};
+
+// ===================================================================================================================
+
+/// @brief      
+/// @tparam T   coefficient type
+template <class T>
+class gsINSTermNonlin : public gsINSTerm<T>
+{
+
+public: // *** Smart pointers ***
+
+    typedef memory::shared_ptr<gsINSTermNonlin> Ptr; 
+    typedef memory::unique_ptr<gsINSTermNonlin> uPtr;
+
+public: // *** Type definitions ***
+
+    typedef gsINSTerm<T> Base;
+    typedef gsINSTermUsolGradVal<T> ConvectionTerm;
+
+
+protected: // *** Class members ***
+
+    gsField<T> m_currentSolU;
+    bool m_isCurrentSolSet;
+    gsMatrix<T> m_solUVals;
+
+
+public: // *** Constructor/destructor ***
+
+    gsINSTermNonlin()
+    { }
+
+
+public: // *** Member functions ***
+
+    void setCurrentSolution(std::vector<gsField<T> >& solutions)
+    { 
+        m_currentSolU = solutions.front();
+        m_isCurrentSolSet = true;
+    }
+
+    void setCurrentSolution(gsField<T>& solution)
+    { 
+        m_currentSolU = solution;
+        m_isCurrentSolSet = true;
+    }
+
+
+protected: // *** Member functions ***
+
+    virtual void computeCoeffSolU(const gsMapData<T>& mapData)
+    { 
+        GISMO_ASSERT(m_isCurrentSolSet, "No velocity solution set in the gsINSTermNonlin visitor.");
+
+        m_solUVals.resize(mapData.dim.first, mapData.points.cols());
+        m_solUVals = m_currentSolU.value(mapData.points, mapData.patchId);
+
+        // if (m_solUVals.any())
+        // {
+        //     gsInfo << "\npatch " << mapData.patchId << "\n";
+        //     gsInfo << "points =\n" << mapData.points << "\n";
+        //     gsInfo << "m_solUVals =\n" << m_solUVals << "\n";
+        // }
     }
 
 };
