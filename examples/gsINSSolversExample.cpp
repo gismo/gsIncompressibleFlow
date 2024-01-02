@@ -18,7 +18,8 @@
 
 using namespace gismo;
 
-void solveProblem(gsINSSolverBase<real_t>& NSsolver, int maxIt, real_t tol, bool plot, int plotPts, int id);
+void solveProblem(gsINSSolverBase<real_t>& NSsolver, gsOptionList opt);
+void markElimDof(gsINSSolverBase<real_t>& NSsolver);
 
 int main(int argc, char *argv[])
 {
@@ -26,13 +27,16 @@ int main(int argc, char *argv[])
 
     // ========================================= Settings ========================================= 
 
-    bool steady = true;
+    bool steady = false;
     bool steadyIt = false;
     bool unsteady = false;
     bool unsteadyIt = false;
+    bool stokesInit = false;
 
     int deg = 1;
+    int geo = 1; // 1 - step, 2 - cavity
     int numRefine = 3;
+    int wallRefine = 0;
     int maxIt = 10;
     int picardIt = 5;
     int linIt = 100;
@@ -44,20 +48,25 @@ int main(int argc, char *argv[])
     std::string precond = "PCDmod_FdiagEqual";
 
     bool plot = false;
+    bool plotMesh = false;
     int plotPts = 10000;
     int numThreads = 1; 
 
     //command line
-    gsCmdLine cmd("Solves Navier-Stokes problem in a backward facing step (BFS) domain.");
+    gsCmdLine cmd("Solves the Navier-Stokes problem in a 2D domain (step, cavity).");
 
     cmd.addSwitch("steady", "Solve steady problem with direct linear solver", steady);
     cmd.addSwitch("steadyIt", "Solve steady problem with preconditioned GMRES as linear solver", steadyIt);
     cmd.addSwitch("unsteady", "Solve unsteady problem with direct linear solver", unsteady);
     cmd.addSwitch("unsteadyIt", "Solve unsteady problem with preconditioned GMRES as linear solver", unsteadyIt);
+    cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
+    cmd.addSwitch("plotMesh", "Plot the computational mesh", plotMesh);
 
     cmd.addInt("d", "deg", "B-spline degree for geometry representation", deg);
+    cmd.addInt("g", "geo", "Computational domain (1 - step, 2 - cavity)", geo);
     cmd.addInt("r", "uniformRefine", "Number of uniform h-refinement steps to perform before solving", numRefine);
+    cmd.addInt("", "wallRefine", "Number of h-refinement steps near step corner or cavity walls", wallRefine);
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
     cmd.addInt("t", "nthreads", "Number of threads for parallel assembly", numThreads);
     cmd.addInt("", "maxIt", "Max. number of Picard iterations or time steps", maxIt);
@@ -76,37 +85,69 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
-    gsInfo << "Solving Navier-Stokes problem in a backward facing step (BFS) domain.\n";
+    gsInfo << "Solving Navier-Stokes problem in domain " << geo << ".\n";
     gsInfo << "viscosity = " << viscosity << "\n";
 
     // ========================================= Define geometry ========================================= 
     
     gsMultiPatch<> patches;
 
-    real_t a = 8;
-    real_t b = 2;
-    real_t a_in = 1;
+    real_t a, b;
 
-    patches = BSplineStep2D<real_t>(deg, a, b, a_in);
+    switch(geo)
+    {
+        case 1:
+        {
+            a = 8;
+            b = 2;
+            real_t a_in = 1;
+
+            patches = BSplineStep2D<real_t>(deg, a, b, a_in);
+
+            break;
+        }
+        case 2:
+        {
+            a = 1;
+            b = 1; 
+
+            patches = BSplineCavity2D<real_t>(deg, a, b);
+
+            break;
+        }
+        default:
+            GISMO_ERROR("Unknown domain.");
+    }
 
     gsInfo << patches << "\n";
 
 
-    // ========================================= Define problem ========================================= 
+    // ========================================= Define problem and basis ========================================= 
 
     gsBoundaryConditions<> bcInfo;
     std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall; // containers of patch sides corresponding to inflow, outflow and wall boundaries
     gsFunctionExpr<> f("0", "0", 2); // external force
 
-    defineBCs_step(bcInfo, bndIn, bndOut, bndWall, 2); // bcInfo, bndIn, bndOut, bndWall are defined here
-
-
-    // ========================================= Define basis ========================================= 
-
     // Define discretization space by refining the basis of the geometry
     gsMultiBasis<> basis(patches);
-    
-    refineBasis_step(basis, numRefine, 0, 0, 0, 0, 2, a, b);
+
+    switch(geo)
+    {
+        case 1:
+        {
+            defineBCs_step(bcInfo, bndIn, bndOut, bndWall, 2); // bcInfo, bndIn, bndOut, bndWall are defined here
+            refineBasis_step(basis, numRefine, 0, wallRefine, 0, 0, 2, a, b);
+            break;
+        }
+        case 2:
+        {
+            defineBCs_cavity2D(bcInfo, 1, bndWall); // bcInfo and bndWall are defined here, bndIn and bndOut remain empty
+            refineBasis_cavity2D(basis, numRefine, wallRefine);
+            break;
+        }
+        default:
+            GISMO_ERROR("Unknown domain.");
+    }    
     
     std::vector< gsMultiBasis<> >  discreteBases;
     discreteBases.push_back(basis); // basis for velocity
@@ -120,44 +161,69 @@ int main(int argc, char *argv[])
     gsINSSolverParams<real_t> params(NSpde, discreteBases);
     params.options().setInt("numThreads",numThreads);
 
+    // bool stokesInit, bool plot
+    gsOptionList solveOpt;
+    solveOpt.addInt("geo", "", geo);
+    solveOpt.addInt("id", "", 0);
+    solveOpt.addInt("maxIt", "", maxIt);
+    solveOpt.addInt("plotPts", "", plotPts);
+    solveOpt.addReal("tol", "", tol);
+    solveOpt.addSwitch("plot", "", plot);
+    solveOpt.addSwitch("plotMesh", "", plotMesh);
+    solveOpt.addSwitch("stokesInit", "", stokesInit);
+
     int id = 1;
 
     if (steady)
     {
+        solveOpt.setInt("id", id);
+
         gsINSSolverSteady<real_t> NSsolver(params);
+
+        if(geo == 2)
+            markElimDof(NSsolver);
 
         gsInfo << "\nSolving the steady problem with direct linear solver.\n";
         gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
-        solveProblem(NSsolver, maxIt, tol, plot, plotPts, id);
+        solveProblem(NSsolver, solveOpt);
 
         id++;
     }
 
     if (unsteady)
     {
+        solveOpt.setInt("id", id);
+
         params.options().setReal("timeStep", timeStep);
         params.options().setInt("maxIt_picard", picardIt);
         params.options().setReal("tol_picard", picardTol);
 
         gsINSSolverUnsteady<real_t> NSsolver(params);
 
+        if(geo == 2)
+            markElimDof(NSsolver);
+
         gsInfo << "\nSolving the unsteady problem with direct linear solver.\n";
         gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
-        solveProblem(NSsolver, maxIt, tol, plot, plotPts, id);
+        solveProblem(NSsolver, solveOpt);
         
         id++;
     }
 
     if (steadyIt)
     {
+        solveOpt.setInt("id", id);
         params.options().setInt("maxIt_lin", linIt);
         params.options().setReal("tol_lin", linTol);
         params.options().setString("precType", precond);
         // params.precOptions().setReal("gamma", 1); // parameter for AL preconditioner
 
         gsINSSolverSteadyIter<real_t, LinSolver > NSsolver(params);
+
+        if(geo == 2)
+            markElimDof(NSsolver);
 
         gsInfo << "\nSolving the steady problem with preconditioned GMRES as linear solver.\n";
         gsInfo << "Used preconditioner: " << params.options().getString("precType") << "\n";
@@ -166,7 +232,7 @@ int main(int argc, char *argv[])
         if (params.options().getString("precType").substr(0, 3) == "PCD")
             NSsolver.getAssembler()->preparePCDboundary(bndIn, bndOut, bndWall, params.precOptions().getInt("pcd_bcType"));
 
-        solveProblem(NSsolver, maxIt, tol, plot, plotPts, id);
+        solveProblem(NSsolver, solveOpt);
 
         std::vector<index_t> itVector = NSsolver.getLinIterVector();
 
@@ -181,6 +247,7 @@ int main(int argc, char *argv[])
 
     if (unsteadyIt)
     {
+        solveOpt.setInt("id", id);
         params.options().setReal("timeStep", timeStep);
         params.options().setInt("maxIt_picard", picardIt);
         params.options().setReal("tol_picard", picardTol);
@@ -191,6 +258,9 @@ int main(int argc, char *argv[])
 
         gsINSSolverUnsteadyIter<real_t, LinSolver > NSsolver(params);
 
+        if(geo == 2)
+            markElimDof(NSsolver);
+
         gsInfo << "\nSolving the unsteady problem with preconditioned GMRES as linear solver.\n";
         gsInfo << "Used preconditioner: " << params.options().getString("precType") << "\n";
         gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
@@ -198,7 +268,7 @@ int main(int argc, char *argv[])
         if (params.options().getString("precType").substr(0, 3) == "PCD")
             NSsolver.getAssembler()->preparePCDboundary(bndIn, bndOut, bndWall, params.precOptions().getInt("pcd_bcType"));
 
-        solveProblem(NSsolver, maxIt, tol, plot, plotPts, id);
+        solveProblem(NSsolver, solveOpt);
         
         std::vector<index_t> itVector = NSsolver.getLinIterVector();
 
@@ -215,28 +285,66 @@ int main(int argc, char *argv[])
 }
 
 
-void solveProblem(gsINSSolverBase<real_t>& NSsolver, int maxIt, real_t tol, bool plot, int plotPts, int id)
+void solveProblem(gsINSSolverBase<real_t>& NSsolver, gsOptionList opt)
 {
     gsInfo << "\ninitialization...\n";
     NSsolver.initialize();
 
-    NSsolver.solve(maxIt, tol);
+    gsINSSolverUnsteady<real_t>* pSolver = dynamic_cast<gsINSSolverUnsteady<real_t>* >(&NSsolver);
 
-    //NSsolver.solveStokes(); // solve the Stokes problem
-    //NSsolver.solveGeneralizedStokes(maxIt, tol); // solve the time-dependent Stokes problem (only in unsteady solvers)
+    if (pSolver)
+    {
+        if (opt.getSwitch("stokesInit"))
+            pSolver->setStokesInitialCondition();
+
+        pSolver->solveWithAnimation(opt.getInt("maxIt"), 10, opt.getReal("tol"), opt.getInt("plotPts"));
+    }
+    else
+    {
+        NSsolver.solve(opt.getInt("maxIt"), opt.getReal("tol"));
+    }      
 
     gsInfo << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
     gsInfo << "Solve time:" << NSsolver.getSolveTime() << "\n";
     gsInfo << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
 
-    if (plot) 
+    if (opt.getSwitch("plot")) 
     {
         gsField<> velocity = NSsolver.constructSolution(0);
         gsField<> pressure = NSsolver.constructSolution(1);
+
+        std::string geoStr;
+        switch(opt.getInt("geo"))
+        {
+            case 1:
+            {
+                geoStr = "BFS";
+                break;
+            }
+            case 2:
+            {
+                geoStr = "LDC";
+                break;
+            }
+            default:
+                GISMO_ERROR("Unknown domain.");
+        }
+
+        int id = opt.getInt("id");
+        int plotPts = opt.getInt("plotPts");
  
         gsInfo << "Plotting in Paraview...";
-        gsWriteParaview<>(velocity, "BFS_solver" + util::to_string(id) + "_velocity", plotPts, true);
-        gsWriteParaview<>(pressure, "BFS_solver" + util::to_string(id) + "_pressure", plotPts);
+        gsWriteParaview<>(velocity, geoStr + "_solver" + util::to_string(id) + "_velocity", plotPts, opt.getSwitch("plotMesh"));
+        gsWriteParaview<>(pressure, geoStr + "_solver" + util::to_string(id) + "_pressure", plotPts);
         gsInfo << " done.\n";
     }
+}
+
+// mark one pressure DoF in the domain corner as fixed zero (for the lid driven cavity problem)
+void markElimDof(gsINSSolverBase<real_t>& NSsolver)
+{
+    std::vector<gsMatrix<index_t> > elimDof(1);
+    elimDof[0].setZero(1,1);
+
+    NSsolver.markDofsAsEliminatedZeros(elimDof, 1);
 }
