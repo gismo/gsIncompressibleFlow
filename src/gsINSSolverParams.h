@@ -88,8 +88,8 @@ public: // *** Static functions ***
         opt.addInt("maxIt_lin", "Maximum number of iterations for linear solver (if iterative)", 200);
 
         opt.addReal("timeStep", "Time step size", 0.1);
-        opt.addReal("tol_picard", "Stopping tolerance for Picard iteration", 1-5);
-        opt.addReal("tol_lin", "Stopping tolerance for linear solver (if iterative)", 1-6);
+        opt.addReal("tol_picard", "Stopping tolerance for Picard iteration", 1e-5);
+        opt.addReal("tol_lin", "Stopping tolerance for linear solver (if iterative)", 1e-6);
 
         opt.addString("precType", "Preconditioner to be used with iterative linear solver", "PCDmod_FdiagEqual");
 
