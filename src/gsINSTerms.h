@@ -207,7 +207,7 @@ public: // *** Member functions ***
 
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
     { 
-        this->computeCoeff(mapData);
+        this->computeCoeff(mapData, -1.0); // -1 to get block -Bt 
 
         const gsMatrix<T>& testFunGrads = testFunData[1];
         const gsMatrix<T>& shapeFunVals = shapeFunData[0];
@@ -223,7 +223,7 @@ public: // *** Member functions ***
             transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
 
             for (size_t i = 0; i != localMat.size(); ++i)
-                localMat[i].noalias() += weight * (shapeFunVals.col(k) * testFunPhysGrad.row(i)).transpose();
+                localMat[i].noalias() += weight * (shapeFunVals.col(k) * testFunPhysGrad.row(i)).transpose(); // transpose to get block -Bt
         }
     }
 
@@ -287,28 +287,38 @@ public: // *** Member functions ***
 /// @brief      
 /// @tparam T   coefficient type
 template <class T>
-class gsINSTermRhs
+class gsINSTermRhs : public gsINSTerm<T>
 {
+
+public:
+    typedef gsINSTerm<T> Base;
+
 
 protected: // *** Class members ***
 
-    unsigned m_geoFlags, m_testFunFlags; // evaluation flags
     const gsFunction<T>* m_pRhsFun;
     gsMatrix<T> m_rhsVals;
 
 
+protected: // *** Base class members ***
+
+    using Base::m_geoFlags;
+    using Base::m_testFunFlags;
+
+
 public: // *** Constructor/destructor ***
 
-    gsINSTermRhs()
+    gsINSTermRhs(const gsFunction<T>* pRhsFun)
     {
         m_geoFlags = NEED_VALUE | NEED_MEASURE;
         m_testFunFlags = NEED_VALUE;
+        m_pRhsFun = pRhsFun;
     }
 
 
 public: // *** Member functions ***
 
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, gsMatrix<T>& localRhs)
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
     { 
         m_pRhsFun->eval_into(mapData.values[0], m_rhsVals);
 
@@ -318,14 +328,8 @@ public: // *** Member functions ***
         {
             const T weight = quWeights(k) * mapData.measure(k);
 
-            localRhs.noalias() += weight * (testFunData[0].col(k) *  m_rhsVals.col(k).transpose());
+            localMat.noalias() += weight * (testFunData[0].col(k) *  m_rhsVals.col(k).transpose());
         }
-    }
-
-    void updateEvalFlags(unsigned& geoFlags, unsigned& testFunFlags, unsigned& shapeFunFlags)
-    { 
-        geoFlags |= m_geoFlags;
-        testFunFlags |= m_testFunFlags;
     }
 
 };
@@ -365,6 +369,9 @@ public: // *** Constructor/destructor ***
         m_testFunFlags = 0;
         m_shapeFunFlags = 0;
     }
+
+    virtual ~gsINSTerm()
+    {}
 
 
 public: // *** Member functions ***
@@ -448,13 +455,6 @@ protected: // *** Member functions ***
 
         m_solUVals.resize(mapData.dim.first, mapData.points.cols());
         m_solUVals = m_currentSolU.value(mapData.points, mapData.patchId);
-
-        // if (m_solUVals.any())
-        // {
-        //     gsInfo << "\npatch " << mapData.patchId << "\n";
-        //     gsInfo << "points =\n" << mapData.points << "\n";
-        //     gsInfo << "m_solUVals =\n" << m_solUVals << "\n";
-        // }
     }
 
 };

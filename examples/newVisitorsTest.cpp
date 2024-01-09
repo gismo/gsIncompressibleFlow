@@ -1,6 +1,7 @@
 
 #include <gismo.h>
 
+#include <gsIncompressibleFlow/src/gsINSSolver.h>
 #include <gsIncompressibleFlow/src/gsINSSolverSteady.h>
 #include <gsIncompressibleFlow/src/gsINSSolverUnsteady.h>
 #include <gsIncompressibleFlow/src/gsINSUtils.h>
@@ -8,16 +9,14 @@
 
 using namespace gismo;
 
-
-void solveOld(gsINSSolverBase<real_t>& NSsolver, int maxIt, real_t tol, bool plot, int plotPts, std::string id);
-void solveNew(gsINSSolverBase<real_t>& NSsolver, gsINSSolverParams<real_t>& params, int maxIt, real_t tol, bool plot, int plotPts, std::string id, bool unst);
-
+template<class NSsolverType>
+void solve(NSsolverType& NSsolver, int maxIt, real_t tol, bool plot, int plotPts, std::string id);
 
 int main(int argc, char *argv[])
 {
     // ========================================= Settings ========================================= 
 
-    bool steady = true;
+    bool steady = false;
     bool unsteady = false;
 
     int deg = 1;
@@ -101,12 +100,13 @@ int main(int argc, char *argv[])
     if (steady)
     {
         gsINSSolverSteady<real_t> NSsolver(params);
+        gsINSSolverDirectSteady<real_t> NSsolver1(params);
 
         gsInfo << "\nSolving the steady problem with direct linear solver.\n";
         gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
-        solveOld(NSsolver, maxIt, tol, plot, plotPts, "steadyOld");
-        solveNew(NSsolver, params, maxIt, tol, plot, plotPts, "steadyNew", false);
+        solve< gsINSSolverBase<real_t> >(NSsolver, maxIt, tol, plot, plotPts, "steadyOld");
+        solve< gsINSSolver<real_t> >(NSsolver1, maxIt, tol, plot, plotPts, "steadyNew");
     }
 
     if (unsteady)
@@ -116,37 +116,31 @@ int main(int argc, char *argv[])
         params.options().setReal("tol_picard", picardTol);
 
         gsINSSolverUnsteady<real_t> NSsolver(params);
+        gsINSSolverDirectUnsteady<real_t> NSsolver1(params);
 
         gsInfo << "\nSolving the unsteady problem with direct linear solver.\n";
         gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
-        solveOld(NSsolver, maxIt, tol, plot, plotPts, "unsteadyOld");
+        solve< gsINSSolverBase<real_t> >(NSsolver, maxIt, tol, plot, plotPts, "unsteadyOld");
+        solve< gsINSSolver<real_t> >(NSsolver1, maxIt, tol, plot, plotPts, "unsteadyNew");
     }
 
     return 0; 
 }
 
+//=============================================================================================
 
-void solveOld(gsINSSolverBase<real_t>& NSsolver, int maxIt, real_t tol, bool plot, int plotPts, std::string id)
+template<class NSsolverType>
+void solve(NSsolverType& NSsolver, int maxIt, real_t tol, bool plot, int plotPts, std::string id)
 {
     gsInfo << "\ninitialization...\n";
     NSsolver.initialize();
 
-    // gsField<> uSol = NSsolver.constructSolution(0);
-    // gsWriteParaview(uSol, "initVel_old");
-
     NSsolver.solve(maxIt, tol);
-
-    //NSsolver.solveStokes(); // solve the Stokes problem
-    //NSsolver.solveGeneralizedStokes(maxIt, tol); // solve the time-dependent Stokes problem (only in unsteady solvers)
 
     gsInfo << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
     gsInfo << "Solve time:" << NSsolver.getSolveTime() << "\n";
     gsInfo << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
-
-    //gsInfo << "\nblockN =\n" << NSsolver.getAssembler()->getBlockAssembler().getBlockN() << "\n";
-    // gsInfo << "\nmatrix norm =\n" << NSsolver.getAssembler()->matrix().norm() << "\n";
-    // gsInfo << "\nrhs norm =\n" << NSsolver.getAssembler()->rhs().norm() << "\n";
 
     if (plot) 
     {
@@ -158,170 +152,4 @@ void solveOld(gsINSSolverBase<real_t>& NSsolver, int maxIt, real_t tol, bool plo
         gsWriteParaview<>(pressure, "BFS_" + id + "_pressure", plotPts);
         gsInfo << " done.\n";
     }
-}
-
-void solveNew(gsINSSolverBase<real_t>& NSsolver, gsINSSolverParams<real_t>& params, int maxIt, real_t tol, bool plot, int plotPts, std::string id, bool unst)
-{
-    if (unst)
-        params.options().setSwitch("unsteady", true);
-
-    gsSparseMatrix<real_t, RowMajor> matBase, mat;
-    gsSparseMatrix<real_t, RowMajor> blockA, blockN, blockBt;
-    gsMatrix<real_t> rhsUbase, rhsUnonlin, rhsB, rhs, sol, newSol;
-
-    int nnzPerRowU = 1;
-    for (int i = 0; i < 2; i++)
-        nnzPerRowU *= 2 * params.getBases()[0].maxDegree(i) + 1;
-
-    int nnzPerRowP = 1;
-    for (int i = 0; i < 2; i++)
-        nnzPerRowP *= 2 * params.getBases()[1].maxDegree(i) + 1;
-
-    int udofs = NSsolver.getAssembler()->getUdofs();
-    int pdofs = NSsolver.getAssembler()->getPdofs();
-    int pshift = NSsolver.getAssembler()->getPshift();
-    int dofs = pshift + pdofs;
-
-    blockA.resize(pshift, pshift);
-    blockA.reserve(gsVector<int>::Constant(pshift, nnzPerRowU));
-
-    blockN.resize(pshift, pshift);
-    blockN.reserve(gsVector<int>::Constant(pshift, nnzPerRowU));
-
-    blockBt.resize(pshift, pdofs);
-    blockBt.reserve(gsVector<int>::Constant(pshift, nnzPerRowU));
-
-    matBase.resize(dofs, dofs);
-    matBase.reserve(gsVector<int>::Constant(dofs, nnzPerRowU + nnzPerRowP));
-
-    mat.resize(dofs, dofs);
-    mat.reserve(gsVector<int>::Constant(dofs, nnzPerRowU + nnzPerRowP));
-
-    rhsUbase.setZero(pshift, 1);
-    rhsUnonlin.setZero(pshift, 1);
-    rhsB.setZero(dofs, 1);
-    rhs.setZero(dofs, 1);
-    sol.setZero(dofs, 1);
-    newSol.setZero(dofs, 1);
-
-    std::vector<gsMatrix<> > ddofs = NSsolver.getAssembler()->getBlockAssembler().getDirichletDofs();
-
-    gsINSVisitorUUlin<real_t> visitorA(params);
-    gsINSVisitorUUnonlin<real_t> visitorN(params);
-    gsINSVisitorPU<real_t> visitorBt(params);
-
-    visitorA.initialize();
-    visitorN.initialize();
-    visitorBt.initialize();
-
-    gsField<> uSol = NSsolver.getAssembler()->constructSolution(sol, 0);
-    visitorN.setCurrentSolution(uSol);
-
-    gsWriteParaview(uSol, "initVel_new");
-
-    for(size_t p = 0; p < params.getPde().patches().nPatches(); p++)
-    {
-        const gsBasis<>* patchBasisU = &(params.getBases()[0].piece(p));
-
-        index_t nBasesU = patchBasisU->size();
-
-        visitorA.initOnPatch(p);
-        visitorN.initOnPatch(p);
-        visitorBt.initOnPatch(p);
-
-        for(index_t i = 0; i < nBasesU; i++)
-        {
-            visitorA.evaluate(i);
-            visitorA.assemble();
-            visitorA.localToGlobal(ddofs, blockA, rhsUbase);
-
-            visitorN.evaluate(i);
-            visitorN.assemble();
-            visitorN.localToGlobal(ddofs, blockN, rhsUnonlin);
-
-            visitorBt.evaluate(i);
-            visitorBt.assemble();
-            visitorBt.localToGlobal(ddofs, blockBt, rhsB);
-        }
-    }
-
-    blockA.makeCompressed();
-    blockN.makeCompressed();
-    blockBt.makeCompressed();
-
-    for (index_t i = 0; i < blockA.rows(); ++i)
-        for (typename gsSparseMatrix<real_t, RowMajor>::InnerIterator it(blockA, i); it; ++it)
-            matBase.coeffRef(i, it.col()) += it.value();
-
-    for (index_t i = 0; i < blockBt.rows(); ++i)
-        for (typename gsSparseMatrix<real_t, RowMajor>::InnerIterator it(blockBt, i); it; ++it)
-        {
-            matBase.coeffRef(i, pshift + it.col()) += it.value();
-            matBase.coeffRef(pshift + it.col(), i) += it.value();
-        }
-            
-    // =====================================================
-
-    gsSparseSolver<>::LU linSolver;
-
-    if (unst)
-    {
-        
-    }
-    else
-    {
-        int iter = 0;
-        real_t relNorm = std::numeric_limits<real_t>::infinity();
-
-        while ((relNorm > tol) && (iter < maxIt))
-        {
-            gsInfo << "Iteration number " << iter + 1 << "...";
-
-            mat = matBase;
-            for (index_t i = 0; i < blockN.rows(); ++i)
-                for (typename gsSparseMatrix<real_t, RowMajor>::InnerIterator it(blockN, i); it; ++it)
-                    mat.coeffRef(i, it.col()) += it.value();
-
-            rhs = rhsB;
-            rhs.topRows(pshift) += rhsUbase + rhsUnonlin;
-
-            linSolver.compute(mat);
-            newSol = linSolver.solve(rhs);
-
-            gsMatrix<> solChange = sol - newSol;
-            relNorm = solChange.norm() / newSol.norm();
-
-            gsInfo << " Solution change relative norm: " << relNorm << "\n";
-
-            //gsInfo << "\nblockN =\n" << blockN.topLeftCorner(udofs, udofs) << "\n";
-            // gsInfo << "\nmatrix norm =\n" << mat.norm() << "\n";
-            // gsInfo << "\nrhs norm =\n" << rhs.norm() << "\n";
-
-            sol = newSol;
-            uSol = NSsolver.getAssembler()->constructSolution(sol, 0);
-            visitorN.setCurrentSolution(uSol);
-
-            blockN *= 0;
-            rhsUnonlin.setZero();
-
-            for(size_t p = 0; p < params.getPde().patches().nPatches(); p++)
-            {
-                const gsBasis<>* patchBasisU = &(params.getBases()[0].piece(p));
-
-                index_t nBasesU = patchBasisU->size();
-
-                visitorN.initOnPatch(p);
-
-                for(index_t i = 0; i < nBasesU; i++)
-                {
-                    visitorN.evaluate(i);
-                    visitorN.assemble();
-                    visitorN.localToGlobal(ddofs, blockN, rhsUnonlin);
-                }
-            }
-
-            iter++;
-        }
-    }
-
 }

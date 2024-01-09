@@ -43,6 +43,9 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsINSSolverParams() {}
+    
+
     /// @brief Constructor of the object.
     /// @param pde an incompressible Navier-Stokes problem
     /// @param bases vector of discretization bases (velocity, pressure)
@@ -86,6 +89,7 @@ public: // *** Static functions ***
         opt.addString("precType", "Preconditioner to be used with iterative linear solver", "PCDmod_FdiagEqual");
 
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
+        opt.addSwitch("fillGlobalSyst", "Fill the global linear systems from blocks", true);
 
         return opt;
     }

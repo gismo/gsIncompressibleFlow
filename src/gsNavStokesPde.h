@@ -35,8 +35,7 @@ class gsNavStokesPde : public gsStokesPde<T>
 protected:
 
     typedef gsStokesPde<T> Base;
-    gsNavStokesPde() { }
-
+    
 protected: // *** Base class members ***
 
     using Base::m_viscosity;
@@ -45,6 +44,8 @@ protected: // *** Base class members ***
 
 
 public: // *** Constructor/destructor ***
+
+    gsNavStokesPde() { }
 
     gsNavStokesPde(
         const gsMultiPatch<T>&         domain,

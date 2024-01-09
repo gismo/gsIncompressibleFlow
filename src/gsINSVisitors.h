@@ -15,6 +15,7 @@
 
 #include <gsIncompressibleFlow/src/gsINSUtils.h>
 #include <gsIncompressibleFlow/src/gsINSTerms.h>
+#include <gsIncompressibleFlow/src/gsINSSolverParams.h>
 
 namespace gismo
 {
@@ -54,6 +55,8 @@ protected: // *** Class members ***
     
 
 public: // *** Constructor/destructor ***
+
+    gsINSVisitor() {}
 
     gsINSVisitor(const gsINSSolverParams<T>& params) : m_params(params)
     { }
@@ -288,6 +291,9 @@ virtual void assemble()
 virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
 { GISMO_NO_IMPLEMENTATION } 
 
+virtual void localToGlobal(gsMatrix<T>& globalRhs)
+{ GISMO_NO_IMPLEMENTATION } 
+
 };
 
 // ===================================================================================================================
@@ -316,6 +322,8 @@ protected: // *** Base class members ***
     using Base::m_terms;
 
 public: // *** Constructor/destructor ***
+
+    gsINSVisitorVectorValued() {}
 
     gsINSVisitorVectorValued(const gsINSSolverParams<T>& params) : Base(params)
     { }
@@ -363,6 +371,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsINSVisitorUU() {}
+
     gsINSVisitorUU(const gsINSSolverParams<T>& params) : Base(params)
     { }
         
@@ -380,15 +390,19 @@ public: // *** Member functions ***
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
     {
         index_t dim = m_params.getPde().dim();
+        const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for one velocity component
+        index_t nComponents = globalMat.rows() / uCompSize;
 
-        const index_t uCompSize = globalMat.rows() / dim; // number of dofs for one velocity component
-    
+        GISMO_ASSERT(nComponents == 1 || nComponents == dim, "Wrong matrix size in gsINSVisitorUU::localToGlobal.");
+
         gsMatrix<index_t> testFunID(1,1);
         testFunID << m_currentTestFunID;
 
         m_dofMappers[m_testUnkID].localToGlobal(testFunID, m_patchID, testFunID);
         m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
         
+        
+
         index_t ii = testFunID(0);
         index_t numAct = m_shapeFunActives.rows();
 
@@ -400,14 +414,14 @@ public: // *** Member functions ***
 
                 if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
                 {
-                    for (index_t d = 0; d < dim; d++)
+                    for (index_t d = 0; d < nComponents; d++)
                         globalMat.coeffRef(ii + d*uCompSize, jj + d*uCompSize) += m_localMat(0, j);
                 }
                 else // is_boundary_index(jj)
                 {
                     const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
 
-                    for (index_t d = 0; d < dim; d++)
+                    for (index_t d = 0; d < nComponents; d++)
                         globalRhs(ii + d*uCompSize, 0) -= m_localMat(0, j) * eliminatedDofs[m_shapeUnkID](bb, d);
                 }
             }
@@ -434,6 +448,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsINSVisitorUUlin() {}
+
     gsINSVisitorUUlin(const gsINSSolverParams<T>& params) :
     Base(params)
     { }
@@ -445,8 +461,8 @@ protected: // *** Member functions ***
     {
         m_terms.push_back( new gsINSTermDiffusion<T>(m_params.getPde().viscosity()) );
 
-        if(m_params.options().getSwitch("unsteady"))
-            m_terms.push_back( new gsINSTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
+        // if(m_params.options().getSwitch("unsteady"))
+        //     m_terms.push_back( new gsINSTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
 
         // ... other terms, e.g. from stabilizations
     }
@@ -471,6 +487,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsINSVisitorUUnonlin() {}
+
     gsINSVisitorUUnonlin(const gsINSSolverParams<T>& params) : Base(params)
     { }
 
@@ -485,6 +503,41 @@ protected: // *** Member functions ***
     }
 
 };
+
+// ===================================================================================================================
+
+template <class T>
+class gsINSVisitorUUtimeDiscr : public gsINSVisitorUUlin<T>
+{
+
+public:
+    typedef gsINSVisitorUUlin<T> Base;
+
+
+protected: // *** Base class members ***
+
+    using gsINSVisitor<T>::m_params;
+    using gsINSVisitor<T>::m_terms;
+
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorUUtimeDiscr() {}
+
+    gsINSVisitorUUtimeDiscr(const gsINSSolverParams<T>& params) :
+    Base(params)
+    { }
+
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsINSTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
+    }
+
+};
+
 
 // ===================================================================================================================
 // ===================================================================================================================
@@ -512,6 +565,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsINSVisitorPU() {}
+
     gsINSVisitorPU(const gsINSSolverParams<T>& params) : Base(params)
     { }
 
@@ -534,8 +589,9 @@ public: // *** Member functions ***
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
     {
         index_t dim = m_params.getPde().dim();
+        const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for one velocity component
 
-        const index_t uCompSize = globalMat.rows() / dim; // number of dofs for one velocity component
+        GISMO_ASSERT(globalMat.rows() == dim*uCompSize, "Wrong matrix size in gsINSVisitorPU::localToGlobal.");
     
         gsMatrix<index_t> testFunID(1,1);
         testFunID << m_currentTestFunID;
@@ -566,7 +622,7 @@ public: // *** Member functions ***
                 }
             }
         }
-        else // TODO: upravit, tady se predpoklada, ze rhs je cely vektor pro u i p
+        else // part arising from block B (assuming that the offdiag. blocks are symmetric)
         {
             const int bb = m_dofMappers[m_testUnkID].global_to_bindex(ii);
             for (index_t k = 0; k < numAct; k++)
@@ -613,6 +669,8 @@ protected: // *** Base class members ***
 
 
 public: // *** Constructor/destructor ***
+
+    gsINSVisitorPP() {}
 
     gsINSVisitorPP(const gsINSSolverParams<T>& params) : Base(params)
     { }
@@ -679,6 +737,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsINSVisitorPPlin() {}
+
     gsINSVisitorPPlin(const gsINSSolverParams<T>& params) : Base(params)
     { }
 
@@ -710,6 +770,8 @@ protected: // *** Base class members ***
 
 
 public: // *** Constructor/destructor ***
+
+    gsINSVisitorPPnonlin() {}
 
     gsINSVisitorPPnonlin(const gsINSSolverParams<T>& params) : Base(params)
     { }
@@ -743,6 +805,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsINSVisitorPPmass() {}
+
     gsINSVisitorPPmass(const gsINSSolverParams<T>& params) : Base(params)
     { }
 
@@ -774,6 +838,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsINSVisitorPPlaplace() {}
+
     gsINSVisitorPPlaplace(const gsINSSolverParams<T>& params) : Base(params)
     { }
 
@@ -804,6 +870,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsINSVisitorPPconvection() {}
+
     gsINSVisitorPPconvection(const gsINSSolverParams<T>& params) : Base(params)
     { }
 
@@ -816,6 +884,181 @@ protected: // *** Member functions ***
     }
 
 };
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+// RHS VISITORS
+
+template <class T>
+class gsINSVisitorRhsU : public gsINSVisitor<T>
+{
+
+public:
+    typedef gsINSVisitor<T> Base;
+
+
+protected: // *** Class members ***
+
+    const gsFunction<T>* m_pRhsFun;
+
+
+protected: // *** Base class members ***
+
+    using Base::m_params;
+    using Base::m_terms;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_shapeUnkID;
+    using Base::m_dofMappers;
+    using Base::m_currentTestFunID;
+    using Base::m_localMat;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_shapeFunData;
+
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorRhsU() {}
+
+    gsINSVisitorRhsU(const gsINSSolverParams<T>& params):
+    Base(params), m_pRhsFun(params.getPde().force())
+    {
+        GISMO_ASSERT(m_pRhsFun->targetDim() == m_params.getPde().dim(), "Wrong RHS function passed into gsINSRhsU.");
+    }
+        
+
+protected: // *** Member functions ***
+
+    virtual void defineTestShapeUnknowns()
+    {
+        m_testUnkID = 0;    // velocity
+        m_shapeUnkID = 0;    // velocity (not needed here)
+    }
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsINSTermRhs<T>(m_pRhsFun) );
+    }
+
+public: // *** Member functions ***
+
+    virtual void assemble()
+    {
+        m_localMat.setZero(1, m_params.getPde().dim());
+
+        for (size_t i = 0; i < m_terms.size(); i++)
+            m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_localMat);
+    }
+
+
+    virtual void localToGlobal(gsMatrix<T>& globalRhs)
+    {
+        index_t dim = m_params.getPde().dim();
+        const index_t uCompSize = m_dofMappers[0].freeSize(); // number of dofs for one velocity component
+
+        gsMatrix<index_t> testFunID(1,1);
+        testFunID << m_currentTestFunID;
+
+        m_dofMappers[m_testUnkID].localToGlobal(testFunID, m_patchID, testFunID);
+
+        index_t ii = testFunID(0);
+
+        if (m_dofMappers[m_testUnkID].is_free_index(ii))
+        {
+            for (index_t d = 0; d != dim; d++)
+                globalRhs(ii + d*uCompSize, 0) += m_localMat(0, d);
+        }
+    } 
+
+};
+
+// ===================================================================================================================
+
+template <class T>
+class gsINSVisitorRhsP : public gsINSVisitor<T>
+{
+
+public:
+    typedef gsINSVisitor<T> Base;
+
+
+protected: // *** Class members ***
+
+    const gsFunction<T>* m_pRhsFun;
+
+
+protected: // *** Base class members ***
+
+    using Base::m_params;
+    using Base::m_terms;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_shapeUnkID;
+    using Base::m_dofMappers;
+    using Base::m_currentTestFunID;
+    using Base::m_localMat;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_shapeFunData;
+
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorRhsP() {}
+    
+    gsINSVisitorRhsP(const gsINSSolverParams<T>& params):
+    Base(params), m_pRhsFun(params.getPde().source())
+    {
+        GISMO_ASSERT(m_pRhsFun == NULL || m_pRhsFun->targetDim() == 1, "Wrong RHS function passed into gsINSRhsP.");
+    }
+        
+
+protected: // *** Member functions ***
+
+    virtual void defineTestShapeUnknowns()
+    {
+        m_testUnkID = 1;    // pressure
+        m_shapeUnkID = 1;    // pressure (not needed here)
+    }
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsINSTermRhs<T>(m_pRhsFun) );
+    }
+
+public: // *** Member functions ***
+
+    virtual void assemble()
+    {
+        m_localMat.setZero(1, 1);
+
+        for (size_t i = 0; i < m_terms.size(); i++)
+            m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_localMat);
+    }
+
+
+    virtual void localToGlobal(gsMatrix<T>& globalRhs)
+    {
+        index_t dim = m_params.getPde().dim();
+        const index_t uCompSize = m_dofMappers[0].freeSize(); // number of dofs for one velocity component
+
+        gsMatrix<index_t> testFunID(1,1);
+        testFunID << m_currentTestFunID;
+
+        m_dofMappers[m_testUnkID].localToGlobal(testFunID, m_patchID, testFunID);
+
+        index_t ii = testFunID(0);
+
+        if (m_dofMappers[m_testUnkID].is_free_index(ii))
+            globalRhs(dim*uCompSize + ii, 0) += m_localMat(0);
+    } 
+
+};
+
 
 
 } // namespace gismo
