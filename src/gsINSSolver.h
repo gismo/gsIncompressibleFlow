@@ -373,7 +373,7 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     gsINSSolverDirectUnsteady(gsINSSolverParams<T>& params): Base(params)
     { 
-        m_pAssembler = new gsINSAssemblerUnsteady1<T>(params);
+        m_pAssembler = new gsINSAssemblerUnsteady<T>(params);
 
         initMembers();
         m_params.options().setSwitch("unsteady", true);
@@ -404,9 +404,9 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns a pointer to the assembler.
-    gsINSAssemblerUnsteady1<T>* getAssembler() const
+    gsINSAssemblerUnsteady<T>* getAssembler() const
     {
-        return dynamic_cast<gsINSAssemblerUnsteady1<T>*>(m_pAssembler);
+        return dynamic_cast<gsINSAssemblerUnsteady<T>*>(m_pAssembler);
     }
 
     // @brief Returns the elapsed simulation time.

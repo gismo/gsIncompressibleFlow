@@ -20,7 +20,7 @@ namespace gismo
 {
 
 template<class T>
-class gsINSAssemblerBase1
+class gsINSAssemblerBase
 {
 
 protected: // *** Class members ***
@@ -39,13 +39,13 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsINSAssemblerBase1(const gsINSSolverParams<T>& params):
+    gsINSAssemblerBase(const gsINSSolverParams<T>& params):
     m_params(params)
     {
         initMembers();
     }
 
-    virtual ~gsINSAssemblerBase1()
+    virtual ~gsINSAssemblerBase()
     { }
 
 protected: // *** Member functions ***
@@ -224,11 +224,11 @@ public: // *** Getters/setters ***
 // ===================================================================================================================
 
 template<class T>
-class gsINSAssembler: public gsINSAssemblerBase1<T>
+class gsINSAssembler: public gsINSAssemblerBase<T>
 {
 
 public:
-    typedef gsINSAssemblerBase1<T> Base;
+    typedef gsINSAssemblerBase<T> Base;
 
 
 protected: // *** Class members ***
@@ -357,7 +357,7 @@ public: // *** Getters/setters ***
 // ===================================================================================================================
 
 template<class T>
-class gsINSAssemblerUnsteady1: public gsINSAssembler<T>
+class gsINSAssemblerUnsteady: public gsINSAssembler<T>
 {
 
 public:
@@ -388,21 +388,21 @@ protected: // *** Base class members ***
     using Base::m_params;
     using Base::m_pshift;
     using Base::m_nnzPerRowU;
-    using gsINSAssemblerBase1<T>::m_solution;
-    using gsINSAssemblerBase1<T>::m_baseMatrix;
-    using gsINSAssemblerBase1<T>::m_rhs;
-    using gsINSAssemblerBase1<T>::m_isInitialized;
+    using gsINSAssemblerBase<T>::m_solution;
+    using gsINSAssemblerBase<T>::m_baseMatrix;
+    using gsINSAssemblerBase<T>::m_rhs;
+    using gsINSAssemblerBase<T>::m_isInitialized;
 
 
 public: // *** Constructor/destructor ***
 
-    gsINSAssemblerUnsteady1(const gsINSSolverParams<T>& params): 
+    gsINSAssemblerUnsteady(const gsINSSolverParams<T>& params): 
     Base(params)
     {
         initMembers();
     }
 
-    virtual ~gsINSAssemblerUnsteady1()
+    virtual ~gsINSAssemblerUnsteady()
     { }
 
 

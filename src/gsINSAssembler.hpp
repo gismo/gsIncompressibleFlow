@@ -16,7 +16,7 @@ namespace gismo
 {
 
 template<class T>
-void gsINSAssemblerBase1<T>::initMembers()
+void gsINSAssemblerBase<T>::initMembers()
 { 
     m_dofs = 0;
     m_tarDim = getPatches().dim();
@@ -31,7 +31,7 @@ void gsINSAssemblerBase1<T>::initMembers()
 }
 
 template<class T>
-void gsINSAssemblerBase1<T>::computeDirichletDofs(const int unk, const int basisID, gsMatrix<T>& ddofVector)
+void gsINSAssemblerBase<T>::computeDirichletDofs(const int unk, const int basisID, gsMatrix<T>& ddofVector)
 {
     GISMO_ASSERT(ddofVector.rows() == m_dofMappers[basisID].boundarySize(), "Dirichlet DOF vector has wrong size.");
 
@@ -71,7 +71,7 @@ void gsINSAssemblerBase1<T>::computeDirichletDofs(const int unk, const int basis
 
 
 template<class T>
-void gsINSAssemblerBase1<T>::computeDirichletDofsIntpl(const int unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
+void gsINSAssemblerBase<T>::computeDirichletDofsIntpl(const int unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
 {
     for (typename gsBoundaryConditions<T>::const_iterator
         it = getBCs().dirichletBegin();
@@ -155,7 +155,7 @@ void gsINSAssemblerBase1<T>::computeDirichletDofsIntpl(const int unk, const gsDo
 
 
 template<class T>
-void gsINSAssemblerBase1<T>::computeDirichletDofsL2Proj(const int unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
+void gsINSAssemblerBase<T>::computeDirichletDofsL2Proj(const int unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
 {
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
@@ -270,7 +270,7 @@ void gsINSAssemblerBase1<T>::computeDirichletDofsL2Proj(const int unk, const gsD
 }
 
 template<class T>
-void gsINSAssemblerBase1<T>::assembleBlock(gsINSVisitor<T>& visitor, index_t testBasisID, gsSparseMatrix<T, RowMajor>& block, gsMatrix<T>& blockRhs)
+void gsINSAssemblerBase<T>::assembleBlock(gsINSVisitor<T>& visitor, index_t testBasisID, gsSparseMatrix<T, RowMajor>& block, gsMatrix<T>& blockRhs)
 {
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
@@ -290,7 +290,7 @@ void gsINSAssemblerBase1<T>::assembleBlock(gsINSVisitor<T>& visitor, index_t tes
 }
 
 template<class T>
-void gsINSAssemblerBase1<T>::assembleRhs(gsINSVisitor<T>& visitor, index_t testBasisID, gsMatrix<T>& rhs)
+void gsINSAssemblerBase<T>::assembleRhs(gsINSVisitor<T>& visitor, index_t testBasisID, gsMatrix<T>& rhs)
 {
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
@@ -309,7 +309,7 @@ void gsINSAssemblerBase1<T>::assembleRhs(gsINSVisitor<T>& visitor, index_t testB
 
 
 template<class T>
-void gsINSAssemblerBase1<T>::initialize()
+void gsINSAssemblerBase<T>::initialize()
 {
     assembleLinearPart();
     m_isInitialized = true;
@@ -320,7 +320,7 @@ void gsINSAssemblerBase1<T>::initialize()
 
 
 template<class T>
-void gsINSAssemblerBase1<T>::update(const gsMatrix<T> & solVector, bool updateSol)
+void gsINSAssemblerBase<T>::update(const gsMatrix<T> & solVector, bool updateSol)
 {
     GISMO_ASSERT(m_isInitialized, "Assembler must be initialized first, call initialize()");
 
@@ -334,14 +334,14 @@ void gsINSAssemblerBase1<T>::update(const gsMatrix<T> & solVector, bool updateSo
 
 
 template<class T>
-void gsINSAssemblerBase1<T>::updateAssembly()
+void gsINSAssemblerBase<T>::updateAssembly()
 {
     assembleNonlinearPart();
 }
 
 
 template<class T>
-void gsINSAssemblerBase1<T>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk)
+void gsINSAssemblerBase<T>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk)
 {
     m_dofMappers[unk] = gsDofMapper(getBases().at(unk), getBCs(), unk);
 
@@ -635,7 +635,7 @@ T gsINSAssembler<T>::computeFlowRate(int patch, boxSide side, gsMatrix<T> soluti
 
 
 template<class T>
-void gsINSAssemblerUnsteady1<T>::initMembers()
+void gsINSAssemblerUnsteady<T>::initMembers()
 {
     Base::initMembers();
 
@@ -647,7 +647,7 @@ void gsINSAssemblerUnsteady1<T>::initMembers()
 }
 
 template<class T>
-void gsINSAssemblerUnsteady1<T>::assembleLinearPart()
+void gsINSAssemblerUnsteady<T>::assembleLinearPart()
 {
     Base::assembleLinearPart();
 
@@ -667,7 +667,7 @@ void gsINSAssemblerUnsteady1<T>::assembleLinearPart()
 
 
 template<class T>
-void gsINSAssemblerUnsteady1<T>::fillBaseSystem() 
+void gsINSAssemblerUnsteady<T>::fillBaseSystem() 
 {
     Base::fillBaseSystem();
 
@@ -679,7 +679,7 @@ void gsINSAssemblerUnsteady1<T>::fillBaseSystem()
 
 
 template<class T>
-void gsINSAssemblerUnsteady1<T>::fillSystem()
+void gsINSAssemblerUnsteady<T>::fillSystem()
 {
     Base::fillSystem();
 
@@ -688,7 +688,7 @@ void gsINSAssemblerUnsteady1<T>::fillSystem()
 
 
 template<class T>
-void gsINSAssemblerUnsteady1<T>::update(const gsMatrix<T> & solVector, bool updateSol)
+void gsINSAssemblerUnsteady<T>::update(const gsMatrix<T> & solVector, bool updateSol)
 {
     GISMO_ASSERT(m_isInitialized, "Assembler must be initialized first, call initialize()");
 
