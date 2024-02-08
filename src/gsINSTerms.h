@@ -223,7 +223,58 @@ public: // *** Member functions ***
             transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
 
             for (size_t i = 0; i != localMat.size(); ++i)
-                localMat[i].noalias() += weight * (shapeFunVals.col(k) * testFunPhysGrad.row(i)).transpose(); // transpose to get block -Bt
+                localMat[i].noalias() += weight * (shapeFunVals.col(k) * testFunPhysGrad.row(i)).transpose();
+        }
+    }
+
+};
+
+// ===================================================================================================================
+
+/// @brief 
+/// @tparam T 
+template <class T>
+class gsINSTermUdivPval : public gsINSTerm<T> // order: shape, test
+{
+
+public:
+    typedef gsINSTerm<T> Base;
+
+protected: // *** Base class members ***
+
+    using Base::m_coeff;
+
+public: // *** Constructor/destructor ***
+
+    gsINSTermUdivPval()
+    {
+        Base::m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        Base::m_testFunFlags = NEED_VALUE;
+        Base::m_shapeFunFlags = NEED_DERIV;
+    }
+
+
+public: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
+    { 
+        this->computeCoeff(mapData);
+
+        const gsMatrix<T>& testFunVals = testFunData[0];
+        const gsMatrix<T>& shapeFunGrads = shapeFunData[1];
+
+        gsMatrix<T> shapeFunPhysGrad;
+
+        const index_t nQuPoints = quWeights.rows();
+
+        for (index_t k = 0; k < nQuPoints; k++)
+        {
+            const T weight = m_coeff(k) * quWeights(k) * mapData.measure(k);
+
+            transformGradients(mapData, k, shapeFunGrads, shapeFunPhysGrad);
+
+            for (size_t i = 0; i != localMat.size(); ++i)
+                localMat[i].noalias() += weight * (shapeFunPhysGrad.row(i) * testFunVals(k) );
         }
     }
 

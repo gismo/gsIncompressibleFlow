@@ -21,6 +21,28 @@ void gsINSSolver<T>::initMembers()
     m_solution.setZero(getAssembler()->numDofs(), 1);
     m_iterationNumber = 0;
     m_relNorm = std::numeric_limits<T>::infinity();
+    createOutputFile();
+
+    m_initAssembT = 0;
+    m_assembT = 0;
+    m_solsetupT = 0;
+    m_solveT = 0;
+}
+
+
+template<class T>
+void gsINSSolver<T>::createOutputFile()
+{
+    std::string fileName = m_params.options().getString("outFile");
+
+    if (fileName == "")
+        fileName = this->getName() + "_output.txt";
+
+    m_outFile.open(fileName);
+
+    std::stringstream output;
+    output << "\n" << m_params.options() << "\n";
+    gsWriteOutput(m_outFile, output.str(), false);
 }
 
 
@@ -49,11 +71,16 @@ void gsINSSolver<T>::solve(const int maxIterations, const T epsilon, const int m
 
     while ((iter < minIterations) || ((m_relNorm > epsilon) && (iter < maxIterations)))
     {
-        gsInfo << "Iteration number " << m_iterationNumber + 1 << "...";
+        std::stringstream output;
+        output << "Iteration number " << m_iterationNumber + 1 << "...";
+        gsWriteOutput(m_outFile, output.str(), m_dispOutput);
 
         nextIteration();
         m_relNorm = solutionChangeRelNorm();
-        gsInfo << " Solution change relative norm: " << m_relNorm << "\n";
+
+        output.str("");
+        output << " Solution change relative norm: " << m_relNorm;
+        gsWriteOutputLine(m_outFile, output.str(), m_dispOutput);
 
         iter++;
     }
@@ -91,14 +118,15 @@ T gsINSSolver<T>::solutionChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew) 
 
 
 template<class T>
-void gsINSSolver<T>::dispSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew) const
+void gsINSSolver<T>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew)
 {
-    gsInfo << "     [u, p] solution change relative norm: ";
+    std::stringstream output;
+    output << "     [u, p] solution change relative norm: ";
 
     for (int i = 0; i < solOld.cols(); i++)
-        gsInfo << solutionChangeRelNorm(solOld.col(i), solNew.col(i)) << ", ";
+        output << solutionChangeRelNorm(solOld.col(i), solNew.col(i)) << ", ";
 
-    gsInfo << "\n";
+    gsWriteOutputLine(m_outFile, output.str(), m_dispOutput);
 }
 
 // ===================================================================================================================
@@ -173,22 +201,22 @@ void gsINSSolverDirectUnsteady<T>::nextIteration()
 
     this->applySolver(tmpSolution);
 
-    this->dispSolChangeRelNorm(m_solution, tmpSolution);
+    this->writeSolChangeRelNorm(m_solution, tmpSolution);
 
     index_t picardIter = 0;
     T relNorm = this->solutionChangeRelNorm(m_solution, tmpSolution);
 
-    gsInfo << "        [u, p] Picard's iterations...\n";
+    gsWriteOutputLine(m_outFile, "        [u, p] Picard's iterations...", m_dispOutput);
+
     while((relNorm > m_innerTol) && (picardIter < m_innerIter))
     {
-        gsInfo << "         ";
+        gsWriteOutput(m_outFile, "         ", m_dispOutput);
+
         gsMatrix<T> oldSol = tmpSolution;
 
         this->updateAssembler(tmpSolution, false);
-
         this->applySolver(tmpSolution);
-
-        this->dispSolChangeRelNorm(oldSol, tmpSolution);
+        this->writeSolChangeRelNorm(oldSol, tmpSolution);
 
         relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);
         picardIter++;

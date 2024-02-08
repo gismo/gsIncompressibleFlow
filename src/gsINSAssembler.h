@@ -26,8 +26,8 @@ class gsINSAssemblerBase
 protected: // *** Class members ***
 
     gsINSSolverParams<T> m_params;
-    int m_dofs;
-    int m_tarDim;
+    index_t m_dofs;
+    short_t m_tarDim;
     T m_viscosity;
     bool m_isInitialized;
     bool m_isSystemReady;
@@ -57,7 +57,7 @@ protected: // *** Member functions ***
     /// @param[in]  unk         the considered unknown (0 - velocity, 1 - pressure)
     /// @param[in]  basisID     the index of the basis corresponding to \a unk (same as \a unk in this case)
     /// @param[in]  ddofVector  reference to the vector where computed coefficients will be stored
-    void computeDirichletDofs(const int unk, const int basisID, gsMatrix<T>& ddofVector);
+    void computeDirichletDofs(const index_t unk, const index_t basisID, gsMatrix<T>& ddofVector);
 
 
     /// @brief Compute the coefficients of the basis functions at the Dirichlet boundaries using interpolation.
@@ -65,7 +65,7 @@ protected: // *** Member functions ***
     /// @param[in]  mapper       reference to the DOF mapper for \a unk
     /// @param[in]  mbasis       reference to the basis corresponding to \a unk
     /// @param[out] ddofVector   reference to the vector where computed coefficients will be stored
-    void computeDirichletDofsIntpl(const int unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector);
+    void computeDirichletDofsIntpl(const index_t unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector);
 
 
     /// @brief Compute the coefficients of the basis functions at the Dirichlet boundaries using L2-projection.
@@ -73,7 +73,7 @@ protected: // *** Member functions ***
     /// @param[in]  mapper      reference to the DOF mapper for \a unk
     /// @param[in]  mbasis      reference to the basis corresponding to \a unk
     /// @param[out] ddofVector  reference to the vector where computed coefficients will be stored
-    void computeDirichletDofsL2Proj(const int unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector);
+    void computeDirichletDofsL2Proj(const index_t unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector);
 
 
     /// @brief 
@@ -132,28 +132,28 @@ public: // *** Member functions ***
     /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.
     /// @param[in] boundaryDofs     indices of the given boundary DOFs
     /// @param[in] unk              the considered unknown
-    void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk);
+    void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk);
 
 
     /// @brief Construct solution from computed solution vector for unknown \a unk.
     /// @param[in]  solVector   the solution vector obtained from the linear system
     /// @param[out] result      the resulting solution as a gsMultiPatch object
     /// @param[in]  unk         the considered unknown
-    virtual gsField<T> constructSolution(const gsMatrix<T>& solVector, int unk) const
+    virtual gsField<T> constructSolution(const gsMatrix<T>& solVector, index_t unk) const
     {GISMO_NO_IMPLEMENTATION}
     
 
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of degrees of freedom (DOFs).
-    int numDofs() const 
+    index_t numDofs() const 
     { 
         GISMO_ASSERT(m_dofs > 0, "Something went wrong, number of DOFs is zero!");
         return m_dofs; 
     }
 
     /// @brief Returns the target dimension.
-    int getTarDim() const { return m_tarDim; }
+    short_t getTarDim() const { return m_tarDim; }
 
     /// @brief Returns the viscosity value.
     T getViscosity() const { return m_viscosity; }
@@ -233,16 +233,16 @@ public:
 
 protected: // *** Class members ***
 
-    int m_udofs;
-    int m_pdofs;
-    int m_pshift;
-    int m_nnzPerRowU, m_nnzPerRowP;
+    index_t m_udofs;
+    index_t m_pdofs;
+    index_t m_pshift;
+    index_t m_nnzPerRowU, m_nnzPerRowP;
     gsINSVisitorUUlin<T> m_visitorUUlin;
     gsINSVisitorUUnonlin<T> m_visitorUUnonlin;
-    gsINSVisitorPU<T> m_visitorUP;
+    gsINSVisitorPU_withUPrhs<T> m_visitorUP;
     gsINSVisitorRhsU<T> m_visitorF;
     gsINSVisitorRhsP<T> m_visitorG;
-    gsSparseMatrix<T, RowMajor> m_blockUUlin, m_blockUUnonlin, m_blockUP, m_blockPU;
+    gsSparseMatrix<T, RowMajor> m_blockUUlin, m_blockUUnonlin, m_blockUP;
     gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsFG;
     gsField<T>  m_currentVelField, m_currentPresField, m_oldTimeVelField;
 
@@ -308,29 +308,48 @@ public: // *** Member functions ***
     /// @param[in]  solVector   the solution vector obtained from the linear system
     /// @param[out] result      the resulting solution as a gsMultiPatch object
     /// @param[in]  unk         the considered unknown
-    virtual gsField<T> constructSolution(const gsMatrix<T>& solVector, int unk) const;
+    virtual gsField<T> constructSolution(const gsMatrix<T>& solVector, index_t unk) const;
 
 
     /// @brief Compute flow rate through a side of a given patch.
     /// @param[in] patch        the given patch ID
     /// @param[in] side         the given patch side
     /// @param[in] solution     solution vector to compute the flow rate from
-    T computeFlowRate(int patch, boxSide side, gsMatrix<T> solution) const;
+    T computeFlowRate(index_t patch, boxSide side, gsMatrix<T> solution) const;
 
 public: // *** Getters/setters ***
 
+    /// @brief Returns the number of DOFs for the i-th unknown.
+    /// @param[in] i    0 - velocity, 1 - pressure
+    index_t numDofsUnk(index_t i)
+    {
+        if (i == 0)
+            return m_udofs;
+        else if (i == 1)
+            return m_pdofs;
+        else
+            GISMO_ERROR("numDofsUnk(i): i must be 0 or 1.");
+    }
+
     /// @brief  Returns the number of velocity DOFs (one velocity component).
-    int getUdofs() const { return m_udofs; }
+    index_t getUdofs() const { return m_udofs; }
 
     /// @brief Returns the number of pressure DOFs.
-    int getPdofs() const { return m_pdofs; }
+    index_t getPdofs() const { return m_pdofs; }
 
     /// @brief Returns the DOF shift of pressure (i.e. the total number of velocity DOFs).
-    int getPshift() const { return m_pshift; }
+    index_t getPshift() const { return m_pshift; }
 
     /// @brief Returns the velocity-velocity block of the linear system.
     virtual const gsSparseMatrix<T, RowMajor> getBlockUU() const
     { return m_blockUUlin + m_blockUUnonlin; }
+
+    /// @brief Returns the diagonal block of velocity-velocity block for i-th component.
+    virtual const gsSparseMatrix<T, RowMajor> getBlockUUcompDiag(index_t i = 0) const
+    { 
+        GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
+        return getBlockUU().block(i * m_udofs, i * m_udofs, m_udofs, m_udofs); 
+    }
 
     /// @brief Returns the velocity-pressure block of the linear system.
     const gsSparseMatrix<T, RowMajor>& getBlockUP() const
@@ -338,7 +357,21 @@ public: // *** Getters/setters ***
 
     /// @brief Returns the pressure-velocity block of the linear system.
     const gsSparseMatrix<T, RowMajor> getBlockPU() const
-    { return gsSparseMatrix<T, RowMajor>(m_blockUP.transpose()); }
+    { return (-1.0)*gsSparseMatrix<T, RowMajor>(m_blockUP.transpose()); }
+
+    /// @brief Returns the part of velocity-pressure block for i-th velocity component.
+    virtual const gsSparseMatrix<T, RowMajor> getBlockUPcomp(index_t i) const
+    { 
+        GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
+        return getBlockUP().middleRows(i * m_udofs, m_udofs);
+    }
+
+    /// @brief Returns part of pressure-velocity block for i-th velocity component.
+    virtual const gsSparseMatrix<T, RowMajor> getBlockPUcomp(index_t i) const
+    { 
+        GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
+        return (-1.0)*gsSparseMatrix<T, RowMajor>(getBlockUPcomp(i).transpose());
+    }
 
     /// @brief /// @brief Returns the velocity part of the right-hand side.
     virtual const gsMatrix<T> getRhsU() const
@@ -346,6 +379,13 @@ public: // *** Getters/setters ***
         gsMatrix<T> rhsUpart = (m_rhsFG + m_rhsBtB).topRows(m_pshift);
 
         return (rhsUpart + m_rhsUlin + m_rhsUnonlin);
+    }
+
+    /// @brief /// @brief Returns part of the right-hand side for i-th velocity component.
+    virtual const gsMatrix<T> getRhsUcomp(index_t i) const
+    { 
+        GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
+        return getRhsU().middleRows(i * m_udofs, m_udofs);
     }
 
     /// @brief Returns the pressure part of the right-hand side.
@@ -370,18 +410,6 @@ protected: // *** Class members ***
     gsSparseMatrix<T, RowMajor> m_blockTimeDiscr;
     gsMatrix<T> m_rhsTimeDiscr;
 
-    // int m_udofs;
-    // int m_pdofs;
-    // int m_pshift;
-    // int m_nnzPerRowU, m_nnzPerRowP;
-    // gsINSVisitorUUlin<T> m_visitorUUlin;
-    // gsINSVisitorUUnonlin<T> m_visitorUUnonlin;
-    // gsINSVisitorPU<T> m_visitorUP;
-    // gsINSVisitorRhsU<T> m_visitorF;
-    // gsINSVisitorRhsP<T> m_visitorG;
-    // gsSparseMatrix<T, RowMajor> m_blockUUlin, m_blockUUnonlin, m_blockUP, m_blockPU;
-    // gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsFG;
-    // gsField<T>  m_currentVelField, m_currentPresField, m_oldTimeVelField;
 
 protected: // *** Base class members ***
 

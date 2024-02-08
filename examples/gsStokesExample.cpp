@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
 
 //     bool plot = false;
 //     int plotPts = 10000;
-//     int numThreads = 1; 
 
 //     //command line
 //     gsCmdLine cmd("Solves the Stokes problem in a backward facing step (BFS) domain.");
@@ -48,7 +47,6 @@ int main(int argc, char *argv[])
 //     cmd.addInt("d", "deg", "B-spline degree for geometry representation", deg);
 //     cmd.addInt("r", "uniformRefine", "Number of uniform h-refinement steps to perform before solving", numRefine);
 //     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
-//     cmd.addInt("t", "nthreads", "Number of threads for parallel assembly", numThreads);
 //     cmd.addInt("", "maxIt", "Max. number of Picard iterations or time steps", maxIt);
 
 //     cmd.addReal("v", "visc", "Viscosity value", viscosity);
@@ -99,7 +97,6 @@ int main(int argc, char *argv[])
 
 //     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
 //     gsINSSolverParams<real_t> params(NSpde, discreteBases);
-//     params.options().setInt("numThreads",numThreads);
 
 //     if (steady)
 //     {

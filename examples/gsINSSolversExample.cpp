@@ -49,7 +49,6 @@ int main(int argc, char *argv[])
     bool plot = false;
     bool plotMesh = false;
     int plotPts = 10000;
-    int numThreads = 1; 
 
     //command line
     gsCmdLine cmd("Solves the Navier-Stokes problem in a 2D domain (step, cavity).");
@@ -67,7 +66,6 @@ int main(int argc, char *argv[])
     cmd.addInt("r", "uniformRefine", "Number of uniform h-refinement steps to perform before solving", numRefine);
     cmd.addInt("", "wallRefine", "Number of h-refinement steps near step corner or cavity walls", wallRefine);
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
-    cmd.addInt("t", "nthreads", "Number of threads for parallel assembly", numThreads);
     cmd.addInt("", "maxIt", "Max. number of Picard iterations or time steps", maxIt);
     cmd.addInt("", "picardIt", "Max. number of inner Picard iterations for unsteady problem", picardIt);
     //cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
@@ -156,7 +154,6 @@ int main(int argc, char *argv[])
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     gsINSSolverParams<real_t> params(NSpde, discreteBases);
-    params.options().setInt("numThreads",numThreads);
 
     // bool stokesInit, bool plot
     gsOptionList solveOpt;

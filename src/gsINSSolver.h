@@ -34,14 +34,20 @@ protected: // *** Class members ***
     gsMatrix<T> m_solution;
     unsigned m_iterationNumber;
     gsStopwatch m_clock;
-    T m_assembT, m_solsetupT, m_solveT, m_relNorm;
+    T m_initAssembT, m_assembT, m_solsetupT, m_solveT, m_relNorm;
+
+    std::ofstream m_outFile;
+    bool m_dispOutput;
 
 
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
     gsINSSolver(gsINSSolverParams<T>& params): m_params(params)
-    { }
+    {
+        m_pAssembler = NULL;
+        m_dispOutput = m_params.options().getSwitch("output");
+    }
 
     virtual ~gsINSSolver()
     {
@@ -50,6 +56,9 @@ public: // *** Constructor/destructor ***
             delete m_pAssembler;
             m_pAssembler = NULL;
         }
+
+        if (m_outFile.is_open())
+            m_outFile.close();
     }
 
 
@@ -61,6 +70,9 @@ protected: // *** Member functions ***
     /// @brief Re-initialize all members.
     virtual void reinitMembers() { initMembers(); }
 
+    /// @brief Create output file.
+    virtual void createOutputFile();
+
     /// @brief 
     void nextIteration_steady();
 
@@ -68,13 +80,13 @@ protected: // *** Member functions ***
 public: // *** Member functions ***
 
     /// @brief Initialize the solver.
-    virtual void initialize() 
+    virtual void initialize()
     { 
         if (!getAssembler()->isInitialized())
         {
             m_clock.restart();
             getAssembler()->initialize();
-            m_assembT += m_clock.stop();
+            m_initAssembT += m_clock.stop();
         }
     }
 
@@ -121,12 +133,20 @@ public: // *** Member functions ***
     /// @brief Update the assembler with current solution.
     /// @param updateSol 
     virtual void updateAssembler(bool updateSol = true)
-    { getAssembler()->update(m_solution, updateSol); }
+    { 
+        m_clock.restart();
+        getAssembler()->update(m_solution, updateSol);
+        m_assembT += m_clock.stop();
+    }
 
     /// @brief Update the assembler with a given solution.
     /// @param updateSol 
     virtual void updateAssembler(const gsMatrix<T>& sol, bool updateSol = true)
-    { getAssembler()->update(sol, updateSol); }
+    { 
+        m_clock.restart();
+        getAssembler()->update(sol, updateSol);
+        m_assembT += m_clock.stop();
+    }
 
     /// @brief Compute and return the relative norm of the solution change.
     T solutionChangeRelNorm() const;
@@ -139,7 +159,7 @@ public: // *** Member functions ***
     /// @brief Compute and display the relative norm of the solution change given the two successive solutions.
     /// @param[in] solOld the old solution
     /// @param[in] solNew the new solution
-    virtual void dispSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew) const;
+    virtual void writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew);
 
     /// @brief Compute and return the relative residual norm for the current solution.
     virtual T residualRelNorm() const 
@@ -172,6 +192,12 @@ public: // *** Member functions ***
 
 public: // *** Getters/setters ***
 
+    /// @brief Retrurns the name of the class as a string.
+    virtual std::string getName() { return "gsINSSolver"; }
+
+    /// @brief Retrurns the solver parameters.
+    virtual gsINSSolverParams<T> getParams() { return m_params; }
+
     /// @brief Set a given solution vector as current solution.
     /// @param[in] solVector the given solution
     virtual void setSolution(const gsMatrix<T> & solVector) { m_solution = solVector; }
@@ -188,7 +214,10 @@ public: // *** Getters/setters ***
     /// @brief Returns the total number of DOFs (the matrix size).
     int numDofs() const { return getAssembler()->numDofs(); }
 
-    /// @brief Returns the total time spent on matrix assembly.
+    /// @brief Returns the time of the initial matrix assembly.
+    virtual const T getInitAssemblyTime() const { return m_initAssembT; }
+
+    /// @brief Returns the total time spent on matrix assembly (without the initial phase).
     virtual const T getAssemblyTime() const { return m_assembT; }
 
     /// @brief Returns the total time spent on linear solver setup.
@@ -220,12 +249,15 @@ protected: // *** Class members ***
 #endif
 
 
-protected: // *** Base class members / functions ***
+protected: // *** Base class members ***
 
     using Base::m_clock;
-    using Base::m_assembT;
     using Base::m_solsetupT;
     using Base::m_solveT;
+
+
+public: // *** Base class functions ***
+
     using Base::getAssembler;
 
 
@@ -240,9 +272,6 @@ protected: // *** Member functions ***
 
     /// @brief Initialize all members.
     virtual void initMembers();
-
-    /// @brief Re-initialize all members.
-    virtual void reinitMembers() { initMembers(); }
 
 
 public: // *** Static functions ***
@@ -281,6 +310,12 @@ public: // *** Member functions ***
     /// @param[in]  alpha_p     pressure relaxation parameter
     virtual void applySolver(gsMatrix<T>& solution, real_t alpha_u, real_t alpha_p);
 
+
+public: // *** Getters/setters ***
+
+    /// @brief Retrurns the name of the class as a string.
+    virtual std::string getName() { return "gsINSSolverDirect"; }
+
 }; //gsINSSolverDirect
 
 // ===================================================================================================================
@@ -298,8 +333,6 @@ public:
 protected: // *** Base class members ***
 
     using gsINSSolver<T>::m_pAssembler;
-    using gsINSSolver<T>::m_solution;
-    using gsINSSolver<T>::m_iterationNumber;
     using gsINSSolver<T>::m_params;
 
 
@@ -308,7 +341,7 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     gsINSSolverDirectSteady(gsINSSolverParams<T>& params): Base(params)
     { 
-        m_pAssembler = new gsINSAssembler<T>(params);
+        m_pAssembler = new gsINSAssembler<T>(m_params);
 
         Base::initMembers();
         m_params.options().setSwitch("unsteady", false);
@@ -339,6 +372,9 @@ public: // *** Getters/setters ***
     //     return dynamic_cast<gsINSAssembler<T>*>(m_pAssembler);
     // }
 
+    /// @brief Retrurns the name of the class as a string.
+    virtual std::string getName() { return "gsINSSolverDirectSteady"; }
+
 
 }; //gsINSSolverDirectSteady
 
@@ -364,8 +400,10 @@ protected: // *** Base class members ***
 
     using Base::m_solution;
     using Base::m_iterationNumber;
-    using gsINSSolver<T>::m_pAssembler;
-    using gsINSSolver<T>::m_params;
+    using Base::m_pAssembler;
+    using Base::m_params;
+    using Base::m_outFile;
+    using Base::m_dispOutput;
 
 
 public: // *** Constructor/destructor ***
@@ -373,7 +411,7 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     gsINSSolverDirectUnsteady(gsINSSolverParams<T>& params): Base(params)
     { 
-        m_pAssembler = new gsINSAssemblerUnsteady<T>(params);
+        m_pAssembler = new gsINSAssemblerUnsteady<T>(m_params);
 
         initMembers();
         m_params.options().setSwitch("unsteady", true);
@@ -414,6 +452,9 @@ public: // *** Getters/setters ***
 
     /// @brief Returns the average number of Picard iterations per time step.
     T getAvgPicardIterations() const { return m_avgPicardIter / m_iterationNumber; }
+
+    /// @brief Retrurns the name of the class as a string.
+    virtual std::string getName() { return "gsINSSolverDirectUnsteady"; }
 
 
 }; //gsINSSolverDirectUnsteady

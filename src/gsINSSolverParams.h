@@ -71,14 +71,6 @@ public: // *** Static functions ***
     {
         gsOptionList opt;
 
-        int nthreads =
-        #ifdef _OPENMP
-            std::round(omp_get_max_threads() / 2);
-        #else
-            1;
-        #endif
-
-        opt.addInt("numThreads", "Number of threads to be used if OPENMP enabled", nthreads);
         opt.addInt("maxIt_picard", "Maximum number of Picard iterations in one time step", 10);
         opt.addInt("maxIt_lin", "Maximum number of iterations for linear solver (if iterative)", 200);
 
@@ -87,7 +79,9 @@ public: // *** Static functions ***
         opt.addReal("tol_lin", "Stopping tolerance for linear solver (if iterative)", 1e-6);
 
         opt.addString("precType", "Preconditioner to be used with iterative linear solver", "PCDmod_FdiagEqual");
+        opt.addString("outFile", "Name of the output file (or the full path to it)", "");
 
+        opt.addSwitch("output", "Write the output also in terminal, not only in the output file", false);
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
         opt.addSwitch("fillGlobalSyst", "Fill the global linear systems from blocks", true);
 

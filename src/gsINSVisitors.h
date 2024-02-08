@@ -215,7 +215,7 @@ public: // *** Member functions ***
 
         gsMatrix<index_t> allActives;
         m_shapeBasisPtr->active_into(m_quNodes, allActives);
-        m_shapeFunActives = getVectorOfUniqueIndices(allActives);
+        m_shapeFunActives = createVectorOfUniqueIndices(allActives);
         index_t numAct = m_shapeFunActives.rows();
 
         // evaluate bases
@@ -401,8 +401,6 @@ public: // *** Member functions ***
         m_dofMappers[m_testUnkID].localToGlobal(testFunID, m_patchID, testFunID);
         m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
         
-        
-
         index_t ii = testFunID(0);
         index_t numAct = m_shapeFunActives.rows();
 
@@ -442,8 +440,8 @@ public:
 
 protected: // *** Base class members ***
 
-    using gsINSVisitor<T>::m_params;
-    using gsINSVisitor<T>::m_terms;
+    using Base::m_params;
+    using Base::m_terms;
 
 
 public: // *** Constructor/destructor ***
@@ -481,8 +479,8 @@ public:
 
 protected: // *** Base class members ***
 
-    using gsINSVisitor<T>::m_params;
-    using gsINSVisitor<T>::m_terms;
+    using Base::m_params;
+    using Base::m_terms;
 
 
 public: // *** Constructor/destructor ***
@@ -516,8 +514,8 @@ public:
 
 protected: // *** Base class members ***
 
-    using gsINSVisitor<T>::m_params;
-    using gsINSVisitor<T>::m_terms;
+    using Base::m_params;
+    using Base::m_terms;
 
 
 public: // *** Constructor/destructor ***
@@ -554,14 +552,14 @@ public:
 protected: // *** Base class members ***
 
     using Base::m_locMatVec;
-    using gsINSVisitor<T>::m_params;
-    using gsINSVisitor<T>::m_patchID;
-    using gsINSVisitor<T>::m_testUnkID;
-    using gsINSVisitor<T>::m_shapeUnkID;
-    using gsINSVisitor<T>::m_dofMappers;
-    using gsINSVisitor<T>::m_currentTestFunID;
-    using gsINSVisitor<T>::m_shapeFunActives;
-    using gsINSVisitor<T>::m_terms;
+    using Base::m_params;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_shapeUnkID;
+    using Base::m_dofMappers;
+    using Base::m_currentTestFunID;
+    using Base::m_shapeFunActives;
+    using Base::m_terms;
 
 public: // *** Constructor/destructor ***
 
@@ -622,6 +620,77 @@ public: // *** Member functions ***
                 }
             }
         }
+    } 
+
+};
+
+// ===================================================================================================================
+
+template <class T>
+class gsINSVisitorPU_withUPrhs : public gsINSVisitorPU<T>  // order: shape, test
+{
+
+public:
+    typedef gsINSVisitorPU<T> Base;
+
+
+protected: // *** Base class members ***
+
+    using Base::m_locMatVec;
+    using Base::m_params;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_shapeUnkID;
+    using Base::m_dofMappers;
+    using Base::m_currentTestFunID;
+    using Base::m_shapeFunActives;
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorPU_withUPrhs() {}
+
+    gsINSVisitorPU_withUPrhs(const gsINSSolverParams<T>& params) : Base(params)
+    { }
+
+
+public: // *** Member functions ***
+
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
+    {
+        index_t dim = m_params.getPde().dim();
+        const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for one velocity component
+
+        GISMO_ASSERT(globalMat.rows() == dim*uCompSize, "Wrong matrix size in gsINSVisitorPU::localToGlobal.");
+    
+        gsMatrix<index_t> testFunID(1,1);
+        testFunID << m_currentTestFunID;
+
+        m_dofMappers[m_testUnkID].localToGlobal(testFunID, m_patchID, testFunID);
+        m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
+        
+        index_t ii = testFunID(0);
+        index_t numAct = m_shapeFunActives.rows();
+
+        if (m_dofMappers[m_testUnkID].is_free_index(ii))
+        {
+            for (index_t j = 0; j < numAct; ++j)
+            {
+                const int jj = m_shapeFunActives(j);
+
+                if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
+                {
+                    for (index_t d = 0; d < dim; d++)
+                        globalMat.coeffRef(ii + d*uCompSize, jj) += m_locMatVec[d](0, j);
+                }
+                else // is_boundary_index(jj)
+                {
+                    const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
+
+                    for (index_t d = 0; d < dim; d++)
+                        globalRhs(ii + d*uCompSize, 0) -= m_locMatVec[d](0, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
+                }
+            }
+        }
         else // part arising from block B (assuming that the offdiag. blocks are symmetric)
         {
             const int bb = m_dofMappers[m_testUnkID].global_to_bindex(ii);
@@ -636,7 +705,98 @@ public: // *** Member functions ***
                     for (index_t d = 0; d < dim; d++)
                         tmp += m_locMatVec[d](0, k) * eliminatedDofs[m_testUnkID](bb, d);
 
-                    globalRhs(dim*uCompSize + kk, 0) -= tmp;
+                    globalRhs(dim*uCompSize + kk, 0) += tmp;
+                }
+            }
+        }
+    } 
+
+};
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+// PRESSURE-VELOCITY VISITORS
+template <class T>
+class gsINSVisitorUP : public gsINSVisitorVectorValued<T>  // order: shape, test
+{
+
+public:
+    typedef gsINSVisitorVectorValued<T> Base;
+
+
+protected: // *** Base class members ***
+
+    using Base::m_locMatVec;
+    using Base::m_params;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_shapeUnkID;
+    using Base::m_dofMappers;
+    using Base::m_currentTestFunID;
+    using Base::m_shapeFunActives;
+    using Base::m_terms;
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorUP() {}
+
+    gsINSVisitorUP(const gsINSSolverParams<T>& params) : Base(params)
+    { }
+
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsINSTermUdivPval<T>() );
+    }
+
+    virtual void defineTestShapeUnknowns()
+    {
+        m_testUnkID = 1;    // pressure
+        m_shapeUnkID = 0;   // velocity
+    }
+
+public: // *** Member functions ***
+
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
+    {
+        index_t dim = m_params.getPde().dim();
+        const index_t uCompSize = m_dofMappers[m_shapeUnkID].freeSize(); // number of dofs for one velocity component
+
+        GISMO_ASSERT(globalMat.cols() == dim*uCompSize, "Wrong matrix size in gsINSVisitorUP::localToGlobal.");
+    
+        gsMatrix<index_t> testFunID(1,1);
+        testFunID << m_currentTestFunID;
+
+        m_dofMappers[m_testUnkID].localToGlobal(testFunID, m_patchID, testFunID);
+        m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
+        
+        index_t ii = testFunID(0);
+        index_t numAct = m_shapeFunActives.rows();
+
+        if (m_dofMappers[m_testUnkID].is_free_index(ii))
+        {
+            for (index_t j = 0; j < numAct; ++j)
+            {
+                const int jj = m_shapeFunActives(j);
+
+                if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
+                {
+                    for (index_t d = 0; d < dim; d++)
+                        globalMat.coeffRef(ii, jj + d*uCompSize) += m_locMatVec[d](0, j);
+                }
+                else // is_boundary_index(jj)
+                {
+                    const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
+                    
+                    T tmp = 0;
+
+                    for (index_t d = 0; d < dim; d++)
+                        tmp -= m_locMatVec[d](0, j) * eliminatedDofs[m_shapeUnkID](bb, d);
+
+                    globalRhs(ii, 0) += tmp;
                 }
             }
         }
@@ -731,8 +891,8 @@ public:
 
 protected: // *** Base class members ***
 
-    using gsINSVisitor<T>::m_params;
-    using gsINSVisitor<T>::m_terms;
+    using Base::m_params;
+    using Base::m_terms;
 
 
 public: // *** Constructor/destructor ***
@@ -765,8 +925,8 @@ public:
 
 protected: // *** Base class members ***
 
-    using gsINSVisitor<T>::m_params;
-    using gsINSVisitor<T>::m_terms;
+    using Base::m_params;
+    using Base::m_terms;
 
 
 public: // *** Constructor/destructor ***
@@ -799,8 +959,8 @@ public:
 
 protected: // *** Base class members ***
 
-    using gsINSVisitor<T>::m_params;
-    using gsINSVisitor<T>::m_terms;
+    using Base::m_params;
+    using Base::m_terms;
 
 
 public: // *** Constructor/destructor ***
@@ -832,8 +992,8 @@ public:
 
 protected: // *** Base class members ***
 
-    using gsINSVisitor<T>::m_params;
-    using gsINSVisitor<T>::m_terms;
+    using Base::m_params;
+    using Base::m_terms;
 
 
 public: // *** Constructor/destructor ***
@@ -864,8 +1024,8 @@ public:
 
 protected: // *** Base class members ***
 
-    using gsINSVisitor<T>::m_params;
-    using gsINSVisitor<T>::m_terms;
+    using Base::m_params;
+    using Base::m_terms;
 
 
 public: // *** Constructor/destructor ***

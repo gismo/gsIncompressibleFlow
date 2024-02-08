@@ -18,9 +18,39 @@
 namespace gismo
 {
 
+/// @brief Writes an output into the given file and optionally also into terminal.
+/// @param[out] file            the output file
+/// @param[in]  output          the output to write
+/// @param[in]  dispInTerminal  display output in terminal (true/false)
+static void gsWriteOutput(std::ofstream& file, const std::string output, bool dispInTerminal)
+{
+
+    file << output;
+
+    if (dispInTerminal)
+        gsInfo << output;
+}
+
+
+/// @brief Writes an output line into the given file and optionally also into terminal.
+/// @param[out] file            the output file
+/// @param[in]  line            the line to write
+/// @param[in]  dispInTerminal  display output in terminal (true/false)
+inline void gsWriteOutputLine(std::ofstream& file, const std::string line, bool dispInTerminal)
+{
+    gsWriteOutput(file, line, dispInTerminal);
+
+
+    file << std::endl;
+
+    if (dispInTerminal)
+            gsInfo << std::endl;
+}
+
+
 /// @brief Creates a one-column matrix (vector) of unique values from the input matrix (useful for creating a unique list of active basis functions in several quadrature points).
 /// @param[in]  mat  a const reference to the input matrix
-static gsMatrix<index_t> getVectorOfUniqueIndices(const gsMatrix<index_t>& mat)
+static gsMatrix<index_t> createVectorOfUniqueIndices(const gsMatrix<index_t>& mat)
 {
     std::map<index_t, bool> map;
     std::vector<index_t> vecTmp;
@@ -44,6 +74,7 @@ static gsMatrix<index_t> getVectorOfUniqueIndices(const gsMatrix<index_t>& mat)
 
     return vec;
 }
+
 
 /// @brief Fill a diagonal approximation of an inverse matrix.
 /// @param[in]  mat     a const reference to the matrix of which the inverse is approximated
