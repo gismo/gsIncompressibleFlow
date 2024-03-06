@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 //     // ========================================= Solve ========================================= 
 
 //     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
-//     gsINSSolverParams<real_t> params(NSpde, discreteBases);
+//     gsFlowSolverParams<real_t> params(NSpde, discreteBases);
 
 //     if (steady)
 //     {

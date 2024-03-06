@@ -6,9 +6,8 @@
 namespace gismo
 {
     CLASS_TEMPLATE_INST gsINSSolver<real_t>;
-    CLASS_TEMPLATE_INST gsINSSolverDirect<real_t>;
-    CLASS_TEMPLATE_INST gsINSSolverDirectSteady<real_t>;
-    CLASS_TEMPLATE_INST gsINSSolverDirectUnsteady<real_t>;
+    CLASS_TEMPLATE_INST gsINSSolverSteady<real_t>;
+    CLASS_TEMPLATE_INST gsINSSolverUnsteady<real_t>;
 
 
 } // namespace gismo

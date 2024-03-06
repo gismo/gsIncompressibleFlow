@@ -16,385 +16,26 @@ namespace gismo
 {
 
 template<class T>
-void gsINSAssemblerBase<T>::initMembers()
+void gsINSAssembler<T>::initMembers()
 { 
-    m_dofs = 0;
-    m_tarDim = getPatches().dim();
+    Base::initMembers();
+
     m_viscosity = m_params.getPde().viscosity();
-    m_isInitialized = false;
-    m_isSystemReady = false;
 
     m_dofMappers.resize(2);
     m_ddof.resize(2);
-
     getBases().front().getMapper(getAssemblerOptions().dirStrategy, getAssemblerOptions().intStrategy, getBCs(), m_dofMappers.front(), 0);
     getBases().back().getMapper(getAssemblerOptions().dirStrategy, getAssemblerOptions().intStrategy, getBCs(), m_dofMappers.back(), 1);
-}
 
-template<class T>
-void gsINSAssemblerBase<T>::computeDirichletDofs(const index_t unk, const index_t basisID, gsMatrix<T>& ddofVector)
-{
-    GISMO_ASSERT(ddofVector.rows() == m_dofMappers[basisID].boundarySize(), "Dirichlet DOF vector has wrong size.");
-
-    const gsDofMapper & mapper = m_dofMappers[basisID];
-    const gsMultiBasis<T> & mbasis = getBases().at(basisID);
-
-    switch (getAssemblerOptions().dirValues)
-    {
-    case dirichlet::homogeneous:
-        ddofVector.setZero();
-        break;
-    case dirichlet::interpolation:
-        computeDirichletDofsIntpl(unk, mapper, mbasis, ddofVector);
-        break;
-    case dirichlet::l2Projection:
-        computeDirichletDofsL2Proj(unk, mapper, mbasis, ddofVector);
-        break;
-    default:
-        GISMO_ERROR("Something went wrong with Dirichlet values.");
-    }
-
-    // Corner values
-    for (typename gsBoundaryConditions<T>::const_citerator
-        it = getBCs().cornerBegin();
-        it != getBCs().cornerEnd(); ++it)
-    {
-        if (it->unknown == unk)
-        {
-            const index_t i = mbasis[it->patch].functionAtCorner(it->corner);
-            const index_t ii = mapper.bindex(i, it->patch);
-            ddofVector.row(ii).setConstant(it->value);
-        }
-        else
-            continue;
-    }
-}
-
-
-template<class T>
-void gsINSAssemblerBase<T>::computeDirichletDofsIntpl(const index_t unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
-{
-    for (typename gsBoundaryConditions<T>::const_iterator
-        it = getBCs().dirichletBegin();
-        it != getBCs().dirichletEnd(); ++it)
-    {
-        if (it->unknown() != unk)
-            continue;
-
-        const index_t patchID = it->patch();
-        const gsBasis<T> & basis = mbasis.piece(patchID);
-
-        // Get dofs on this boundary
-        gsMatrix<index_t> boundary = basis.boundary(it->side());
-
-        // If the condition is homogeneous then fill with zeros
-        if (it->isHomogeneous())
-        {
-            for (index_t i = 0; i != boundary.size(); ++i)
-            {
-                const index_t ii = mapper.bindex((boundary)(i), it->patch());
-                ddofVector.row(ii).setZero();
-            }
-            continue;
-        }
-
-        // Get the side information
-        short_t dir = it->side().direction();
-        index_t param = (it->side().parameter() ? 1 : 0);
-
-        // Compute grid of points on the face ("face anchors")
-        std::vector< gsVector<T> > rr;
-        rr.reserve(getPatches().parDim());
-
-        for (short_t i = 0; i < getPatches().parDim(); ++i)
-        {
-            if (i == dir)
-            {
-                gsVector<T> b(1);
-                b[0] = (basis.component(i).support()) (0, param);
-                rr.push_back(b);
-            }
-            else
-            {
-                rr.push_back(basis.component(i).anchors().transpose());
-            }
-        }
-
-        GISMO_ASSERT(it->function()->targetDim() == ddofVector.cols(),
-            "Given Dirichlet boundary function does not match problem dimension."
-            << it->function()->targetDim() << " != " << ddofVector.cols() << "\n");
-
-        // Compute dirichlet values
-        gsMatrix<T> pts = getPatches().patch(it->patch()).eval(gsPointGrid<T>(rr));
-        gsMatrix<T> fpts;
-        if (!it->parametric())
-        {
-            fpts = it->function()->eval(pts);
-        }
-//            else if (it->parametric() && m_params.settings().isIgaDirichletGeometry())
-//            {
-//                gsMatrix<T> parPts;
-//                getIgaBCGeom().invertPoints(pts, parPts);
-//                fpts = it->function()->eval(parPts);
-//            }
-        else
-            fpts = it->function()->eval(gsPointGrid<T>(rr));
-
-        // Interpolate dirichlet boundary 
-        typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
-        typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-        const gsMatrix<T> & dVals = geo->coefs();
-
-        // Save corresponding boundary dofs
-        for (index_t i = 0; i != boundary.size(); ++i)
-        {
-            const index_t ii = mapper.bindex(boundary.at(i), it->patch());
-            ddofVector.row(ii) = dVals.row(i);
-        }
-    }
-}
-
-
-template<class T>
-void gsINSAssemblerBase<T>::computeDirichletDofsL2Proj(const index_t unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
-{
-    // Set up matrix, right-hand-side and solution vector/matrix for
-    // the L2-projection
-    gsSparseEntries<T> projMatEntries;
-    gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero(ddofVector.rows(), ddofVector.cols());
-
-    // Temporaries
-    gsVector<T> quWeights;
-    gsMatrix<T> rhsVals;
-    gsMatrix<index_t> globIdxAct;
-    gsMatrix<T> basisVals;
-    gsMapData<T> mapData(NEED_MEASURE);
-
-    // Iterate over all patch-sides with Dirichlet-boundary conditions
-    for (typename gsBoundaryConditions<T>::const_iterator
-        it = getBCs().dirichletBegin();
-        it != getBCs().dirichletEnd(); ++it)
-    {
-        if (it->unknown() != unk)
-            continue;
-
-        if (it->isHomogeneous())
-            continue;
-
-        GISMO_ASSERT(it->function()->targetDim() == ddofVector.cols(),
-            "Given Dirichlet boundary function does not match problem dimension."
-            << it->function()->targetDim() << " != " << ddofVector.cols() << "\n");
-
-        const index_t patchID = it->patch();
-        const gsBasis<T> & basis = mbasis.piece(patchID);
-        const gsGeometry<T> & patch = getPatches()[patchID];
-
-        // Set up quadrature to degree+1 Gauss points per direction,
-        // all lying on it->side() except from the direction which
-        // is NOT along the element
-
-        gsGaussRule<T> bdQuRule(basis, 1.0, 1, it->side().direction());
-
-        // Create the iterator along the given part boundary.
-        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(it->side());
-
-        for (; bdryIter->good(); bdryIter->next())
-        {
-            bdQuRule.mapTo(bdryIter->lowerCorner(), bdryIter->upperCorner(),
-                mapData.points, quWeights);
-
-            patch.computeMap(mapData);
-
-            // the values of the boundary condition are stored
-            // to rhsVals. Here, "rhs" refers to the right-hand-side
-            // of the L2-projection, not of the PDE.
-            rhsVals = it->function()->eval(getPatches()[patchID].eval(mapData.points));
-
-            basis.eval_into(mapData.points, basisVals);
-
-            // active basis (first line) functions/DOFs:
-            basis.active_into(mapData.points.col(0), globIdxAct);
-            mapper.localToGlobal(globIdxAct, patchID, globIdxAct);
-
-            // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
-            // something like a "element-wise index"
-            std::vector<index_t> eltBdryFcts;
-            eltBdryFcts.reserve(mapper.boundarySize());
-            for (index_t i = 0; i < globIdxAct.rows(); i++)
-                if (mapper.is_boundary_index(globIdxAct(i, 0)))
-                    eltBdryFcts.push_back(i);
-
-            // Do the actual assembly:
-            for (index_t k = 0; k < mapData.points.cols(); k++)
-            {
-                const T weight_k = quWeights[k] * mapData.measure(k);
-
-                // Only run through the active boundary functions on the element:
-                for (size_t i0 = 0; i0 < eltBdryFcts.size(); i0++)
-                {
-                    // Each active boundary function/DOF in eltBdryFcts has...
-                    // ...the above-mentioned "element-wise index"
-                    const index_t i = eltBdryFcts[i0];
-                    // ...the boundary index.
-                    const index_t ii = mapper.global_to_bindex(globIdxAct(i));
-
-                    for (size_t j0 = 0; j0 < eltBdryFcts.size(); j0++)
-                    {
-                        const index_t j = eltBdryFcts[j0];
-                        const index_t jj = mapper.global_to_bindex(globIdxAct(j));
-
-                        // Use the "element-wise index" to get the needed
-                        // function value.
-                        // Use the boundary index to put the value in the proper
-                        // place in the global projection matrix.
-                        projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
-                    } // for j
-
-                    globProjRhs.row(ii) += weight_k * basisVals(i, k) * rhsVals.col(k).transpose();
-
-                } // for i
-            } // for k
-        } // bdryIter
-    } // boundaryConditions-Iterator
-
-    gsSparseMatrix<T> globProjMat(mapper.boundarySize(), mapper.boundarySize());
-    globProjMat.setFrom(projMatEntries);
-    globProjMat.makeCompressed();
-
-    // Solve the linear system:
-    // The position in the solution vector already corresponds to the
-    // numbering by the boundary index. Hence, we can simply take them
-    // for the values of the eliminated Dirichlet DOFs.
-    typename gsSparseSolver<T>::CGDiagonal solver;
-    ddofVector = solver.compute(globProjMat).solve(globProjRhs);
-}
-
-template<class T>
-void gsINSAssemblerBase<T>::assembleBlock(gsINSVisitor<T>& visitor, index_t testBasisID, gsSparseMatrix<T, RowMajor>& block, gsMatrix<T>& blockRhs)
-{
-    for(size_t p = 0; p < getPatches().nPatches(); p++)
-    {
-        index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
-
-        visitor.initOnPatch(p);
-
-        for(index_t i = 0; i < nBases; i++)
-        {
-            visitor.evaluate(i);
-            visitor.assemble();
-            visitor.localToGlobal(m_ddof, block, blockRhs);
-        }
-    }
-
-    block.makeCompressed();
-}
-
-template<class T>
-void gsINSAssemblerBase<T>::assembleRhs(gsINSVisitor<T>& visitor, index_t testBasisID, gsMatrix<T>& rhs)
-{
-    for(size_t p = 0; p < getPatches().nPatches(); p++)
-    {
-        index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
-
-        visitor.initOnPatch(p);
-
-        for(index_t i = 0; i < nBases; i++)
-        {
-            visitor.evaluate(i);
-            visitor.assemble();
-            visitor.localToGlobal(rhs);
-        }
-    }
-}
-
-
-template<class T>
-void gsINSAssemblerBase<T>::initialize()
-{
-    assembleLinearPart();
-    m_isInitialized = true;
-
-    if (m_params.options().getSwitch("fillGlobalSyst"))
-        fillBaseSystem();
-}
-
-
-template<class T>
-void gsINSAssemblerBase<T>::update(const gsMatrix<T> & solVector, bool updateSol)
-{
-    GISMO_ASSERT(m_isInitialized, "Assembler must be initialized first, call initialize()");
-
-    updateCurrentSolField(solVector, updateSol);
-
-    updateAssembly();
-
-    if (m_params.options().getSwitch("fillGlobalSyst"))
-        fillSystem();
-}
-
-
-template<class T>
-void gsINSAssemblerBase<T>::updateAssembly()
-{
-    assembleNonlinearPart();
-}
-
-
-template<class T>
-void gsINSAssemblerBase<T>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
-{
-    m_dofMappers[unk] = gsDofMapper(getBases().at(unk), getBCs(), unk);
-
-    if (getAssemblerOptions().intStrategy == iFace::conforming)
-        for (gsBoxTopology::const_iiterator it = getPatches().iBegin(); it != getPatches().iEnd(); ++it)
-        {
-            getBases().at(unk).matchInterface(*it, m_dofMappers[unk]);
-        }
-
-    for (size_t i = 0; i < boundaryDofs.size(); i++)
-    {
-        m_dofMappers[unk].markBoundary(i, boundaryDofs[i]);
-    }
-
-    m_dofMappers[unk].finalize();
-
-    initMembers();
-}
-
-
-// =============================================================================
-
-
-template<class T>
-void gsINSAssembler<T>::initMembers()
-{
-    m_udofs = m_dofMappers.front().freeSize();
-    m_pdofs = m_dofMappers.back().freeSize();
-    m_pshift = m_tarDim * m_udofs;
-    m_dofs = m_pshift + m_pdofs;
+    updateSizes();
 
     m_nnzPerRowU = 1;
     for (short_t i = 0; i < m_tarDim; i++)
-        m_nnzPerRowU *= 2 * this->getBases().front().maxDegree(i) + 1;
+        m_nnzPerRowU *= 2 * getBases().front().maxDegree(i) + 1;
 
     m_nnzPerRowP = 1;
     for (short_t i = 0; i < m_tarDim; i++)
-        m_nnzPerRowP *= 2 * this->getBases().back().maxDegree(i) + 1;
-
-    m_ddof[0].setZero(m_dofMappers.front().boundarySize(), m_tarDim);
-    m_ddof[1].setZero(m_dofMappers.back().boundarySize(), 1);
-
-    if (this->getAssemblerOptions().dirStrategy == dirichlet::elimination)
-    {
-        this->computeDirichletDofs(0, 0, m_ddof[0]);
-        this->computeDirichletDofs(1, 1, m_ddof[1]);
-    }
-
-    m_solution.setZero(m_dofs, 1);
-
-    m_currentVelField = constructSolution(m_solution, 0);
-    m_oldTimeVelField = m_currentVelField;
+        m_nnzPerRowP *= 2 * getBases().back().maxDegree(i) + 1;
 
     m_visitorUUlin = gsINSVisitorUUlin<T>(m_params);
     m_visitorUUlin.initialize();
@@ -411,10 +52,39 @@ void gsINSAssembler<T>::initMembers()
 
     m_visitorG = gsINSVisitorRhsP<T>(m_params);
     m_visitorG.initialize();
+}
+
+
+template<class T>
+void gsINSAssembler<T>::updateSizes()
+{
+    m_udofs = m_dofMappers.front().freeSize();
+    m_pdofs = m_dofMappers.back().freeSize();
+    m_pshift = m_tarDim * m_udofs;
+    m_dofs = m_pshift + m_pdofs;
+
+    m_ddof[0].setZero(m_dofMappers.front().boundarySize(), m_tarDim);
+    m_ddof[1].setZero(m_dofMappers.back().boundarySize(), 1);
+
+    if (this->getAssemblerOptions().dirStrategy == dirichlet::elimination)
+    {
+        this->computeDirichletDofs(0, 0, m_ddof[0]);
+        this->computeDirichletDofs(1, 1, m_ddof[1]);
+    }
+
+    m_solution.setZero(m_dofs, 1);
+
+    m_currentVelField = constructSolution(m_solution, 0);
 
     m_blockUUlin.resize(m_pshift, m_pshift);
     m_blockUUnonlin.resize(m_pshift, m_pshift);
     m_blockUP.resize(m_pshift, m_pdofs);
+
+    // memory allocation
+    m_blockUUlin.reserve(gsVector<index_t>::Constant(m_blockUUlin.rows(), m_nnzPerRowU));
+    m_blockUUnonlin.reserve(gsVector<index_t>::Constant(m_blockUUnonlin.rows(), m_nnzPerRowU));
+    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.rows(), m_nnzPerRowU));
+
     m_baseMatrix.resize(m_dofs, m_dofs);
     m_matrix.resize(m_dofs, m_dofs);
 
@@ -426,19 +96,38 @@ void gsINSAssembler<T>::initMembers()
     m_rhs.setZero(m_dofs, 1);
 }
 
+
+template<class T>
+void gsINSAssembler<T>::updateDofMappers()
+{
+    m_visitorUUlin.updateDofMappers(m_dofMappers);
+    m_visitorUUnonlin.updateDofMappers(m_dofMappers);
+    m_visitorUP.updateDofMappers(m_dofMappers);
+    m_visitorF.updateDofMappers(m_dofMappers);
+    m_visitorG.updateDofMappers(m_dofMappers);
+}
+
+
+template<class T>
+void gsINSAssembler<T>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
+{
+    if (updateSol)
+        m_solution = solVector;
+
+    m_currentVelField = constructSolution(solVector, 0);
+    m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
+}
+
+
 template<class T>
 void gsINSAssembler<T>::assembleLinearPart()
 {
     // matrix and rhs cleaning
-    m_blockUUlin.resize(m_pshift, m_pshift);
-    m_blockUP.resize(m_pshift, m_pdofs);
-    m_rhsUlin.setZero(m_pshift, 1);
-    m_rhsBtB.setZero(m_dofs, 1);
-    m_rhsFG.setZero(m_dofs, 1);
-
-    // memory allocation
-    m_blockUUlin.reserve(gsVector<index_t>::Constant(m_blockUUlin.rows(), m_nnzPerRowU));
-    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.rows(), m_nnzPerRowU));
+    m_blockUUlin.setZero();
+    m_blockUP.setZero();
+    m_rhsUlin.setZero();
+    m_rhsBtB.setZero();
+    m_rhsFG.setZero();
 
     this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin, m_rhsUlin);
     this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
@@ -453,11 +142,8 @@ template<class T>
 void gsINSAssembler<T>::assembleNonlinearPart()
 {
     // matrix and rhs cleaning
-    m_blockUUnonlin.resize(m_pshift, m_pshift);
-    m_rhsUnonlin.setZero(m_pshift, 1);
-
-    // memory allocation
-    m_blockUUnonlin.reserve(gsVector<index_t>::Constant(m_blockUUnonlin.rows(), m_nnzPerRowU));
+    m_blockUUnonlin.setZero();
+    m_rhsUnonlin.setZero();
 
     this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin, m_rhsUnonlin);
 }
@@ -497,6 +183,7 @@ void gsINSAssembler<T>::fillBaseSystem()
     m_baseRhs.noalias() = m_rhsFG + m_rhsBtB;
     m_baseRhs.topRows(m_pshift) += m_rhsUlin;
 
+    m_isBaseReady = true;
     m_isSystemReady = false;
 }
 
@@ -521,13 +208,54 @@ void gsINSAssembler<T>::fillSystem()
 
 
 template<class T>
+void gsINSAssembler<T>::initialize()
+{
+    Base::initialize();
+
+    if (m_params.options().getSwitch("fillGlobalSyst"))
+        fillBaseSystem();
+}
+
+
+template<class T>
+void gsINSAssembler<T>::update(const gsMatrix<T> & solVector, bool updateSol)
+{
+    Base::update(solVector, updateSol);
+
+    if (m_params.options().getSwitch("fillGlobalSyst"))
+        fillSystem();
+}
+
+
+template<class T>
+void gsINSAssembler<T>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
+{
+    m_dofMappers[unk] = gsDofMapper(getBases().at(unk), getBCs(), unk);
+
+    if (getAssemblerOptions().intStrategy == iFace::conforming)
+        for (gsBoxTopology::const_iiterator it = getPatches().iBegin(); it != getPatches().iEnd(); ++it)
+        {
+            getBases().at(unk).matchInterface(*it, m_dofMappers[unk]);
+        }
+
+    for (size_t i = 0; i < boundaryDofs.size(); i++)
+        m_dofMappers[unk].markBoundary(i, boundaryDofs[i]);
+
+    m_dofMappers[unk].finalize();
+
+    this->updateDofMappers();
+    this->updateSizes();
+}
+
+
+template<class T>
 gsField<T> gsINSAssembler<T>::constructSolution(const gsMatrix<T>& solVector, index_t unk) const
 {
     GISMO_ASSERT(m_dofs == solVector.rows(), "Something went wrong, is solution vector valid?");
 
-    gsMultiPatch<T> * result = new gsMultiPatch<T>;
+    gsMultiPatch<T>* result = new gsMultiPatch<T>;
 
-    const gsDofMapper & mapper = m_dofMappers[unk];
+    const gsDofMapper& mapper = m_dofMappers[unk];
 
     const index_t dim = (unk == 0 ? m_tarDim : 1);
     gsMatrix<T> coeffs;
@@ -561,22 +289,6 @@ gsField<T> gsINSAssembler<T>::constructSolution(const gsMatrix<T>& solVector, in
     }
 
     return gsField<T>(this->getPatches(), typename gsFunctionSet<T>::Ptr(result), true);
-}
-
-
-template<class T>
-void gsINSAssembler<T>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
-{
-    if (updateSol)
-    {
-        m_solution = solVector;
-
-        if(this->isUnsteady())
-            m_oldTimeVelField = constructSolution(solVector, 0);
-    }
-
-    m_currentVelField = constructSolution(solVector, 0);
-    m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
 }
 
 
@@ -632,6 +344,61 @@ T gsINSAssembler<T>::computeFlowRate(index_t patch, boxSide side, gsMatrix<T> so
     return flowRate;
 }
 
+template<class T>
+void gsINSAssembler<T>::fillStokesSystem(gsSparseMatrix<T, RowMajor>& stokesMat, gsMatrix<T>& stokesRhs)
+{
+    if (!m_isBaseReady)
+        this->fillBaseSystem();
+
+    stokesMat = m_baseMatrix;
+    stokesRhs = m_baseRhs;
+}
+
+
+template<class T>
+index_t gsINSAssembler<T>::numDofsUnk(index_t i)
+{
+    if (i == 0)
+        return m_udofs;
+    else if (i == 1)
+        return m_pdofs;
+    else
+        GISMO_ERROR("numDofsUnk(i): i must be 0 or 1.");
+}
+
+
+template<class T>
+gsSparseMatrix<T, RowMajor> gsINSAssembler<T>::getBlockUU() const
+{
+    if (m_isSystemReady)
+        return m_matrix.topLeftCorner(m_pshift, m_pshift);
+    else
+        return m_blockUUlin + m_blockUUnonlin;
+}
+
+
+template<class T>
+gsMatrix<T> gsINSAssembler<T>::getRhsU() const
+{ 
+    if (m_isSystemReady)
+        return m_rhs.topRows(m_pshift);
+    else
+    {
+        gsMatrix<T> rhsUpart = (m_rhsFG + m_rhsBtB).topRows(m_pshift);
+        return (rhsUpart + m_rhsUlin + m_rhsUnonlin);
+    }
+}
+
+
+template<class T>
+gsMatrix<T> gsINSAssembler<T>::getRhsP() const
+{
+    if (m_isSystemReady)
+        return m_rhs.bottomRows(m_pdofs);
+    else
+        return (m_rhsFG + m_rhsBtB).bottomRows(m_pdofs);
+}
+
 // =============================================================================
 
 
@@ -639,24 +406,54 @@ template<class T>
 void gsINSAssemblerUnsteady<T>::initMembers()
 {
     Base::initMembers();
+    updateSizes();
 
     m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T>(m_params);
     m_visitorTimeDiscr.initialize();
+}
+
+
+template<class T>
+void gsINSAssemblerUnsteady<T>::updateSizes()
+{
+    Base::updateSizes();
+
+    m_oldTimeVelField = m_currentVelField;
 
     m_blockTimeDiscr.resize(m_pshift, m_pshift);
     m_rhsTimeDiscr.setZero(m_pshift, 1);
+
+    // memory allocation
+    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.rows(), m_nnzPerRowU));
 }
+
+
+template<class T>
+void gsINSAssemblerUnsteady<T>::updateDofMappers()
+{
+    Base::updateDofMappers();
+
+    m_visitorTimeDiscr.updateDofMappers(m_dofMappers);
+}
+
+
+template<class T>
+void gsINSAssemblerUnsteady<T>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
+{
+    Base::updateCurrentSolField(solVector, updateSol);
+
+    if (updateSol)
+        m_oldTimeVelField = this->constructSolution(solVector, 0);
+}
+
 
 template<class T>
 void gsINSAssemblerUnsteady<T>::assembleLinearPart()
 {
     Base::assembleLinearPart();
 
-    // matrix and rhs cleaning
-    m_blockTimeDiscr.resize(m_pshift, m_pshift);
-
-    // memory allocation
-    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.rows(), m_nnzPerRowU));
+    // matrix cleaning
+    m_blockTimeDiscr.setZero();
 
     gsMatrix<T> dummyRhs;
     dummyRhs.setZero(m_pshift, 1);
@@ -691,11 +488,7 @@ void gsINSAssemblerUnsteady<T>::fillSystem()
 template<class T>
 void gsINSAssemblerUnsteady<T>::update(const gsMatrix<T> & solVector, bool updateSol)
 {
-    GISMO_ASSERT(m_isInitialized, "Assembler must be initialized first, call initialize()");
-
-    this->updateCurrentSolField(solVector, updateSol);
-
-    this->updateAssembly();
+    gsFlowAssemblerBase<T>::update(solVector, updateSol);
 
     if(updateSol)
         m_rhsTimeDiscr = m_blockTimeDiscr * m_solution.topRows(m_pshift);

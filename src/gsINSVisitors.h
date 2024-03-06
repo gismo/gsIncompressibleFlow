@@ -1,7 +1,5 @@
 /** @file gsINSVisitors.h
     
-    @brief 
-    
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -13,9 +11,9 @@
 
 #pragma once
 
-#include <gsIncompressibleFlow/src/gsINSUtils.h>
+#include <gsIncompressibleFlow/src/gsFlowUtils.h>
+#include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsINSTerms.h>
-#include <gsIncompressibleFlow/src/gsINSSolverParams.h>
 
 namespace gismo
 {
@@ -31,7 +29,7 @@ protected: // *** Class members ***
 
     // zvenku
     index_t m_patchID;
-    gsINSSolverParams<T> m_params; // pde, bases, assemblerOptions, options, precOptions
+    gsFlowSolverParams<T> m_params; // pde, bases, assemblerOptions, options, precOptions
     // pde members: dim, viscosity, rhs (f,g), gsBoundaryConditions, patches, unknownDim    // ulozit pointer/referenci?
  
     // definuje se tady, pak nemenne
@@ -58,7 +56,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitor() {}
 
-    gsINSVisitor(const gsINSSolverParams<T>& params) : m_params(params)
+    gsINSVisitor(const gsFlowSolverParams<T>& params) : m_params(params)
     { }
 
     ~gsINSVisitor()
@@ -123,6 +121,11 @@ public: // *** Member functions ***
         defineTerms();
         gatherEvalFlags();
         m_mapData.flags = m_geoFlags;
+    }
+
+    void updateDofMappers(const std::vector<gsDofMapper>& mappers)
+    {
+        m_dofMappers = mappers;
     }
 
     void initOnPatch(index_t patchID)
@@ -325,7 +328,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorVectorValued() {}
 
-    gsINSVisitorVectorValued(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorVectorValued(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -373,7 +376,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUU() {}
 
-    gsINSVisitorUU(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorUU(const gsFlowSolverParams<T>& params) : Base(params)
     { }
         
 
@@ -448,7 +451,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUUlin() {}
 
-    gsINSVisitorUUlin(const gsINSSolverParams<T>& params) :
+    gsINSVisitorUUlin(const gsFlowSolverParams<T>& params) :
     Base(params)
     { }
 
@@ -487,7 +490,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUUnonlin() {}
 
-    gsINSVisitorUUnonlin(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorUUnonlin(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -522,7 +525,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUUtimeDiscr() {}
 
-    gsINSVisitorUUtimeDiscr(const gsINSSolverParams<T>& params) :
+    gsINSVisitorUUtimeDiscr(const gsFlowSolverParams<T>& params) :
     Base(params)
     { }
 
@@ -565,7 +568,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPU() {}
 
-    gsINSVisitorPU(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorPU(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -649,7 +652,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPU_withUPrhs() {}
 
-    gsINSVisitorPU_withUPrhs(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorPU_withUPrhs(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -741,7 +744,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUP() {}
 
-    gsINSVisitorUP(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorUP(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -832,7 +835,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPP() {}
 
-    gsINSVisitorPP(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorPP(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -899,7 +902,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPPlin() {}
 
-    gsINSVisitorPPlin(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorPPlin(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -933,7 +936,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPPnonlin() {}
 
-    gsINSVisitorPPnonlin(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorPPnonlin(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -967,7 +970,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPPmass() {}
 
-    gsINSVisitorPPmass(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorPPmass(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -1000,7 +1003,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPPlaplace() {}
 
-    gsINSVisitorPPlaplace(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorPPlaplace(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -1032,7 +1035,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPPconvection() {}
 
-    gsINSVisitorPPconvection(const gsINSSolverParams<T>& params) : Base(params)
+    gsINSVisitorPPconvection(const gsFlowSolverParams<T>& params) : Base(params)
     { }
 
 
@@ -1083,7 +1086,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorRhsU() {}
 
-    gsINSVisitorRhsU(const gsINSSolverParams<T>& params):
+    gsINSVisitorRhsU(const gsFlowSolverParams<T>& params):
     Base(params), m_pRhsFun(params.getPde().force())
     {
         GISMO_ASSERT(m_pRhsFun->targetDim() == m_params.getPde().dim(), "Wrong RHS function passed into gsINSRhsU.");
@@ -1170,7 +1173,7 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorRhsP() {}
     
-    gsINSVisitorRhsP(const gsINSSolverParams<T>& params):
+    gsINSVisitorRhsP(const gsFlowSolverParams<T>& params):
     Base(params), m_pRhsFun(params.getPde().source())
     {
         GISMO_ASSERT(m_pRhsFun == NULL || m_pRhsFun->targetDim() == 1, "Wrong RHS function passed into gsINSRhsP.");

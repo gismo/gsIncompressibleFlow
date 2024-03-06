@@ -1,4 +1,4 @@
-/** @file gsINSUtils.h
+/** @file gsFlowUtils.h
 
     Miscellaneous useful functions for the incompressible flow solver.
 
@@ -21,11 +21,12 @@ namespace gismo
 /// @brief Writes an output into the given file and optionally also into terminal.
 /// @param[out] file            the output file
 /// @param[in]  output          the output to write
+/// @param[in]  fileOutput      write output in file (true/false)
 /// @param[in]  dispInTerminal  display output in terminal (true/false)
-static void gsWriteOutput(std::ofstream& file, const std::string output, bool dispInTerminal)
+static void gsWriteOutput(std::ofstream& file, const std::string output, bool fileOutput, bool dispInTerminal)
 {
-
-    file << output;
+    if (fileOutput)
+        file << output;
 
     if (dispInTerminal)
         gsInfo << output;
@@ -35,13 +36,14 @@ static void gsWriteOutput(std::ofstream& file, const std::string output, bool di
 /// @brief Writes an output line into the given file and optionally also into terminal.
 /// @param[out] file            the output file
 /// @param[in]  line            the line to write
+/// @param[in]  fileOutput      write output in file (true/false)
 /// @param[in]  dispInTerminal  display output in terminal (true/false)
-inline void gsWriteOutputLine(std::ofstream& file, const std::string line, bool dispInTerminal)
+inline void gsWriteOutputLine(std::ofstream& file, const std::string line, bool fileOutput, bool dispInTerminal)
 {
-    gsWriteOutput(file, line, dispInTerminal);
+    gsWriteOutput(file, line, fileOutput, dispInTerminal);
 
-
-    file << std::endl;
+    if (fileOutput)
+        file << std::endl;
 
     if (dispInTerminal)
             gsInfo << std::endl;

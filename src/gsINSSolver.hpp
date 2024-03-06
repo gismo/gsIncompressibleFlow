@@ -16,167 +16,39 @@ namespace gismo
 {
 
 template<class T>
-void gsINSSolver<T>::initMembers()
+void gsINSSolver<T>::solveStokes()
 {
-    m_solution.setZero(getAssembler()->numDofs(), 1);
-    m_iterationNumber = 0;
-    m_relNorm = std::numeric_limits<T>::infinity();
-    createOutputFile();
+    GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
+    gsWriteOutputLine(m_outFile, "Computing the steady Stokes problem...", m_fileOutput, m_dispOutput);
 
-    m_initAssembT = 0;
-    m_assembT = 0;
-    m_solsetupT = 0;
-    m_solveT = 0;
+    gsSparseMatrix<T, RowMajor> stokesMat;
+    gsMatrix<T> stokesRhs;
+
+    getAssembler()->fillStokesSystem(stokesMat, stokesRhs);
+    this->getLinSolver()->applySolver(stokesMat, stokesRhs, m_solution);
 }
 
+// ===================================================================================================================
 
 template<class T>
-void gsINSSolver<T>::createOutputFile()
-{
-    std::string fileName = m_params.options().getString("outFile");
-
-    if (fileName == "")
-        fileName = this->getName() + "_output.txt";
-
-    m_outFile.open(fileName);
-
-    std::stringstream output;
-    output << "\n" << m_params.options() << "\n";
-    gsWriteOutput(m_outFile, output.str(), false);
-}
-
-
-template<class T>
-void gsINSSolver<T>::nextIteration_steady()
+void gsINSSolverSteady<T>::nextIteration()
 {
     GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
 
-    updateAssembler();
+    this->updateAssembler();
 
     if (!m_iterationNumber)
-        initIteration();
+        this->initIteration();
 
-    applySolver(m_solution);
+    this->applySolver(m_solution);
 
     m_iterationNumber++;
 }
 
-
-template<class T>
-void gsINSSolver<T>::solve(const int maxIterations, const T epsilon, const int minIterations)
-{
-    GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
-    int iter = 0;
-    m_relNorm = solutionChangeRelNorm();
-
-    while ((iter < minIterations) || ((m_relNorm > epsilon) && (iter < maxIterations)))
-    {
-        std::stringstream output;
-        output << "Iteration number " << m_iterationNumber + 1 << "...";
-        gsWriteOutput(m_outFile, output.str(), m_dispOutput);
-
-        nextIteration();
-        m_relNorm = solutionChangeRelNorm();
-
-        output.str("");
-        output << " Solution change relative norm: " << m_relNorm;
-        gsWriteOutputLine(m_outFile, output.str(), m_dispOutput);
-
-        iter++;
-    }
-}
-
-
-template<class T>
-T gsINSSolver<T>::solutionChangeRelNorm() const
-{
-    T relNorm;
-
-    if (m_iterationNumber)
-    {
-        gsMatrix<T> solChangeVector = getAssembler()->getSolution() - m_solution;
-        relNorm = solChangeVector.norm() / m_solution.norm();
-
-    }
-    else
-    {
-        relNorm = std::numeric_limits<T>::infinity();
-    }
-
-    return relNorm;
-}
-
-
-template<class T>
-T gsINSSolver<T>::solutionChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew) const
-{
-    gsMatrix<T> solChangeVector = solOld - solNew;
-    T relNorm = solChangeVector.norm() / solNew.norm();
-
-    return relNorm;
-}
-
-
-template<class T>
-void gsINSSolver<T>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew)
-{
-    std::stringstream output;
-    output << "     [u, p] solution change relative norm: ";
-
-    for (int i = 0; i < solOld.cols(); i++)
-        output << solutionChangeRelNorm(solOld.col(i), solNew.col(i)) << ", ";
-
-    gsWriteOutputLine(m_outFile, output.str(), m_dispOutput);
-}
-
 // ===================================================================================================================
 
 template<class T>
-void gsINSSolverDirect<T>::initMembers()
-{
-    Base::initMembers();
-
-    #ifdef GISMO_WITH_PARDISO
-        pardisoSetup(m_solver);
-    #endif
-}
-
-template<class T>
-void gsINSSolverDirect<T>::applySolver(gsMatrix<T>& solution)
-{
-    m_clock.restart();
-    m_solver.factorize(getAssembler()->matrix());
-    m_solsetupT += m_clock.stop();
-
-    m_clock.restart();
-    solution = m_solver.solve(getAssembler()->rhs());
-    m_solveT += m_clock.stop();
-}
-
-
-template<class T>
-void gsINSSolverDirect<T>::applySolver(gsMatrix<T>& solution, real_t alpha_u, real_t alpha_p)
-{
-    GISMO_ASSERT(solution.rows() > 0,"The solution in applySolver() is empty!");
-
-    int usize = getAssembler()->getPshift();
-    int pdofs = getAssembler()->getPdofs();
-
-    m_clock.restart();
-    m_solver.factorize(getAssembler()->matrix());
-    m_solsetupT += m_clock.stop();
-
-    m_clock.restart();
-    gsMatrix<T> newsol = m_solver.solve(getAssembler()->rhs());
-    solution.topRows(usize) = alpha_u * newsol.topRows(usize) + (1 - alpha_u)*solution.topRows(usize);
-    solution.bottomRows(pdofs) = alpha_p * newsol.bottomRows(pdofs) + (1 - alpha_p)*solution.bottomRows(pdofs);
-    m_solveT += m_clock.stop();
-}
-
-// ===================================================================================================================
-
-template<class T>
-void gsINSSolverDirectUnsteady<T>::initMembers()
+void gsINSSolverUnsteady<T>::initMembers()
 {
     Base::initMembers();
     m_time = 0;
@@ -188,7 +60,7 @@ void gsINSSolverDirectUnsteady<T>::initMembers()
 
 
 template<class T>
-void gsINSSolverDirectUnsteady<T>::nextIteration()
+void gsINSSolverUnsteady<T>::nextIteration()
 {
     GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
 
@@ -206,11 +78,11 @@ void gsINSSolverDirectUnsteady<T>::nextIteration()
     index_t picardIter = 0;
     T relNorm = this->solutionChangeRelNorm(m_solution, tmpSolution);
 
-    gsWriteOutputLine(m_outFile, "        [u, p] Picard's iterations...", m_dispOutput);
+    gsWriteOutputLine(m_outFile, "        [u, p] Picard's iterations...", m_fileOutput, m_dispOutput);
 
     while((relNorm > m_innerTol) && (picardIter < m_innerIter))
     {
-        gsWriteOutput(m_outFile, "         ", m_dispOutput);
+        gsWriteOutput(m_outFile, "         ", m_fileOutput, m_dispOutput);
 
         gsMatrix<T> oldSol = tmpSolution;
 
@@ -228,5 +100,65 @@ void gsINSSolverDirectUnsteady<T>::nextIteration()
     m_avgPicardIter += picardIter;
     m_iterationNumber++;
 }
+
+// from old version of the solver (TODO):
+
+// template<class T>
+// void gsINSSolverUnsteady<T>::initGeneralizedStokesSolution(gsSparseMatrix<T>& stokesMatrix, gsMatrix<T>& stokesRhs)
+// {
+//     GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
+
+//     getAssembler()->fillStokesSystem(stokesMatrix, stokesRhs);
+
+//     const int uDofs = getAssembler()->getUdofs();
+//     const T invTimeStep = 1. / m_timeStepSize;
+
+//     #pragma omp parallel for num_threads(getAssembler()->getBlockAssembler().getNumThreads())
+//     for (index_t col = 0; col < uDofs; ++col)
+//         for (typename gsSparseMatrix<T>::InnerIterator it(getAssembler()->getVelocityMassMatrix(), col); it; ++it)
+//             for (index_t s = 0; s < getAssembler()->getTarDim(); ++s)
+//                 stokesMatrix.coeffRef(it.row() + s * uDofs, it.col() + s * uDofs) += invTimeStep * it.value();
+
+//     m_clock.restart();
+//     m_solver.analyzePattern(stokesMatrix);
+//     m_solver.factorize(stokesMatrix);
+//     m_solsetupT += m_clock.stop();
+// }
+
+
+// template<class T>
+// void gsINSSolverUnsteady<T>::solveGeneralizedStokes(const int maxIterations, const T epsilon, const int minIterations)
+// {
+//     gsSparseMatrix<T> stokesMatrix;
+//     gsMatrix<T> stokesRhs;
+
+//     initGeneralizedStokesSolution(stokesMatrix, stokesRhs);
+
+//     const int uDofs = getAssembler()->getUdofs();
+//     const T invTimeStep = 1. / m_timeStepSize;
+//     int iter = 0;
+//     T relNorm = std::numeric_limits<T>::infinity();
+
+//     while ((iter < minIterations) || ((relNorm > epsilon) && (iter < maxIterations)))
+//     {
+//         gsInfo << "Iteration number " << iter + 1 << "...";
+
+//         gsMatrix<T> rhs = stokesRhs;
+//         gsMatrix<T> newSol = m_solution;
+
+//         for (index_t s = 0; s < getAssembler()->getTarDim(); ++s)
+//             rhs.middleRows(s * uDofs, uDofs).noalias() += invTimeStep * getAssembler()->getVelocityMassMatrix() * m_solution.middleRows(s * uDofs, uDofs);
+
+//         m_clock.restart();
+//         newSol = m_solver.solve(rhs);
+//         m_solveT += m_clock.stop();
+
+//         relNorm = this->solutionChangeRelNorm(m_solution, newSol);
+//         gsInfo << " Solution change relative norm: " << relNorm << "\n";
+
+//         m_solution = newSol;
+//         iter++;
+//     }
+// }
 
 } //namespace gismo
