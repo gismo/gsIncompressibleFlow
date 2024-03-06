@@ -5,8 +5,8 @@
 
 namespace gismo
 {
-    CLASS_TEMPLATE_INST gsINSAssemblerBase<real_t>;
     CLASS_TEMPLATE_INST gsINSAssembler<real_t>;
+    CLASS_TEMPLATE_INST gsINSAssemblerSteady<real_t>;
     CLASS_TEMPLATE_INST gsINSAssemblerUnsteady<real_t>;
 
 } // namespace gismo

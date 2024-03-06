@@ -11,7 +11,7 @@
 #pragma once
 
 #include <gsIncompressibleFlow/src/gsINSPrecondBlocks.h>
-#include <gsIncompressibleFlow/src/gsINSUtils.h>
+#include <gsIncompressibleFlow/src/gsFlowUtils.h>
 
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMatrixOp.h>

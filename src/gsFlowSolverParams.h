@@ -1,4 +1,4 @@
-/** @file gsINSSolverParams.h
+/** @file gsFlowSolverParams.h
  
     @brief A class that holds all parameters needed by the incompressible flow solver.
 
@@ -30,7 +30,7 @@ namespace gismo
  */
 
 template<class T>
-class gsINSSolverParams
+class gsFlowSolverParams
 {
 
 protected: // *** Class members ***
@@ -43,24 +43,24 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsINSSolverParams() {}
+    gsFlowSolverParams() {}
     
 
     /// @brief Constructor of the object.
     /// @param pde an incompressible Navier-Stokes problem
     /// @param bases vector of discretization bases (velocity, pressure)
-    gsINSSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases)
+    gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases)
         : m_pde(pde), m_bases(bases)
     {
         m_assembOpt.dirStrategy = dirichlet::elimination;
         m_assembOpt.dirValues = dirichlet::interpolation;
         m_assembOpt.intStrategy = iFace::glue;
 
-        m_opt = gsINSSolverParams<T>::defaultOptions();
+        m_opt = gsFlowSolverParams<T>::defaultOptions();
         m_precOpt = gsINSPreconditioner<T>::defaultOptions();
     }
 
-    ~gsINSSolverParams()
+    ~gsFlowSolverParams()
     {
     }
 
@@ -78,12 +78,15 @@ public: // *** Static functions ***
         opt.addReal("tol_picard", "Stopping tolerance for Picard iteration", 1e-5);
         opt.addReal("tol_lin", "Stopping tolerance for linear solver (if iterative)", 1e-6);
 
+        opt.addString("linSolver", "The type of linear system solver (direct / iter / petsc)", "direct");
         opt.addString("precType", "Preconditioner to be used with iterative linear solver", "PCDmod_FdiagEqual");
         opt.addString("outFile", "Name of the output file (or the full path to it)", "");
 
-        opt.addSwitch("output", "Write the output also in terminal, not only in the output file", false);
+        opt.addSwitch("fileOutput", "Create an output file", false);
+        opt.addSwitch("quiet", "Do not display the output in terminal", false);
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
         opt.addSwitch("fillGlobalSyst", "Fill the global linear systems from blocks", true);
+        opt.addSwitch("parallel", "Currently running in parallel", false);
 
         return opt;
     }
@@ -151,6 +154,6 @@ public: // *** Getters/setters ***
     void setOptions(const gsOptionList& opt) { m_opt = opt; }
 
 
-}; // class gsINSSolverParams
+}; // class gsFlowSolverParams
 
 } // namespace gismo

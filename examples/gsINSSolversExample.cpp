@@ -13,11 +13,11 @@
 #include <gismo.h>
 
 #include <gsIncompressibleFlow/src/gsINSSolver.h>
-#include <gsIncompressibleFlow/src/gsINSUtils.h>
+#include <gsIncompressibleFlow/src/gsFlowUtils.h>
 
 using namespace gismo;
 
-void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt);
+void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo);
 void markElimDof(gsINSSolver<real_t>& NSsolver);
 
 int main(int argc, char *argv[])
@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     bool plotMesh = false;
     int plotPts = 10000;
+    bool quiet = false;
 
     //command line
     gsCmdLine cmd("Solves the Navier-Stokes problem in a 2D domain (step, cavity).");
@@ -60,6 +61,7 @@ int main(int argc, char *argv[])
     //cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
     cmd.addSwitch("plotMesh", "Plot the computational mesh", plotMesh);
+    cmd.addSwitch("quiet", "Display output in terminal", quiet);
 
     cmd.addInt("d", "deg", "B-spline degree for geometry representation", deg);
     cmd.addInt("g", "geo", "Computational domain (1 - step, 2 - cavity)", geo);
@@ -153,7 +155,8 @@ int main(int argc, char *argv[])
     // ========================================= Solve ========================================= 
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
-    gsINSSolverParams<real_t> params(NSpde, discreteBases);
+    gsFlowSolverParams<real_t> params(NSpde, discreteBases);
+    params.options().setSwitch("quiet", quiet);
 
     // bool stokesInit, bool plot
     gsOptionList solveOpt;
@@ -172,15 +175,11 @@ int main(int argc, char *argv[])
     {
         solveOpt.setInt("id", id);
 
-        gsINSSolverDirectSteady<real_t> NSsolver(params);
-
-        if(geo == 2)
-            markElimDof(NSsolver);
+        gsINSSolverSteady<real_t> NSsolver(params);
 
         gsInfo << "\nSolving the steady problem with direct linear solver.\n";
-        gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
-        solveProblem(NSsolver, solveOpt);
+        solveProblem(NSsolver, solveOpt, geo);
 
         id++;
     }
@@ -193,15 +192,11 @@ int main(int argc, char *argv[])
         params.options().setInt("maxIt_picard", picardIt);
         params.options().setReal("tol_picard", picardTol);
 
-        gsINSSolverDirectUnsteady<real_t> NSsolver(params);
-
-        if(geo == 2)
-            markElimDof(NSsolver);
+        gsINSSolverUnsteady<real_t> NSsolver(params);
 
         gsInfo << "\nSolving the unsteady problem with direct linear solver.\n";
-        gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
-        solveProblem(NSsolver, solveOpt);
+        solveProblem(NSsolver, solveOpt, geo);
         
         id++;
     }
@@ -216,12 +211,8 @@ int main(int argc, char *argv[])
 
     //     gsINSSolverSteadyIter<real_t, LinSolver > NSsolver(params);
 
-    //     if(geo == 2)
-    //         markElimDof(NSsolver);
-
     //     gsInfo << "\nSolving the steady problem with preconditioned GMRES as linear solver.\n";
     //     gsInfo << "Used preconditioner: " << params.options().getString("precType") << "\n";
-    //     gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
     //     if (params.options().getString("precType").substr(0, 3) == "PCD")
     //         NSsolver.getAssembler()->preparePCDboundary(bndIn, bndOut, bndWall, params.precOptions().getInt("pcd_bcType"));
@@ -252,12 +243,8 @@ int main(int argc, char *argv[])
 
     //     gsINSSolverUnsteadyIter<real_t, LinSolver > NSsolver(params);
 
-    //     if(geo == 2)
-    //         markElimDof(NSsolver);
-
     //     gsInfo << "\nSolving the unsteady problem with preconditioned GMRES as linear solver.\n";
     //     gsInfo << "Used preconditioner: " << params.options().getString("precType") << "\n";
-    //     gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
     //     if (params.options().getString("precType").substr(0, 3) == "PCD")
     //         NSsolver.getAssembler()->preparePCDboundary(bndIn, bndOut, bndWall, params.precOptions().getInt("pcd_bcType"));
@@ -279,12 +266,17 @@ int main(int argc, char *argv[])
 }
 
 
-void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt)
+void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo)
 {
+    if(geo == 2)
+        markElimDof(NSsolver);
+
     gsInfo << "\ninitialization...\n";
     NSsolver.initialize();
 
-    //gsINSSolverDirectUnsteady<real_t>* pSolver = dynamic_cast<gsINSSolverDirectUnsteady<real_t>* >(&NSsolver);
+    gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
+
+    //gsINSSolverUnsteady<real_t>* pSolver = dynamic_cast<gsINSSolverUnsteady<real_t>* >(&NSsolver);
 
     // if (pSolver)
     // {
