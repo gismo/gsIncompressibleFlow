@@ -14,6 +14,7 @@
 
 #include <gsIncompressibleFlow/src/gsINSSolver.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
+#include <gsIncompressibleFlow/src/gsFlowBndEvaluator.h>
 
 using namespace gismo;
 
@@ -180,6 +181,13 @@ int main(int argc, char *argv[])
         gsInfo << "\nSolving the steady problem with direct linear solver.\n";
 
         solveProblem(NSsolver, solveOpt, geo);
+
+        // example of flow rate computation
+        gsField<> velocity = NSsolver.constructSolution(0);
+        gsFlowBndEvaluator_flowRate<real_t> flowRateEval(params, bndOut);
+        flowRateEval.setVelocityField(velocity);
+        flowRateEval.evaluate();
+        gsInfo << "bndOut flow rate = " << flowRateEval.getValue() << "\n\n";
 
         id++;
     }
