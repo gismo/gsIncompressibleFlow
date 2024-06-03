@@ -1,19 +1,39 @@
 #include <gismo.h>
 #include <bitset>
 
+#include <gsIncompressibleFlow/src/gsFlowUtils.h>
+#include <gsCore/gsFieldCreator.h>
+
 using namespace gismo;
 
 int main(int argc, char *argv[])
-{
-    int wanted = 4;
+{ 
+    // pokus o generovani pole normalovych vektoru:
+    
+    // gsTensorBSpline<3, real_t> geo = BSplineBlock<real_t>(1, 0, 0, 0, 1, 1, 1);
+    // gsTensorBSpline<2, real_t> slice;
+    // geo.slice(2, 0, slice);
 
-    gsMatrix<int> mat(3,2);
-    mat << 1, 2, 3, 4, 5, 6;
+    // gsNormalField<real_t> normalField(slice);
 
-    bool b = (mat.col(1).array() == wanted).any();
-    std::string str = (b == 1) ? "true" : "false";
+    // gsMatrix<> pts(1,2);
+    // pts << 0.5, 0.5;
 
-    gsInfo << "Is any element equal to " << wanted << "? - " << str << "\n";
+    // gsMatrix<> result = normalField.eval(pts.transpose());
+
+    // gsInfo << "result =\n" << result << "\n";
+
+    // ----------------------------------------------------------------------------
+
+    // int wanted = 4;
+
+    // gsMatrix<int> mat(3,2);
+    // mat << 1, 2, 3, 4, 5, 6;
+
+    // bool b = (mat.col(1).array() == wanted).any();
+    // std::string str = (b == 1) ? "true" : "false";
+
+    // gsInfo << "Is any element equal to " << wanted << "? - " << str << "\n";
 
     // ----------------------------------------------------------------------------
 
