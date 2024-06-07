@@ -9,10 +9,9 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 { 
-
-    int deg = 1;
-    int numRefine = 3;
-    int maxIt = 10;
+    int deg = 2;
+    int numRefine = 2;
+    int maxIt = 5;
     real_t viscosity = 0.1;
     real_t tol = 1e-5;
 
@@ -20,6 +19,8 @@ int main(int argc, char *argv[])
     real_t b = 2;
     real_t a_in = 1;
     gsMultiPatch<> patches = BSplineStep2D<real_t>(deg, a, b, a_in);
+    patches.patch(2).coef(0,0) -= 0.3;
+    patches.patch(2).coef(3,0) -= 0.1;
 
     gsBoundaryConditions<> bcInfo;
     std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall; // containers of patch sides corresponding to inflow, outflow and wall boundaries
@@ -70,7 +71,7 @@ int main(int argc, char *argv[])
     gsInfo << "numDofs: " << NSsolver1.numDofs() << "\n";
     gsInfo << "\ninitialization...\n";
     NSsolver1.initialize();
-    NSsolver1.solve(maxIt, tol);
+    NSsolver1.solve(1, tol);
 
     gsField<> velocity1 = NSsolver1.constructSolution(0);
 

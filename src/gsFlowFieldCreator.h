@@ -69,7 +69,7 @@ public: // *** Member functions ***
         for (index_t k = 0; k < u.cols(); k++)
         {
             outerNormal(mapData, k, m_side, normal);
-            result.col(k) = scalarVals(0, k) * normal;
+            result.col(k) = scalarVals(0, k) * (1. / normal.norm()) * normal;
         }
     }
 
