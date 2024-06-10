@@ -53,16 +53,16 @@ int main(int argc, char *argv[])
     // -------------------------------
     // test of new boundary condition:
 
-    real_t pTarget = 0;
+    real_t pTarget = 1.8;
     gsDiffScaledOuterNormalField<real_t> Uin(2, boundary::west, pressure, pTarget);
     gsBoundaryConditions<> bcInfo1;
     gsFunctionExpr<>Uwall("0", "0", 2);
 
-    for (size_t i = 0; i < bndIn.size(); i++)
-        bcInfo1.addCondition(bndIn[i].first, bndIn[i].second, condition_type::dirichlet, Uin, 0, true);
-
     for (size_t i = 0; i < bndWall.size(); i++)
         bcInfo1.addCondition(bndWall[i].first, bndWall[i].second, condition_type::dirichlet, Uwall, 0);
+
+    for (size_t i = 0; i < bndIn.size(); i++)
+        bcInfo1.addCondition(bndIn[i].first, bndIn[i].second, condition_type::dirichlet, Uin, 0, true);
 
     gsNavStokesPde<real_t> NSpde1(patches, bcInfo1, &f, viscosity);
     gsFlowSolverParams<real_t> params1(NSpde1, discreteBases);
