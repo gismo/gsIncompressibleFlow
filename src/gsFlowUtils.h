@@ -84,7 +84,7 @@ static gsMatrix<index_t> createVectorOfUniqueIndices(const gsMatrix<index_t>& ma
 /// @param[in]  repeat  number of the diagonal block repetition (e.g. for velocity components)
 /// @param[in]  lumping use lumping to define the diagonal approximation
 template<class T>
-static void diagInvMatrix_into(const gsSparseMatrix<T>& mat, gsSparseMatrix<T>& diagInv, int repeat, bool lumping = false)
+void diagInvMatrix_into(const gsSparseMatrix<T>& mat, gsSparseMatrix<T>& diagInv, int repeat, bool lumping = false)
 {
     GISMO_ENSURE(mat.nonZeros() != 0, "diagInvMatrix_into(): The matrix is empty!");
 
@@ -136,7 +136,7 @@ static void diagInvMatrix_into(const gsSparseMatrix<T>& mat, gsSparseMatrix<T>& 
 /// @param b        height of the rectangle
 /// @param numSep   number of \f C^0 \f separators in the parametrization (knots of multiplicity \a deg uniformly distributed in each parametric direction)
 template<class T>
-static gsTensorBSpline<2, T> BSplineRectangle(int deg, const T llx, const T lly, const T a, const T b, int numSep = 0)
+gsTensorBSpline<2, T> BSplineRectangle(int deg, const T llx, const T lly, const T a, const T b, int numSep = 0)
 {
     gsKnotVector<T> kv(0, 1, numSep, deg + 1, deg); // first, last, num_inter, mult_end, mult_inter
 
@@ -162,7 +162,7 @@ static gsTensorBSpline<2, T> BSplineRectangle(int deg, const T llx, const T lly,
 /// @param c        depth of the block
 /// @param numSep   number of \f C^0 \f separators in the parametrization (knots of multiplicity \a deg uniformly distributed in each parametric direction)
 template<class T>
-static gsTensorBSpline<3, T> BSplineBlock(int deg, const T llx, const T lly, const T llz, const T a, const T b, const T c, int numSep = 0)
+gsTensorBSpline<3, T> BSplineBlock(int deg, const T llx, const T lly, const T llz, const T a, const T b, const T c, int numSep = 0)
 {
     gsKnotVector<T> kv(0, 1, numSep, deg + 1, deg);
 
@@ -186,7 +186,7 @@ static gsTensorBSpline<3, T> BSplineBlock(int deg, const T llx, const T lly, con
 /// @param np       number of patches in each direction
 /// @param numSep   number of \f C^0 \f separators in each patch (knots of multiplicity \a deg uniformly distributed in each parametric direction)
 template<class T>
-static gsMultiPatch<T> BSplineCavity2D(int deg, const T a, const T b, const int np = 1, int numSep = 0)
+gsMultiPatch<T> BSplineCavity2D(int deg, const T a, const T b, const int np = 1, int numSep = 0)
 {
     gsMultiPatch<T> mp;
 
@@ -212,7 +212,7 @@ static gsMultiPatch<T> BSplineCavity2D(int deg, const T a, const T b, const int 
 /// @param h        height of the step
 /// @param periodic periodic domain (if true, the bottom and top boundaries of the channel behind step are defined as interface)
 template<class T>
-static gsMultiPatch<T> BSplineStep2D(int deg, const T a, const T b, const T a_in, T h = 0, bool periodic = false)
+gsMultiPatch<T> BSplineStep2D(int deg, const T a, const T b, const T a_in, T h = 0, bool periodic = false)
 {
     gsMultiPatch<T> mp;
 
@@ -245,7 +245,7 @@ static gsMultiPatch<T> BSplineStep2D(int deg, const T a, const T b, const T a_in
 /// @param h        height of the step
 /// @param periodic periodic domain (if true, the bottom and top boundaries of the channel behind step are defined as interface)
 template<class T>
-static gsMultiPatch<T> BSplineStep3D(int deg, const T a, const T b, const T c, const T a_in, T h = 0, bool periodic = false)
+gsMultiPatch<T> BSplineStep3D(int deg, const T a, const T b, const T c, const T a_in, T h = 0, bool periodic = false)
 {
     gsMultiPatch<T> mp;
 
@@ -280,7 +280,7 @@ static gsMultiPatch<T> BSplineStep3D(int deg, const T a, const T b, const T c, c
 /// @param[in]  Uin      the inflow velocity as gsFunctionExpr
 /// @param[in]  Uwall    the wall velocity as gsFunctionExpr
 template<class T>
-static void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndWall, gsFunctionExpr<T> Uin, gsFunctionExpr<T> Uwall)
+void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndWall, gsFunctionExpr<T> Uin, gsFunctionExpr<T> Uwall)
 {
     for (size_t i = 0; i < bndIn.size(); i++)
         bcInfo.addCondition(bndIn[i].first, bndIn[i].second, condition_type::dirichlet, Uin);
@@ -297,7 +297,7 @@ static void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, b
 /// @param[out] bndWall reference to a container of patch sides corresponding to solid walls
 /// @param[in]  lidVel  the lid velocity
 template<class T>
-static void defineBCs_cavity2D(gsBoundaryConditions<T>& bcInfo, const int np, std::vector<std::pair<int, boxSide> >& bndWall, std::string lidVel = "1")
+void defineBCs_cavity2D(gsBoundaryConditions<T>& bcInfo, const int np, std::vector<std::pair<int, boxSide> >& bndWall, std::string lidVel = "1")
 {
     gsFunctionExpr<T> Uwall("0", "0", 2);
     gsFunctionExpr<T> Ulid(lidVel, "0", 2);
@@ -333,7 +333,7 @@ static void defineBCs_cavity2D(gsBoundaryConditions<T>& bcInfo, const int np, st
 /// @param[in]  periodic periodic domain (true/false)
 /// @param[in]  inVel    the \a x component of the inflow velocity as string
 template<class T>
-static void defineBCs_step2D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, bool periodic = false, std::string inVel = "default")
+void defineBCs_step2D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, bool periodic = false, std::string inVel = "default")
 {
     if (inVel == "default")
         inVel = "(-4*(y-1.5)^2 + 1)";
@@ -376,7 +376,7 @@ static void defineBCs_step2D(gsBoundaryConditions<T>& bcInfo, std::vector<std::p
 /// @param[in]  periodic periodic domain (true/false)
 /// @param[in]  inVel    the \a x component of the inflow velocity as string
 template<class T>
-static void defineBCs_step3D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, bool periodic = false, std::string inVel = "default")
+void defineBCs_step3D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, bool periodic = false, std::string inVel = "default")
 {
     gsFunctionExpr<T> Uin, Uwall;
 
@@ -435,7 +435,7 @@ static void defineBCs_step3D(gsBoundaryConditions<T>& bcInfo, std::vector<std::p
 /// @param[in]  periodic periodic domain (true/false)
 /// @param[in]  inVel    the \a x component of the inflow velocity as string
 template<class T>
-static void defineBCs_step(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, int dim, bool periodic = false, std::string inVel = "default")
+void defineBCs_step(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, int dim, bool periodic = false, std::string inVel = "default")
 {
     switch (dim)
     {
@@ -452,6 +452,30 @@ static void defineBCs_step(gsBoundaryConditions<T>& bcInfo, std::vector<std::pai
 }
 
 
+/// @brief Define boundary conditions for the 2D blade profile problem.
+/// @tparam T            coefficient type
+/// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
+/// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
+/// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
+/// @param[out] bndWall  reference to a container of patch sides corresponding to solid walls
+/// @param[in]  inVel    the \a x component of the inflow velocity as string
+/// @param[in] inVelX    x-coordinate of inflow velocity
+/// @param[in] inVelY    y-coordinate of inflow velocity
+template<class T>
+void defineBCs_profile2D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, T inVelX, T inVelY)
+{
+    gsFunctionExpr<T> Uin = gsFunctionExpr<T>(util::to_string(inVelX), util::to_string(inVelY), 2);
+    gsFunctionExpr<T> Uwall = gsFunctionExpr<T>("0", "0", 2);
+
+    bndIn.push_back(std::make_pair(0, boundary::west));
+    bndWall.push_back(std::make_pair(1, boundary::north));
+    bndWall.push_back(std::make_pair(1, boundary::south));
+    bndOut.push_back(std::make_pair(2, boundary::east));
+
+    addBCs(bcInfo, bndIn, bndWall, Uin, Uwall);
+}
+
+
 /// @brief Refine basis near wall (the first knot span).
 /// @tparam T           coefficient type
 /// @tparam d           space dimension
@@ -460,7 +484,7 @@ static void defineBCs_step(gsBoundaryConditions<T>& bcInfo, std::vector<std::pai
 /// @param patch        patch number
 /// @param dir          direction in which the basis will be refined
 template< int d, class T>
-static void refineFirstKnotSpan(gsMultiBasis<T>& basis, int numRefine, int patch, int dir)
+void refineFirstKnotSpan(gsMultiBasis<T>& basis, int numRefine, int patch, int dir)
 {
     const gsTensorBSplineBasis<d, T>*  patchBasis = dynamic_cast<const gsTensorBSplineBasis<d, T>*>(&(basis.basis(patch)));
     gsMatrix<T> box(d, 2);
@@ -483,7 +507,7 @@ static void refineFirstKnotSpan(gsMultiBasis<T>& basis, int numRefine, int patch
 /// @param patch        patch number
 /// @param dir          direction in which the basis will be refined
 template< int d, class T>
-static void refineLastKnotSpan(gsMultiBasis<T>& basis, int numRefine, int patch, int dir)
+void refineLastKnotSpan(gsMultiBasis<T>& basis, int numRefine, int patch, int dir)
 {
     const gsTensorBSplineBasis<d, T>*  patchBasis = dynamic_cast<const gsTensorBSplineBasis<d, T>*>(&(basis.basis(patch)));
     gsMatrix<T> box(d, 2);
@@ -508,7 +532,7 @@ static void refineLastKnotSpan(gsMultiBasis<T>& basis, int numRefine, int patch,
 /// @param numRefineLocal   number of near-wall refinements
 /// @param numSep           number of \f C^0 \f separators in each patch (knots of multiplicity \a deg uniformly distributed in each parametric direction)
 template<class T>
-static void refineBasis_cavity2D(gsMultiBasis<T>& basis, int numRefine, int numRefineLocal, int numSep = 0)
+void refineBasis_cavity2D(gsMultiBasis<T>& basis, int numRefine, int numRefineLocal, int numSep = 0)
 {
     int npDir = math::sqrt(basis.nPieces());
     int npRef = std::log2(npDir);
@@ -535,7 +559,7 @@ static void refineBasis_cavity2D(gsMultiBasis<T>& basis, int numRefine, int numR
 /// @param numRefineWalls   number of refinements near top and bottom walls
 /// @param numRefineCorner  number of refinements near the step corner
 template<int d, class T>
-static void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int numRefineCorner)
+void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int numRefineCorner)
 {
     // refinement near upper and bottom walls
     refineFirstKnotSpan<d, T>(basis, numRefineWalls, 0, 1);
@@ -565,7 +589,7 @@ static void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int num
 /// @param b                total height of the domain
 /// @param c                width of the domain (3D case)
 template<class T>
-static void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t c = 0.0)
+void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t c = 0.0)
 {
     for (int i = 0; i < numRefine; ++i)
         basis.uniformRefine();
@@ -607,5 +631,87 @@ static void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefin
         break;
     }
 }
+
+
+/// @brief Refine basis for the 2D profile problem.
+/// @tparam T                   coefficient type
+/// @param[in, out] basis       reference to the basis to be refined
+/// @param[in] numRefine        number of uniform refinements
+/// @param[in] numRefineBlade   number of refinements near the blade
+/// @param[in] numRefineLead    number of refinements near the beginning of the blade
+template<class T>
+void refineBasis_profile2D(gsMultiBasis<T>& basis, int numRefine, int numRefineBlade, int numRefineLead)
+{
+    for (int i = 0; i < numRefine; ++i)
+        basis.uniformRefine();
+
+    if (numRefineBlade)
+    {
+        for (int p = 0; p < basis.nPieces(); p++)
+        {
+            refineFirstKnotSpan<2, T>(basis, numRefineBlade, p, 1);
+            refineLastKnotSpan<2, T>(basis, numRefineBlade, p, 1);
+        }
+    }
+
+    if (numRefineLead)
+    {
+        refineLastKnotSpan<2, T>(basis, numRefineLead, 0, 0);
+        refineFirstKnotSpan<2, T>(basis, numRefineLead, 1, 0);
+    }
+}
+
+
+template<class T>
+void plotQuantityFromSolution(std::string quantity, const gsField<T>& solField, std::string const & fn, unsigned npts)
+{
+    gsParaviewCollection pwCollection(fn);
+    std::string fileName;
+
+    for (unsigned int p = 0; p < solField.patches().nPatches(); p++)
+    {
+        fileName = fn + util::to_string(p);
+
+        gsMatrix<T> geoVals, quantityVals;
+        gsVector<unsigned> np;
+
+        gsGeometry<T>* patch = &solField.patches().patch(p);
+        const int parDim = patch->domainDim();
+        const int tarDim = patch->targetDim();
+
+        gsMatrix<T> ab = patch->support();
+        gsVector<T> a = ab.col(0);
+        gsVector<T> b = ab.col(1);
+        np = uniformSampleCount(a, b, npts);
+        gsMatrix<T> pts = gsPointGrid(a, b, np);
+
+        // evaluate geometry at pts
+        geoVals = patch->eval(pts);
+
+        if (3 - parDim > 0)
+        {
+            np.conservativeResize(3);
+            np.bottomRows(3 - parDim).setOnes();
+        }
+        if (3 - tarDim > 0)
+        {
+            geoVals.conservativeResize(3, geoVals.cols());
+            geoVals.bottomRows(3 - tarDim).setZero();
+        }
+
+        // evaluate quantity at pts
+        if (quantity == "divergence")
+            solField.function(p).div_into(pts, quantityVals); // incorrect?? (derivatives in parametric space?)
+        else
+            GISMO_ERROR("Plot quantity for " + quantity + " not implemented.");
+
+        // paraview export
+        gsWriteParaviewTPgrid(geoVals, quantityVals, np.template cast<index_t>(), fileName);
+
+        pwCollection.addPart(fileName + ".vts");
+    }
+    pwCollection.save();
+}
+
 
 } //namespace gismo
