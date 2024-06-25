@@ -1,4 +1,4 @@
-/** @file gsFlowBndEvaluator.h
+/** @file gsFlowBndEvaluators.h
     
     This file is part of the G+Smo library.
 
@@ -187,5 +187,5 @@ protected: // *** Member functions ***
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsFlowBndEvaluator.hpp)
+#include GISMO_HPP_HEADER(gsFlowBndEvaluators.hpp)
 #endif

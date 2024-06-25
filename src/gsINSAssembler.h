@@ -119,6 +119,9 @@ public: // *** Member functions ***
     /// @param[in] unk              the considered unknown
     virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk);
 
+    /// @brief Fill the matrix and right-hand side for the Stokes problem.
+    virtual void fillStokesSystem(gsSparseMatrix<T, RowMajor>& stokesMat, gsMatrix<T>& stokesRhs);
+
     /// @brief Construct solution from computed solution vector for unknown \a unk.
     /// @param[in]  solVector   the solution vector obtained from the linear system
     /// @param[out] result      the resulting solution as a gsMultiPatch object
@@ -130,9 +133,6 @@ public: // *** Member functions ***
     /// @param[in] side         the given patch side
     /// @param[in] solution     solution vector to compute the flow rate from
     T computeFlowRate(index_t patch, boxSide side, gsMatrix<T> solution) const;
-
-    /// @brief Fill the matrix and right-hand side for the Stokes problem.
-    virtual void fillStokesSystem(gsSparseMatrix<T, RowMajor>& stokesMat, gsMatrix<T>& stokesRhs);
 
 
 public: // *** Getters/setters ***

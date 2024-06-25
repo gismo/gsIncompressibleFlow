@@ -14,7 +14,7 @@
 
 #include <gsIncompressibleFlow/src/gsINSSolver.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
-#include <gsIncompressibleFlow/src/gsFlowBndEvaluator.h>
+#include <gsIncompressibleFlow/src/gsFlowBndEvaluators.h>
 
 using namespace gismo;
 
@@ -52,6 +52,11 @@ int main(int argc, char *argv[])
     int plotPts = 10000;
     bool quiet = false;
 
+    // for profile2D
+    real_t inVelX = 1;
+    real_t inVelY = 0;
+    int leadRefine = 0;
+
     //command line
     gsCmdLine cmd("Solves the Navier-Stokes problem in a 2D domain (step, cavity).");
 
@@ -65,9 +70,10 @@ int main(int argc, char *argv[])
     cmd.addSwitch("quiet", "Display output in terminal", quiet);
 
     cmd.addInt("d", "deg", "B-spline degree for geometry representation", deg);
-    cmd.addInt("g", "geo", "Computational domain (1 - step, 2 - cavity)", geo);
+    cmd.addInt("g", "geo", "Computational domain (1 - step, 2 - cavity, 3 - profile)", geo);
     cmd.addInt("r", "uniformRefine", "Number of uniform h-refinement steps to perform before solving", numRefine);
-    cmd.addInt("", "wallRefine", "Number of h-refinement steps near step corner or cavity walls", wallRefine);
+    cmd.addInt("", "wallRefine", "Number of h-refinement steps near step corner, cavity walls of blade profile", wallRefine);
+    cmd.addInt("", "leadRefine", "Number of h-refinement steps near the beginning of the blade (for profile geometry)", leadRefine);
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
     cmd.addInt("", "maxIt", "Max. number of Picard iterations or time steps", maxIt);
     cmd.addInt("", "picardIt", "Max. number of inner Picard iterations for unsteady problem", picardIt);
@@ -77,6 +83,8 @@ int main(int argc, char *argv[])
     cmd.addReal("", "timeStep", "Time discretization step for unsteady problem", timeStep);
     cmd.addReal("", "tol", "Stopping tolerance", tol);
     cmd.addReal("", "picardTol", "Tolerance for inner Picard iteration for unsteady problem", picardTol);
+    cmd.addReal("", "inVelX", "x-coordinate of inflow velocity (for profile geometry)", inVelX);
+    cmd.addReal("", "inVelY", "y-coordinate of inflow velocity (for profile geometry)", inVelY);
     //cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
 
     //cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
@@ -113,6 +121,11 @@ int main(int argc, char *argv[])
 
             break;
         }
+        case 3:
+        {
+            gsReadFile<>(FLOW_DATA_DIR "geo_profile2D.xml", patches);
+            break;
+        }
         default:
             GISMO_ERROR("Unknown domain.");
     }
@@ -141,6 +154,12 @@ int main(int argc, char *argv[])
         {
             defineBCs_cavity2D(bcInfo, 1, bndWall); // bcInfo and bndWall are defined here, bndIn and bndOut remain empty
             refineBasis_cavity2D(basis, numRefine, wallRefine);
+            break;
+        }
+        case 3:
+        {
+            defineBCs_profile2D(bcInfo, bndIn, bndOut, bndWall, inVelX, inVelY);
+            refineBasis_profile2D(basis, numRefine, wallRefine, leadRefine);
             break;
         }
         default:
@@ -320,6 +339,11 @@ void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo)
                 geoStr = "LDC";
                 break;
             }
+            case 3:
+            {
+                geoStr = "profile";
+                break;
+            }
             default:
                 GISMO_ERROR("Unknown domain.");
         }
@@ -330,6 +354,7 @@ void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo)
         gsInfo << "Plotting in Paraview...";
         gsWriteParaview<>(velocity, geoStr + "_solver" + util::to_string(id) + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, geoStr + "_solver" + util::to_string(id) + "_pressure", plotPts);
+        plotQuantityFromSolution("divergence", velocity, geoStr + "_solver" + util::to_string(id) + "_velocityDivergence", plotPts);
         gsInfo << " done.\n";
     }
 }

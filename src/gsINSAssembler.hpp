@@ -249,6 +249,17 @@ void gsINSAssembler<T>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< i
 
 
 template<class T>
+void gsINSAssembler<T>::fillStokesSystem(gsSparseMatrix<T, RowMajor>& stokesMat, gsMatrix<T>& stokesRhs)
+{
+    if (!m_isBaseReady)
+        this->fillBaseSystem();
+
+    stokesMat = m_baseMatrix;
+    stokesRhs = m_baseRhs;
+}
+
+
+template<class T>
 gsField<T> gsINSAssembler<T>::constructSolution(const gsMatrix<T>& solVector, index_t unk) const
 {
     GISMO_ASSERT(m_dofs == solVector.rows(), "Something went wrong, is solution vector valid?");
@@ -342,16 +353,6 @@ T gsINSAssembler<T>::computeFlowRate(index_t patch, boxSide side, gsMatrix<T> so
         }
     }
     return flowRate;
-}
-
-template<class T>
-void gsINSAssembler<T>::fillStokesSystem(gsSparseMatrix<T, RowMajor>& stokesMat, gsMatrix<T>& stokesRhs)
-{
-    if (!m_isBaseReady)
-        this->fillBaseSystem();
-
-    stokesMat = m_baseMatrix;
-    stokesRhs = m_baseRhs;
 }
 
 

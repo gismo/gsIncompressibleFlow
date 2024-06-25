@@ -1,4 +1,4 @@
-/** @file gsFlowBndEvaluator.hpp
+/** @file gsFlowBndEvaluators.hpp
 
     This file is part of the G+Smo library.
 
@@ -11,7 +11,7 @@
 
 
 #pragma once
-#include <gsIncompressibleFlow/src/gsFlowBndEvaluator.h>
+#include <gsIncompressibleFlow/src/gsFlowBndEvaluators.h>
 
 namespace gismo
 {

@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsIncompressibleFlow/src/gsFlowBndEvaluator.h>
-#include <gsIncompressibleFlow/src/gsFlowBndEvaluator.hpp>
+#include <gsIncompressibleFlow/src/gsFlowBndEvaluators.h>
+#include <gsIncompressibleFlow/src/gsFlowBndEvaluators.hpp>
 
 namespace gismo
 {
