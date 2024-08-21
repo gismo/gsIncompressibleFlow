@@ -714,4 +714,21 @@ void plotQuantityFromSolution(std::string quantity, const gsField<T>& solField, 
 }
 
 
+// -----------------------------------------------
+
+
+template<class T>
+struct gsVectorHash
+{
+    std::size_t operator()(const gsVector<T>& vec) const
+    {
+        std::size_t seed = vec.size();
+        for (int i = 0; i < vec.size(); i++)
+            seed ^= std::hash<T>()(vec(i)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+        return seed;
+    }
+};
+
+
 } //namespace gismo

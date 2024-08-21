@@ -1,5 +1,6 @@
 #include <gismo.h>
 #include <bitset>
+#include <unordered_set>
 
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsFlowFieldCreator.h>
@@ -9,8 +10,11 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 { 
+    int npts = 10;
+
     int deg = 2;
-    int numRefine = 2;
+    int dim = 2;
+    int numRefine = 0;
     int maxIt = 5;
     real_t viscosity = 0.1;
     real_t tol = 1e-5;
@@ -18,17 +22,34 @@ int main(int argc, char *argv[])
     real_t a = 8;
     real_t b = 2;
     real_t a_in = 1;
-    gsMultiPatch<> patches = BSplineStep2D<real_t>(deg, a, b, a_in);
-    patches.patch(2).coef(0,0) -= 0.3;
-    patches.patch(2).coef(3,0) -= 0.1;
 
-    gsBoundaryConditions<> bcInfo;
-    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall; // containers of patch sides corresponding to inflow, outflow and wall boundaries
-    gsFunctionExpr<> f("0", "0", 2); // external force
+    gsMultiPatch<> patches;
+    gsFunctionExpr<> f;
+    
+    switch(dim)
+    {
+        case 2:
+            patches = BSplineStep2D<real_t>(deg, a, b, a_in);
+            // patches.patch(0).coef(1,1) += 1.1;
+            f = gsFunctionExpr<>("0", "0", 2);
+            break;
+
+        case 3:
+            patches = BSplineStep3D<real_t>(deg, a, b, b, a_in);
+            f = gsFunctionExpr<>("0", "0", "0", 3);
+            break;
+
+        default: GISMO_ERROR("Wrong dimension!");
+    }
+
+    patches.uniformRefine();
 
     gsMultiBasis<> basis(patches);
-    defineBCs_step(bcInfo, bndIn, bndOut, bndWall, 2); 
-    refineBasis_step(basis, numRefine, 0, 0, 0, 0, 2, a, b);
+    gsBoundaryConditions<> bcInfo;
+    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall; // containers of patch sides corresponding to inflow, outflow and wall boundaries
+    
+    defineBCs_step(bcInfo, bndIn, bndOut, bndWall, dim); 
+    refineBasis_step(basis, numRefine, 0, 0, 0, 0, dim, a, b, b);
 
     std::vector< gsMultiBasis<> >  discreteBases;
     discreteBases.push_back(basis); // basis for velocity
@@ -42,40 +63,44 @@ int main(int argc, char *argv[])
     gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
     gsInfo << "\ninitialization...\n";
     NSsolver.initialize();
-    NSsolver.solve(maxIt, tol);
+    //NSsolver.solve(maxIt, tol);
 
-    gsField<> velocity = NSsolver.constructSolution(0);
-    gsField<> pressure = NSsolver.constructSolution(1);
+    int check = NSsolver.checkGeoJacobian(npts);
 
-    gsWriteParaview<>(velocity, "step_velocity", 30000, true);
-    gsWriteParaview<>(pressure, "step_pressure", 30000);
+    // gsWriteParaview<>(patches, "domain", 30000, true);
+
+    // gsField<> velocity = NSsolver.constructSolution(0);
+    // gsField<> pressure = NSsolver.constructSolution(1);
+
+    // gsWriteParaview<>(velocity, "step_velocity", 30000, true);
+    // gsWriteParaview<>(pressure, "step_pressure", 30000);
 
     // -------------------------------
     // test of new boundary condition:
 
-    real_t pTarget = 1.8;
-    gsDiffScaledOuterNormalField<real_t> Uin(2, boundary::west, pressure, pTarget);
-    gsBoundaryConditions<> bcInfo1;
-    gsFunctionExpr<>Uwall("0", "0", 2);
+    // real_t pTarget = 1.8;
+    // gsDiffScaledOuterNormalField<real_t> Uin(2, boundary::west, pressure, pTarget);
+    // gsBoundaryConditions<> bcInfo1;
+    // gsFunctionExpr<>Uwall("0", "0", 2);
 
-    for (size_t i = 0; i < bndWall.size(); i++)
-        bcInfo1.addCondition(bndWall[i].first, bndWall[i].second, condition_type::dirichlet, Uwall, 0);
+    // for (size_t i = 0; i < bndWall.size(); i++)
+    //     bcInfo1.addCondition(bndWall[i].first, bndWall[i].second, condition_type::dirichlet, Uwall, 0);
 
-    for (size_t i = 0; i < bndIn.size(); i++)
-        bcInfo1.addCondition(bndIn[i].first, bndIn[i].second, condition_type::dirichlet, Uin, 0, true);
+    // for (size_t i = 0; i < bndIn.size(); i++)
+    //     bcInfo1.addCondition(bndIn[i].first, bndIn[i].second, condition_type::dirichlet, Uin, 0, true);
 
-    gsNavStokesPde<real_t> NSpde1(patches, bcInfo1, &f, viscosity);
-    gsFlowSolverParams<real_t> params1(NSpde1, discreteBases);
-    gsINSSolverSteady<real_t> NSsolver1(params1);
+    // gsNavStokesPde<real_t> NSpde1(patches, bcInfo1, &f, viscosity);
+    // gsFlowSolverParams<real_t> params1(NSpde1, discreteBases);
+    // gsINSSolverSteady<real_t> NSsolver1(params1);
 
-    gsInfo << "numDofs: " << NSsolver1.numDofs() << "\n";
-    gsInfo << "\ninitialization...\n";
-    NSsolver1.initialize();
-    NSsolver1.solve(1, tol);
+    // gsInfo << "numDofs: " << NSsolver1.numDofs() << "\n";
+    // gsInfo << "\ninitialization...\n";
+    // NSsolver1.initialize();
+    // NSsolver1.solve(1, tol);
 
-    gsField<> velocity1 = NSsolver1.constructSolution(0);
+    // gsField<> velocity1 = NSsolver1.constructSolution(0);
 
-    gsWriteParaview<>(velocity1, "step_velocity_newBC", 30000, true);
+    // gsWriteParaview<>(velocity1, "step_velocity_newBC", 30000, true);
 
     // ----------------------------------------------------------------------------
 

@@ -73,17 +73,20 @@ public: // *** Static functions ***
 
         opt.addInt("maxIt_picard", "Maximum number of Picard iterations in one time step", 10);
         opt.addInt("maxIt_lin", "Maximum number of iterations for linear solver (if iterative)", 200);
+        opt.addInt("jac_npts", "Number of points along a patch side (in each direction) for geometry jacobian check", 100);
 
         opt.addReal("timeStep", "Time step size", 0.1);
         opt.addReal("tol_picard", "Stopping tolerance for Picard iteration", 1e-5);
         opt.addReal("tol_lin", "Stopping tolerance for linear solver (if iterative)", 1e-6);
+        opt.addReal("jac_dist", "Distance from boundary (in the parametric space) for geometry jacobian check", 1e-2);
+        opt.addReal("jac_tol", "Critical value of geometry jacobian to throw warning", 1e-4);
 
         opt.addString("linSolver", "The type of linear system solver (direct / iter / petsc)", "direct");
         opt.addString("precType", "Preconditioner to be used with iterative linear solver", "PCDmod_FdiagEqual");
         opt.addString("outFile", "Name of the output file (or the full path to it)", "");
 
         opt.addSwitch("fileOutput", "Create an output file", false);
-        opt.addSwitch("quiet", "Do not display the output in terminal", false);
+        opt.addSwitch("quiet", "Do not display output in terminal", false);
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
         opt.addSwitch("fillGlobalSyst", "Fill the global linear systems from blocks", true);
         opt.addSwitch("parallel", "Currently running in parallel", false);

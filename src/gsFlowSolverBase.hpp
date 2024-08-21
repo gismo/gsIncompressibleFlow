@@ -11,6 +11,7 @@
 
 #pragma once
 #include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
+#include <unordered_set>
 
 namespace gismo
 {
@@ -193,6 +194,95 @@ void gsFlowSolverBase<T>::markDofsAsEliminatedZeros(const std::vector< gsMatrix<
 {
     getAssembler()->markDofsAsEliminatedZeros(boundaryDofs, unk);
     updateSizes();
+}
+
+
+template<class T>
+int gsFlowSolverBase<T>::checkGeoJacobian(int npts, T dist, T tol)
+{
+    // default values
+
+    if (npts == -1)
+        npts = m_params.options().getInt("jac_npts");
+
+    if (dist == -1)
+        dist = m_params.options().getReal("jac_dist");
+
+    if (tol == -1)
+        tol = m_params.options().getReal("jac_tol");
+
+    short_t dim = m_params.getPde().patches().domainDim();
+    size_t np = m_params.getPde().patches().nPatches();
+
+    npts = math::pow(math::abs(npts), dim-1); // number of pts on one patch side
+    dist = math::abs(dist);
+    tol = math::abs(tol);
+
+    for (size_t p = 0; p < np; p++)
+    {
+        const gsGeometry<T>* patch = &m_params.getPde().patches().patch(p);
+
+        gsMatrix<T> parRange = patch->support();
+        GISMO_ASSERT(parRange.rows() == dim, "checkGeoJacobian: something went wrong, parRange.rows() != dim.");
+
+        std::unordered_set<gsVector<T>, gsVectorHash<T> > uniquePts; // set of unique instances of generated points
+        gsMatrix<T> pts(dim, npts);
+
+        for (short_t i = 0; i < dim; i++) // direction i fixed
+        {
+            gsMatrix<T> reducedRange(dim-1, parRange.cols()); // parameter range without direction i
+            
+            if (i > 0)
+                reducedRange.topRows(i) = parRange.topRows(i);
+
+            if (i < dim - 1)
+                reducedRange.bottomRows(dim - i - 1) = parRange.bottomRows(dim - i - 1);
+
+            // first and last point shifted by dist from walls
+            reducedRange.col(0).array() += dist;
+            reducedRange.col(1).array() -= dist;
+
+            gsMatrix<T> reducedPts = gsPointGrid(reducedRange, npts); // uniformly distributed points in the reduced range
+
+            if (i > 0)
+                pts.topRows(i) = reducedPts.topRows(i);
+
+            if (i < dim - 1)
+                pts.bottomRows(dim - i - 1) = reducedPts.bottomRows(dim - i - 1);
+
+            pts.row(i) = gsVector<T>::Constant(pts.cols(), parRange(i,0) + dist); // fixed coordinate in direction i (lower+dist)
+
+            for(int j = 0; j < pts.cols(); j++)
+                uniquePts.insert(pts.col(j));
+
+            pts.row(i) = gsVector<T>::Constant(pts.cols(), parRange(i,1) - dist); // fixed coordinate in direction i (upper-dist)
+
+            for(int j = 0; j < pts.cols(); j++)
+                uniquePts.insert(pts.col(j));
+
+        }
+
+        for (const gsVector<T>& pt : uniquePts)
+        {
+            real_t jacDet = patch->jacobian(pt).determinant();
+
+            if (jacDet < 0)
+            {
+                gsWarn << "Negative geometry jacobian!\n";
+                return -1;
+            }
+
+            if (jacDet < tol)
+            {
+                gsWarn << "Geometry jacobian close to zero!\n";
+                return 1;
+            }
+        }
+
+        gsInfo << "\n";
+    }
+
+    return 0;
 }
 
 

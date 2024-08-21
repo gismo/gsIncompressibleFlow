@@ -155,6 +155,12 @@ public: // *** Member functions ***
     /// @param[in] unk              the considered unknown
     virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk);
 
+    /// @brief Check values of jacobian near boundaries of all patches. 
+    /// @param npts[in] number of evaluation points along a patch side in each direction
+    /// @param dist[in] distance from patch boundaries (in the parametric space)
+    /// @param tol[in]  critical (positive) value of jacobian to throw warning (too close to zero)
+    /// @return error code (0 = all jacobians OK, 1 = jacobian close to zero in some points, -1 = jacobian negative in some points)
+    int checkGeoJacobian(int npts = -1, T dist = -1, T tol = -1);
     
 public: // *** Getters/setters ***
 
