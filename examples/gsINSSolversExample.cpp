@@ -354,7 +354,7 @@ void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo)
         gsInfo << "Plotting in Paraview...";
         gsWriteParaview<>(velocity, geoStr + "_solver" + util::to_string(id) + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, geoStr + "_solver" + util::to_string(id) + "_pressure", plotPts);
-        plotQuantityFromSolution("divergence", velocity, geoStr + "_solver" + util::to_string(id) + "_velocityDivergence", plotPts);
+        // plotQuantityFromSolution("divergence", velocity, geoStr + "_solver" + util::to_string(id) + "_velocityDivergence", plotPts);
         gsInfo << " done.\n";
     }
 }

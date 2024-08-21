@@ -703,7 +703,7 @@ void plotQuantityFromSolution(std::string quantity, const gsField<T>& solField, 
         if (quantity == "divergence")
             solField.function(p).div_into(pts, quantityVals); // incorrect?? (derivatives in parametric space?)
         else
-            GISMO_ERROR("Plot quantity for " + quantity + " not implemented.");
+            GISMO_ERROR("Function plotQuantityFromSolution for " + quantity + " not implemented.");
 
         // paraview export
         gsWriteParaviewTPgrid(geoVals, quantityVals, np.template cast<index_t>(), fileName);
