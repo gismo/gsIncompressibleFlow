@@ -11,163 +11,21 @@
 
 #pragma once
 
-#include <gsIncompressibleFlow/src/gsFlowUtils.h>
-#include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
+#include <gsIncompressibleFlow/src/gsFlowVisitors.h>
 #include <gsIncompressibleFlow/src/gsINSTerms.h>
 
 namespace gismo
 {
 
 // ===================================================================================================================
-
-// BASE CLASS
-template <class T>
-class gsINSVisitor
-{
-
-protected: // *** Class members ***
-
-    // zvenku
-    index_t m_patchID;
-    gsFlowSolverParams<T> m_params; // pde, bases, assemblerOptions, options, precOptions
-    // pde members: dim, viscosity, rhs (f,g), gsBoundaryConditions, patches, unknownDim    // ulozit pointer/referenci?
- 
-    // definuje se tady, pak nemenne
-    index_t m_testUnkID, m_shapeUnkID; // 0 - velocity, 1 - pressure, used, e.g., to reference the corresponding mapper
-    gsQuadRule<T> m_quRule;
-    std::vector< gsINSTerm<T>* > m_terms;
-    unsigned m_geoFlags, m_testFunFlags, m_shapeFunFlags;
-    const gsBasis<T>* m_testBasisPtr;
-    const gsBasis<T>* m_shapeBasisPtr;
-    std::vector< gsDofMapper > m_dofMappers;
-
-    // aktualizuje se
-    index_t m_currentTestFunID; // updated in evaluate()
-    gsMatrix<T> m_localMat;
-    gsMatrix<T> m_quNodes;
-    gsVector<T> m_quWeights;
-    gsMapData<T> m_mapData; // members: points, dim, patchID
-    gsMatrix<index_t> m_shapeFunActives;
-    std::vector< gsMatrix<T> > m_testFunData;
-    std::vector< gsMatrix<T> > m_shapeFunData; 
-    
-
-public: // *** Constructor/destructor ***
-
-    gsINSVisitor() {}
-
-    gsINSVisitor(const gsFlowSolverParams<T>& params) : m_params(params)
-    { }
-
-    ~gsINSVisitor()
-    {
-        deleteTerms();
-    }
-
-protected: // *** Member functions ***
-
-    void deleteTerms()
-    {
-        for(size_t i = 0; i < m_terms.size(); i++)
-            delete m_terms[i];
-
-        m_terms.clear();
-    }
-
-    virtual void defineTerms()
-    { GISMO_NO_IMPLEMENTATION }
-
-    // is decided according to visitor type
-    virtual void defineTestShapeUnknowns()
-    { GISMO_NO_IMPLEMENTATION }
-
-    void gatherEvalFlags();
-
-    void defineTestShapeBases()
-    { 
-        m_testBasisPtr = &(m_params.getBases()[m_testUnkID].piece(m_patchID));
-        m_shapeBasisPtr = &(m_params.getBases()[m_shapeUnkID].piece(m_patchID));
-    }
-
-    void setupQuadrature();
-
-
-public: // *** Member functions ***
-
-    void initialize();
-
-    void updateDofMappers(const std::vector<gsDofMapper>& mappers) { m_dofMappers = mappers; }
-
-    void initOnPatch(index_t patchID);
-
-    void setCurrentSolution(std::vector<gsField<T> >& solutions);
-
-    void setCurrentSolution(gsField<T>& solution);
-
-    /// @brief 
-    /// @param[in]  testFunID    the local test function index on the current patch
-    void evaluate(index_t testFunID);
-
-    virtual void assemble();
-
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
-    { GISMO_NO_IMPLEMENTATION } 
-
-    virtual void localToGlobal(gsMatrix<T>& globalRhs)
-    { GISMO_NO_IMPLEMENTATION } 
-
-};
-
-// ===================================================================================================================
-
-template <class T>
-class gsINSVisitorVectorValued : public gsINSVisitor<T>  // order: shape, test
-{
-
-public:
-    typedef gsINSVisitor<T> Base;
-
-
-protected: // *** Class members ***
-
-    std::vector< gsMatrix<T> > m_locMatVec;
-
-
-protected: // *** Base class members ***
-
-    using Base::m_params;
-    using Base::m_mapData;
-    using Base::m_shapeFunActives;
-    using Base::m_quWeights;
-    using Base::m_testFunData;
-    using Base::m_shapeFunData;
-    using Base::m_terms;
-
-public: // *** Constructor/destructor ***
-
-    gsINSVisitorVectorValued() {}
-
-    gsINSVisitorVectorValued(const gsFlowSolverParams<T>& params) : Base(params)
-    { }
-
-
-public: // *** Member functions ***
-
-    virtual void assemble();
-
-};
-
-// ===================================================================================================================
-// ===================================================================================================================
-
 // VELOCITY-VELOCITY VISITORS
 
 template <class T>
-class gsINSVisitorUU : public gsINSVisitor<T>
+class gsINSVisitorUU : public gsFlowVisitor<T>
 {
 
 public:
-    typedef gsINSVisitor<T> Base;
+    typedef gsFlowVisitor<T> Base;
 
 
 protected: // *** Base class members ***
@@ -233,10 +91,10 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsINSTermDiffusion<T>(m_params.getPde().viscosity()) );
+        m_terms.push_back( new gsFlowTermDiffusion<T>(m_params.getPde().viscosity()) );
 
         // if(m_params.options().getSwitch("unsteady"))
-        //     m_terms.push_back( new gsINSTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
+        //     m_terms.push_back( new gsFlowTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
 
         // ... other terms, e.g. from stabilizations
     }
@@ -271,7 +129,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new typename gsINSTermNonlin<T>::ConvectionTerm() );
+        m_terms.push_back( new typename gsFlowVisitor<T>::ConvectionTerm() );
 
         // ... other terms, e.g. from stabilizations
     }
@@ -307,7 +165,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsINSTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
+        m_terms.push_back( new gsFlowTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
     }
 
 };
@@ -318,11 +176,11 @@ protected: // *** Member functions ***
 
 // VELOCITY-PRESSURE VISITORS
 template <class T>
-class gsINSVisitorPU : public gsINSVisitorVectorValued<T>  // order: shape, test
+class gsINSVisitorPU : public gsFlowVisitorVectorValued<T>  // order: shape, test
 {
 
 public:
-    typedef gsINSVisitorVectorValued<T> Base;
+    typedef gsFlowVisitorVectorValued<T> Base;
 
 
 protected: // *** Base class members ***
@@ -404,11 +262,11 @@ public: // *** Member functions ***
 
 // PRESSURE-VELOCITY VISITORS
 template <class T>
-class gsINSVisitorUP : public gsINSVisitorVectorValued<T>  // order: shape, test
+class gsINSVisitorUP : public gsFlowVisitorVectorValued<T>  // order: shape, test
 {
 
 public:
-    typedef gsINSVisitorVectorValued<T> Base;
+    typedef gsFlowVisitorVectorValued<T> Base;
 
 
 protected: // *** Base class members ***
@@ -455,11 +313,11 @@ public: // *** Member functions ***
 
 // PRESSURE-PRESSURE VISITORS
 template <class T>
-class gsINSVisitorPP : public gsINSVisitor<T>
+class gsINSVisitorPP : public gsFlowVisitor<T>
 {
 
 public:
-    typedef gsINSVisitor<T> Base;
+    typedef gsFlowVisitor<T> Base;
 
 
 protected: // *** Base class members ***
@@ -592,7 +450,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsINSTermValVal<T>() );
+        m_terms.push_back( new gsFlowTermValVal<T>() );
     }
 
 };
@@ -625,7 +483,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsINSTermGradGrad<T>() );
+        m_terms.push_back( new gsFlowTermGradGrad<T>() );
     }
 
 };
@@ -668,11 +526,11 @@ protected: // *** Member functions ***
 // RHS VISITORS
 
 template <class T>
-class gsINSVisitorRhsU : public gsINSVisitor<T>
+class gsINSVisitorRhsU : public gsFlowVisitor<T>
 {
 
 public:
-    typedef gsINSVisitor<T> Base;
+    typedef gsFlowVisitor<T> Base;
 
 
 protected: // *** Class members ***
@@ -717,7 +575,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsINSTermRhs<T>(m_pRhsFun) );
+        m_terms.push_back( new gsFlowTermRhs<T>(m_pRhsFun) );
     }
 
 public: // *** Member functions ***
@@ -731,11 +589,11 @@ public: // *** Member functions ***
 // ===================================================================================================================
 
 template <class T>
-class gsINSVisitorRhsP : public gsINSVisitor<T>
+class gsINSVisitorRhsP : public gsFlowVisitor<T>
 {
 
 public:
-    typedef gsINSVisitor<T> Base;
+    typedef gsFlowVisitor<T> Base;
 
 
 protected: // *** Class members ***
@@ -780,7 +638,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsINSTermRhs<T>(m_pRhsFun) );
+        m_terms.push_back( new gsFlowTermRhs<T>(m_pRhsFun) );
     }
 
 public: // *** Member functions ***

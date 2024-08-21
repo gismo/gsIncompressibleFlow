@@ -267,7 +267,7 @@ void gsFlowAssemblerBase<T>::computeDirichletDofsL2Proj(const index_t unk, const
 
 
 template<class T>
-void gsFlowAssemblerBase<T>::assembleBlock(gsINSVisitor<T>& visitor, index_t testBasisID, gsSparseMatrix<T, RowMajor>& block, gsMatrix<T>& blockRhs)
+void gsFlowAssemblerBase<T>::assembleBlock(gsFlowVisitor<T>& visitor, index_t testBasisID, gsSparseMatrix<T, RowMajor>& block, gsMatrix<T>& blockRhs)
 {
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
@@ -288,7 +288,7 @@ void gsFlowAssemblerBase<T>::assembleBlock(gsINSVisitor<T>& visitor, index_t tes
 
 
 template<class T>
-void gsFlowAssemblerBase<T>::assembleRhs(gsINSVisitor<T>& visitor, index_t testBasisID, gsMatrix<T>& rhs)
+void gsFlowAssemblerBase<T>::assembleRhs(gsFlowVisitor<T>& visitor, index_t testBasisID, gsMatrix<T>& rhs)
 {
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {

@@ -5,8 +5,6 @@
 
 namespace gismo
 {
-    CLASS_TEMPLATE_INST gsINSVisitor<real_t>;
-    CLASS_TEMPLATE_INST gsINSVisitorVectorValued<real_t>;
     CLASS_TEMPLATE_INST gsINSVisitorUU<real_t>;
     CLASS_TEMPLATE_INST gsINSVisitorUUlin<real_t>;
     CLASS_TEMPLATE_INST gsINSVisitorUUnonlin<real_t>;

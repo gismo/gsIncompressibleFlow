@@ -12,7 +12,7 @@
 #pragma once
 
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
-#include <gsIncompressibleFlow/src/gsINSVisitors.h>
+#include <gsIncompressibleFlow/src/gsFlowVisitors.h>
 
 namespace gismo
 {
@@ -84,13 +84,13 @@ protected: // *** Member functions ***
     /// @param[in]  testBasisID ID of the test basis
     /// @param[out] block       the resulting matrix block
     /// @param[out] blockRhs    right-hand side for the matrix block (arising from eliminated Dirichlet DOFs)
-    void assembleBlock(gsINSVisitor<T>& visitor, index_t testBasisID, gsSparseMatrix<T, RowMajor>& block, gsMatrix<T>& blockRhs);
+    void assembleBlock(gsFlowVisitor<T>& visitor, index_t testBasisID, gsSparseMatrix<T, RowMajor>& block, gsMatrix<T>& blockRhs);
 
     /// @brief Assemble the right-hand side.
     /// @param[in]  visitor     visitor for the right-hand side
     /// @param[in]  testBasisID ID of the test basis
     /// @param[out] rhs         the resulting right-hand side vector
-    void assembleRhs(gsINSVisitor<T>& visitor, index_t testBasisID, gsMatrix<T>& rhs);
+    void assembleRhs(gsFlowVisitor<T>& visitor, index_t testBasisID, gsMatrix<T>& rhs);
 
     /// @brief Assemble the linear part of the problem.
     virtual void assembleLinearPart()
