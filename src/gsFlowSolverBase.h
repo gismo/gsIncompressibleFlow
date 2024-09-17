@@ -34,7 +34,7 @@ protected: // *** Class members ***
     gsMatrix<T> m_solution;
     unsigned m_iterationNumber;
     gsStopwatch m_clock;
-    T m_initAssembT, m_assembT, m_solsetupT, m_solveT, m_relNorm;
+    T m_initAssembT, m_assembT, m_relNorm;
 
     bool m_fileOutput, m_dispOutput;
     std::ofstream m_outFile;

@@ -23,7 +23,7 @@ namespace gismo
 /// @param[in]  output          the output to write
 /// @param[in]  fileOutput      write output in file (true/false)
 /// @param[in]  dispInTerminal  display output in terminal (true/false)
-static void gsWriteOutput(std::ofstream& file, const std::string output, bool fileOutput, bool dispInTerminal)
+inline void gsWriteOutput(std::ofstream& file, const std::string output, bool fileOutput, bool dispInTerminal)
 {
     if (fileOutput)
         file << output;
@@ -52,10 +52,11 @@ inline void gsWriteOutputLine(std::ofstream& file, const std::string line, bool 
 
 /// @brief Creates a one-column matrix (vector) of unique values from the input matrix (useful for creating a unique list of active basis functions in several quadrature points).
 /// @param[in]  mat  a const reference to the input matrix
-static gsMatrix<index_t> createVectorOfUniqueIndices(const gsMatrix<index_t>& mat)
+template<class T>
+gsMatrix<T> createVectorOfUniqueIndices(const gsMatrix<T>& mat)
 {
-    std::map<index_t, bool> map;
-    std::vector<index_t> vecTmp;
+    std::map<T, bool> map;
+    std::vector<T> vecTmp;
 
     for (index_t j = 0; j < mat.cols(); j++)
     {
@@ -69,7 +70,7 @@ static gsMatrix<index_t> createVectorOfUniqueIndices(const gsMatrix<index_t>& ma
         }
     }
 
-    gsMatrix<index_t> vec(vecTmp.size(), 1);
+    gsMatrix<T> vec(vecTmp.size(), 1);
     for (size_t i = 0; i < vecTmp.size(); i++)
         vec(i) = vecTmp[i];
 
