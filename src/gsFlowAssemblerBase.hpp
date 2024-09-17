@@ -271,16 +271,35 @@ void gsFlowAssemblerBase<T>::assembleBlock(gsFlowVisitor<T>& visitor, index_t te
 {
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
-        index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
-
         visitor.initOnPatch(p);
 
-        for(index_t i = 0; i < nBases; i++)
+        if (m_params.options().getString("matFormation") == "RbR")
         {
-            visitor.evaluate(i);
-            visitor.assemble();
-            visitor.localToGlobal(m_ddof, block, blockRhs);
+            index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
+
+            for(index_t i = 0; i < nBases; i++)
+            {;
+                visitor.evaluate(i);
+                visitor.assemble();
+                visitor.localToGlobal(m_ddof, block, blockRhs);
+            }
         }
+        else
+        {
+            if (m_params.options().getString("matFormation") != "EbE")
+                gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
+
+            typename gsBasis<T>::domainIter domIt = m_params.getBases().front().piece(p).makeDomainIterator(boundary::none);
+
+            while (domIt->good())
+            {
+                visitor.evaluate(domIt.get());
+                visitor.assemble();
+                visitor.localToGlobal(m_ddof, block, blockRhs);
+
+                domIt->next();
+            }
+        }    
     }
 
     block.makeCompressed();

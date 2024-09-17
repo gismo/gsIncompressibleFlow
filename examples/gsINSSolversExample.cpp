@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
     real_t picardTol = 1e-4;
     //real_t linTol = 1e-6;
     //std::string precond = "PCDmod_FdiagEqual";
+    std::string matFormation = "EbE";
 
     bool plot = false;
     bool plotMesh = false;
@@ -87,6 +88,7 @@ int main(int argc, char *argv[])
     cmd.addReal("", "inVelY", "y-coordinate of inflow velocity (for profile geometry)", inVelY);
     //cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
 
+    cmd.addString("", "matForm", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     //cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
@@ -177,6 +179,7 @@ int main(int argc, char *argv[])
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     gsFlowSolverParams<real_t> params(NSpde, discreteBases);
     params.options().setSwitch("quiet", quiet);
+    params.options().setString("matFormation", matFormation);
 
     // bool stokesInit, bool plot
     gsOptionList solveOpt;
@@ -295,6 +298,8 @@ int main(int argc, char *argv[])
 
 void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo)
 {
+    gsStopwatch clock;
+
     if(geo == 2)
         markElimDof(NSsolver);
 
@@ -317,9 +322,12 @@ void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo)
         NSsolver.solve(opt.getInt("maxIt"), opt.getReal("tol"));
     //}      
 
-    gsInfo << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
+    real_t totalT = clock.stop();
+
+    gsInfo << "\nAssembly time:" << NSsolver.getInitAssemblyTime() + NSsolver.getAssemblyTime() << "\n";
     gsInfo << "Solve time:" << NSsolver.getSolveTime() << "\n";
     gsInfo << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
+    gsInfo << "Total solveProblem time:" << totalT << "\n";
 
     if (opt.getSwitch("plot")) 
     {

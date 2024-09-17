@@ -81,6 +81,7 @@ public: // *** Static functions ***
         opt.addReal("jac_dist", "Distance from boundary (in the parametric space) for geometry jacobian check", 1e-2);
         opt.addReal("jac_tol", "Critical value of geometry jacobian to throw warning", 1e-4);
 
+        opt.addString("matFormation", "EbE = element by element, RbR = row by row", "RbR");
         opt.addString("linSolver", "The type of linear system solver (direct / iter / petsc)", "direct");
         opt.addString("precType", "Preconditioner to be used with iterative linear solver", "PCDmod_FdiagEqual");
         opt.addString("outFile", "Name of the output file (or the full path to it)", "");

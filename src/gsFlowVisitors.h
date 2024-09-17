@@ -48,15 +48,14 @@ protected: // *** Class members ***
     std::vector< gsFlowTerm<T>* > m_terms;
 
     // updated repeatedly
-    index_t m_currentTestFunID; // updated in evaluate()
     gsMatrix<T> m_localMat;
+    gsMatrix<index_t> m_testFunActives, m_shapeFunActives;
     gsMapData<T> m_mapData; // members: points, dim, patchID
 
     // will be changed:
     gsQuadRule<T> m_quRule;
     gsMatrix<T> m_quNodes;
     gsVector<T> m_quWeights;
-    gsMatrix<index_t> m_shapeFunActives;
     std::vector< gsMatrix<T> > m_testFunData;
     std::vector< gsMatrix<T> > m_shapeFunData; 
     
@@ -84,47 +83,77 @@ protected: // *** Member functions ***
         m_terms.clear();
     }
 
+    /// @brief Define terms to be evaluated according to visitor type and given parameters.
     virtual void defineTerms()
     { GISMO_NO_IMPLEMENTATION }
 
-    // is decided according to visitor type
+    /// @brief Set test and shape basis unknown IDs according to visitor type.
     virtual void defineTestShapeUnknowns()
     { GISMO_NO_IMPLEMENTATION }
 
+    /// @brief Gather evaluation flags from all terms.
     void gatherEvalFlags();
 
+    /// @brief Set pointers to test and shape basis.
     void defineTestShapeBases()
     { 
         m_testBasisPtr = &(m_params.getBases()[m_testUnkID].piece(m_patchID));
         m_shapeBasisPtr = &(m_params.getBases()[m_shapeUnkID].piece(m_patchID));
     }
 
+    /// @brief Setup the quadrature rule.
     void setupQuadrature();
     //{ GISMO_NO_IMPLEMENTATION }
+
+    /// @brief Evaluate required data for the given basis.
+    /// @param[in]  basisFlags      evaluation flags
+    /// @param[in]  basisPtr        the given basis
+    /// @param[in]  basisActives    active basis functions
+    /// @param[out] basisData       resulting data
+    void evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, const gsMatrix<index_t>& basisActives, std::vector< gsMatrix<T> >& basisData);
 
 
 public: // *** Member functions ***
 
+    /// @brief Initialize the visitor.
     void initialize();
 
+    /// @brief Update DoF mappers.
+    /// @param[in] mappers new mappers
     void updateDofMappers(const std::vector<gsDofMapper>& mappers) { m_dofMappers = mappers; }
 
+    /// @brief Initialize the visitor on the given patch.
+    /// @param[in] patchID the patch number
     void initOnPatch(index_t patchID);
 
+    /// @brief Set all needed current solution fields.
+    /// @param[in] solutions vector of new solution fields
     void setCurrentSolution(std::vector<gsField<T> >& solutions);
 
+    /// @brief Set the current solution field.
+    /// @param[in] solution new solution field
     void setCurrentSolution(gsField<T>& solution);
 
-    /// @brief 
-    /// @param[in]  testFunID    the local test function index on the current patch
+    /// @brief Evaluate basis data on the support of a given test function (used for row-by-row assembly).
+    /// @param[in] testFunID the local test function index on the current patch
     void evaluate(index_t testFunID);
-    //{ GISMO_NO_IMPLEMENTATION }
 
+    /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
+    /// @param[in] domIt domain iterator pointing to the current element
+    void evaluate(const gsDomainIterator<T>* domIt);
+
+    /// @brief Assemble the local matrix.
     virtual void assemble();
 
+    /// @brief Map local matrix to the global matrix.
+    /// @param[in]  eliminatedDofs  coefficients of the eliminated Dirichlet DoFs
+    /// @param[out] globalMat       resulting global matrix
+    /// @param[out] globalRhs       resulting global rhs
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
     { GISMO_NO_IMPLEMENTATION } 
 
+    /// @brief Map local rhs vector to the global rhs vector.
+    /// @param[out] globalRhs resulting global rhs
     virtual void localToGlobal(gsMatrix<T>& globalRhs)
     { GISMO_NO_IMPLEMENTATION } 
 
@@ -149,6 +178,7 @@ protected: // *** Base class members ***
 
     using Base::m_params;
     using Base::m_mapData;
+    using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_quWeights;
     using Base::m_testFunData;

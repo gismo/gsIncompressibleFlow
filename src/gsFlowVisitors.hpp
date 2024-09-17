@@ -28,6 +28,57 @@ void gsFlowVisitor<T>::gatherEvalFlags()
 
 
 template<class T>
+void gsFlowVisitor<T>::evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, const gsMatrix<index_t>& basisActives, std::vector< gsMatrix<T> >& basisData)
+{
+    basisData.clear();
+    basisData.resize(3); // 0 - value, 1 - deriv, 2 - deriv2
+
+    index_t dim = m_params.getPde().dim();
+    index_t numAct = basisActives.rows();
+
+    if(basisFlags & NEED_VALUE)
+    {
+        basisData[0].setZero(numAct, m_quNodes.cols());
+
+        gsMatrix<T> tmpData;
+        
+        for(index_t i = 0; i < numAct; i++)
+        {
+            basisPtr->evalSingle_into(basisActives(i), m_quNodes, tmpData);
+            basisData[0].row(i) = tmpData;
+        }
+    }
+
+    if(basisFlags & NEED_DERIV)
+    {
+        basisData[1].setZero(dim*numAct, m_quNodes.cols());
+
+        gsMatrix<T> tmpData;
+
+        for(index_t i = 0; i < numAct; i++)
+        {
+            basisPtr->derivSingle_into(basisActives(i), m_quNodes, tmpData);
+            basisData[1].middleRows(dim*i, dim) = tmpData;
+        }
+    }
+
+    if(basisFlags & NEED_DERIV2)
+    {
+        index_t dimSq = dim*dim;
+        basisData[2].setZero(dimSq*numAct, m_quNodes.cols());
+
+        gsMatrix<T> tmpData;
+        
+        for(index_t i = 0; i < numAct; i++)
+        {
+            basisPtr->deriv2Single_into(basisActives(i), m_quNodes, tmpData);
+            basisData[2].middleRows(dimSq*i, dimSq) = tmpData;
+        }
+    }
+}
+
+
+template<class T>
 void gsFlowVisitor<T>::initialize()
 {
     defineTestShapeUnknowns();  
@@ -79,7 +130,7 @@ void gsFlowVisitor<T>::setCurrentSolution(gsField<T>& solution)
 template<class T>
 void gsFlowVisitor<T>::assemble()
 {
-    m_localMat.setZero(1, m_shapeFunActives.rows());
+    m_localMat.setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
 
     for (size_t i = 0; i < m_terms.size(); i++)
         m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_localMat);
@@ -93,7 +144,7 @@ void gsFlowVisitorVectorValued<T>::assemble()
     m_locMatVec.resize(m_params.getPde().dim());
 
     for (size_t i = 0; i < m_locMatVec.size(); i++)
-        m_locMatVec[i].setZero(1, m_shapeFunActives.rows());
+        m_locMatVec[i].setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
 
     for (size_t i = 0; i < m_terms.size(); i++)
         m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_locMatVec);
@@ -119,12 +170,10 @@ void gsFlowVisitor<T>::setupQuadrature()
 template<class T>
 void gsFlowVisitor<T>::evaluate(index_t testFunID)
 {
-    m_currentTestFunID = testFunID;
+    // shape basis (on the whole support of testFunID)
 
     index_t dim = m_params.getPde().dim();
-
     gsMatrix<T> support = m_testBasisPtr->support(testFunID);
-
     typename gsBasis<T>::domainIter domIt = m_params.getBases().front().piece(m_patchID).makeDomainIterator(boundary::none);
 
     gsMatrix<T> quNodes; // quad. nodes for the current element
@@ -176,66 +225,28 @@ void gsFlowVisitor<T>::evaluate(index_t testFunID)
     gsMatrix<index_t> allActives;
     m_shapeBasisPtr->active_into(m_quNodes, allActives);
     m_shapeFunActives = createVectorOfUniqueIndices(allActives);
-    index_t numAct = m_shapeFunActives.rows();
+    
+    evalBasisData(m_shapeFunFlags, m_shapeBasisPtr, m_shapeFunActives, m_shapeFunData);
 
-    // evaluate bases
-
-    m_testFunData.clear();
-    m_shapeFunData.clear();
-    m_testFunData.resize(3); // 0 - value, 1 - deriv, 2 - deriv2
-    m_shapeFunData.resize(3);
-
-    if(m_testFunFlags & NEED_VALUE)
-        m_testBasisPtr->evalSingle_into(testFunID, m_quNodes, m_testFunData[0]);
-
-    if(m_testFunFlags & NEED_DERIV)
-        m_testBasisPtr->derivSingle_into(testFunID, m_quNodes, m_testFunData[1]);
-
-    if(m_testFunFlags & NEED_DERIV2)
-        m_testBasisPtr->deriv2Single_into(testFunID, m_quNodes, m_testFunData[2]);
+    // test basis
+    m_testFunActives.resize(1,1);
+    m_testFunActives << testFunID;
+    evalBasisData(m_testFunFlags, m_testBasisPtr, m_testFunActives, m_testFunData);
+}
 
 
-    if(m_shapeFunFlags & NEED_VALUE)
-    {
-        m_shapeFunData[0].setZero(numAct, numNodesInSupport);
+template<class T>
+void gsFlowVisitor<T>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    m_quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), m_quNodes, m_quWeights);
+    m_mapData.points = m_quNodes;
+    m_params.getPde().patches().patch(m_patchID).computeMap(m_mapData);
 
-        gsMatrix<T> tmpData;
-        
-        for(index_t i = 0; i < numAct; i++)
-        {
-            m_shapeBasisPtr->evalSingle_into(m_shapeFunActives(i), m_quNodes, tmpData);
-            m_shapeFunData[0].row(i) = tmpData;
-        }
-    }
+    m_testBasisPtr->active_into(m_quNodes.col(0), m_testFunActives);
+    m_shapeBasisPtr->active_into(m_quNodes.col(0), m_shapeFunActives);
 
-    if(m_shapeFunFlags & NEED_DERIV)
-    {
-        m_shapeFunData[1].setZero(dim*numAct, numNodesInSupport);
-
-        gsMatrix<T> tmpData;
-
-        for(index_t i = 0; i < numAct; i++)
-        {
-            m_shapeBasisPtr->derivSingle_into(m_shapeFunActives(i), m_quNodes, tmpData);
-            m_shapeFunData[1].middleRows(dim*i, dim) = tmpData;
-        }
-    }
-        
-
-    if(m_shapeFunFlags & NEED_DERIV2)
-    {
-        index_t dimSq = dim*dim;
-        m_shapeFunData[2].setZero(dimSq*numAct, numNodesInSupport);
-
-        gsMatrix<T> tmpData;
-        
-        for(index_t i = 0; i < numAct; i++)
-        {
-            m_shapeBasisPtr->deriv2Single_into(m_shapeFunActives(i), m_quNodes, tmpData);
-            m_shapeFunData[2].middleRows(dimSq*i, dimSq) = tmpData;
-        }
-    }
-
+    evalBasisData(m_testFunFlags, m_testBasisPtr, m_testFunActives, m_testFunData);
+    evalBasisData(m_shapeFunFlags, m_shapeBasisPtr, m_shapeFunActives, m_shapeFunData);
 }
 
 

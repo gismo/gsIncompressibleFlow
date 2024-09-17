@@ -35,10 +35,9 @@ protected: // *** Base class members ***
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
     using Base::m_dofMappers;
-    using Base::m_currentTestFunID;
+    using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_localMat;
-
 
 public: // *** Constructor/destructor ***
 
@@ -191,7 +190,7 @@ protected: // *** Base class members ***
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
     using Base::m_dofMappers;
-    using Base::m_currentTestFunID;
+    using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_terms;
 
@@ -240,7 +239,7 @@ protected: // *** Base class members ***
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
     using Base::m_dofMappers;
-    using Base::m_currentTestFunID;
+    using Base::m_testFunActives;
     using Base::m_shapeFunActives;
 
 public: // *** Constructor/destructor ***
@@ -277,7 +276,7 @@ protected: // *** Base class members ***
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
     using Base::m_dofMappers;
-    using Base::m_currentTestFunID;
+    using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_terms;
 
@@ -327,7 +326,7 @@ protected: // *** Base class members ***
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
     using Base::m_dofMappers;
-    using Base::m_currentTestFunID;
+    using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_localMat;
 
@@ -546,7 +545,7 @@ protected: // *** Base class members ***
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
     using Base::m_dofMappers;
-    using Base::m_currentTestFunID;
+    using Base::m_testFunActives;
     using Base::m_localMat;
     using Base::m_mapData;
     using Base::m_quWeights;
@@ -609,7 +608,7 @@ protected: // *** Base class members ***
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
     using Base::m_dofMappers;
-    using Base::m_currentTestFunID;
+    using Base::m_testFunActives;
     using Base::m_localMat;
     using Base::m_mapData;
     using Base::m_quWeights;
