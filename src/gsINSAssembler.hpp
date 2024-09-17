@@ -27,8 +27,6 @@ void gsINSAssembler<T>::initMembers()
     getBases().front().getMapper(getAssemblerOptions().dirStrategy, getAssemblerOptions().intStrategy, getBCs(), m_dofMappers.front(), 0);
     getBases().back().getMapper(getAssemblerOptions().dirStrategy, getAssemblerOptions().intStrategy, getBCs(), m_dofMappers.back(), 1);
 
-    updateSizes();
-
     m_nnzPerRowU = 1;
     for (short_t i = 0; i < m_tarDim; i++)
         m_nnzPerRowU *= 2 * getBases().front().maxDegree(i) + 1;
@@ -36,6 +34,8 @@ void gsINSAssembler<T>::initMembers()
     m_nnzPerRowP = 1;
     for (short_t i = 0; i < m_tarDim; i++)
         m_nnzPerRowP *= 2 * getBases().back().maxDegree(i) + 1;
+
+    updateSizes();
 
     m_visitorUUlin = gsINSVisitorUUlin<T>(m_params);
     m_visitorUUlin.initialize();
@@ -80,11 +80,6 @@ void gsINSAssembler<T>::updateSizes()
     m_blockUUnonlin.resize(m_pshift, m_pshift);
     m_blockUP.resize(m_pshift, m_pdofs);
 
-    // memory allocation
-    m_blockUUlin.reserve(gsVector<index_t>::Constant(m_blockUUlin.rows(), m_nnzPerRowU));
-    m_blockUUnonlin.reserve(gsVector<index_t>::Constant(m_blockUUnonlin.rows(), m_nnzPerRowU));
-    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.rows(), m_nnzPerRowU));
-
     m_baseMatrix.resize(m_dofs, m_dofs);
     m_matrix.resize(m_dofs, m_dofs);
 
@@ -123,11 +118,15 @@ template<class T>
 void gsINSAssembler<T>::assembleLinearPart()
 {
     // matrix and rhs cleaning
-    m_blockUUlin.setZero();
-    m_blockUP.setZero();
+    m_blockUUlin.resize(m_pshift, m_pshift);
+    m_blockUP.resize(m_pshift, m_pdofs);
     m_rhsUlin.setZero();
     m_rhsBtB.setZero();
     m_rhsFG.setZero();
+
+    // memory allocation
+    m_blockUUlin.reserve(gsVector<index_t>::Constant(m_blockUUlin.rows(), m_nnzPerRowU));
+    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.rows(), m_nnzPerRowU));
 
     this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin, m_rhsUlin);
     this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
@@ -142,8 +141,12 @@ template<class T>
 void gsINSAssembler<T>::assembleNonlinearPart()
 {
     // matrix and rhs cleaning
-    m_blockUUnonlin.setZero();
+    m_blockUUnonlin.resize(m_pshift, m_pshift);
+    m_blockUUnonlin.data().squeeze();
     m_rhsUnonlin.setZero();
+
+    // memory allocation
+    m_blockUUnonlin.reserve(gsVector<index_t>::Constant(m_blockUUnonlin.rows(), m_nnzPerRowU));
 
     this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin, m_rhsUnonlin);
 }
@@ -454,7 +457,7 @@ void gsINSAssemblerUnsteady<T>::assembleLinearPart()
     Base::assembleLinearPart();
 
     // matrix cleaning
-    m_blockTimeDiscr.setZero();
+    //m_blockTimeDiscr.setZero();
 
     gsMatrix<T> dummyRhs;
     dummyRhs.setZero(m_pshift, 1);
