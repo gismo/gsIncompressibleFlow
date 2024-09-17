@@ -10,62 +10,350 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 { 
-    int npts = 10;
 
-    int deg = 2;
     int dim = 2;
     int numRefine = 0;
-    int maxIt = 5;
-    real_t viscosity = 0.1;
-    real_t tol = 1e-5;
+    int numIncrease = 0;
+
+    gsCmdLine cmd("Comparison of computational times for classic matrix assembly and assembly from triplets");
+    cmd.addInt("d", "dim", "space dimension", dim);
+    cmd.addInt("r", "refine", "uniform refine", numRefine);
+    cmd.addInt("i", "degIncr", "degree increase", numIncrease);
+    try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
     real_t a = 8;
     real_t b = 2;
     real_t a_in = 1;
 
     gsMultiPatch<> patches;
-    gsFunctionExpr<> f;
     
     switch(dim)
     {
         case 2:
-            patches = BSplineStep2D<real_t>(deg, a, b, a_in);
-            // patches.patch(0).coef(1,1) += 1.1;
-            f = gsFunctionExpr<>("0", "0", 2);
+            gsInfo << "Domain: 2D step\n";
+            patches = BSplineStep2D<real_t>(1, a, b, a_in);
             break;
 
         case 3:
-            patches = BSplineStep3D<real_t>(deg, a, b, b, a_in);
-            f = gsFunctionExpr<>("0", "0", "0", 3);
+            gsInfo << "Domain: 3D step\n";
+            patches = BSplineStep3D<real_t>(1, a, b, b, a_in);
             break;
 
         default: GISMO_ERROR("Wrong dimension!");
     }
 
-    patches.uniformRefine();
+    gsInfo << patches;
+
+    gsBoundaryConditions<> bcInfo;
+    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall;
+    defineBCs_step(bcInfo, bndIn, bndOut, bndWall, dim);
 
     gsMultiBasis<> basis(patches);
-    gsBoundaryConditions<> bcInfo;
-    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall; // containers of patch sides corresponding to inflow, outflow and wall boundaries
     
-    defineBCs_step(bcInfo, bndIn, bndOut, bndWall, dim); 
-    refineBasis_step(basis, numRefine, 0, 0, 0, 0, dim, a, b, b);
+    for (int i = 0; i < numRefine; i++)
+        basis.uniformRefine();
 
-    std::vector< gsMultiBasis<> >  discreteBases;
-    discreteBases.push_back(basis); // basis for velocity
-    discreteBases.push_back(basis); // basis for pressure
-    discreteBases[0].degreeElevate(1); // elevate the velocity space (Taylor-Hood element type)
+    basis.degreeIncrease(numIncrease);
 
-    gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
-    gsFlowSolverParams<real_t> params(NSpde, discreteBases);
-    gsINSSolverSteady<real_t> NSsolver(params);
+    gsDofMapper mapper;
+    basis.getMapper(dirichlet::elimination, iFace::glue, bcInfo, mapper, 0);
 
-    gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
-    gsInfo << "\ninitialization...\n";
-    NSsolver.initialize();
-    //NSsolver.solve(maxIt, tol);
+    int numDofs = mapper.freeSize();
+    gsInfo << "numDofs = " << numDofs << "\n";
 
-    int check = NSsolver.checkGeoJacobian(npts);
+    gsStopwatch clock, clockIn;
+
+    // ---------------------------
+    // fill matrix as in visitors:
+
+    gsInfo << "----------\n\n";
+
+    gsInfo << "\nAssembling matrix as in visitors - ColMajor.\n";
+
+    real_t reserveT1, assembleT1;
+    real_t insertT1 = 0;
+
+    gsSparseMatrix<real_t, ColMajor> globalMat1(numDofs, numDofs);
+
+    int nnzPerCol = 1;
+    for (int i = 0; i < dim; i++)
+        nnzPerCol *= 2 * basis.maxDegree(i) + 1;
+
+    clock.restart();
+    globalMat1.reserve(gsVector<index_t>::Constant(numDofs, nnzPerCol));
+    reserveT1 = clock.stop();
+
+    gsInfo << "\nallocated size = " << globalMat1.data().allocatedSize() << "\n";
+
+    clock.restart();
+    for(size_t p = 0; p < patches.nPatches(); p++)
+    {
+        gsVector<index_t> numQuadNodes(dim); 
+        numQuadNodes.setConstant(basis.piece(p).maxDegree()+1);
+        gsGaussRule<> quRule(numQuadNodes);
+        gsMatrix<> quNodes;
+        gsVector<> quWeights;
+
+        typename gsBasis<>::domainIter domIt = basis.piece(p).makeDomainIterator(boundary::none);
+
+        while (domIt->good())
+        {
+            quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+
+            gsMatrix<index_t> actives;
+            basis.piece(p).active_into(quNodes.col(0), actives);
+
+            int numAct = actives.rows();
+
+            gsMatrix<> localMat(numAct, numAct);
+            localMat.setOnes();
+
+            mapper.localToGlobal(actives, p, actives);
+
+            for (index_t i = 0; i < numAct; ++i)
+            {
+                const index_t ii = actives(i);
+
+                if (mapper.is_free_index(ii))
+                {
+                    for (index_t j = 0; j < numAct; ++j)
+                    {
+                        const index_t jj = actives(j);
+
+                        if (mapper.is_free_index(jj))
+                        {
+                            clockIn.restart();
+                            globalMat1.coeffRef(ii, jj) = localMat(i, j);
+                            insertT1 += clockIn.stop();
+                        }
+                    }
+                }
+            }
+
+            domIt->next();
+        }
+    }
+    assembleT1 = clock.stop();
+
+    globalMat1.makeCompressed();
+
+    gsInfo << "nonzeros = " << globalMat1.nonZeros() << "\n\n";
+    gsInfo << "reserve time = " << reserveT1 << "\n";
+    gsInfo << "insert time = " << insertT1 << "\n\n";
+
+    gsInfo << "----------\n\n";
+
+    gsInfo << "Assembling matrix as in visitors - RowMajor.\n";
+
+    real_t reserveT2, assembleT2;
+    real_t insertT2 = 0;
+
+    gsSparseMatrix<real_t, RowMajor> globalMat2(numDofs, numDofs);
+
+    clock.restart();
+    globalMat2.reserve(gsVector<index_t>::Constant(numDofs, nnzPerCol));
+    reserveT2 = clock.stop();
+
+    gsInfo << "\nallocated size = " << globalMat2.data().allocatedSize() << "\n";
+
+    clock.restart();
+    for(size_t p = 0; p < patches.nPatches(); p++)
+    {
+        gsVector<index_t> numQuadNodes(dim); 
+        numQuadNodes.setConstant(basis.piece(p).maxDegree()+1);
+        gsGaussRule<> quRule(numQuadNodes);
+        gsMatrix<> quNodes;
+        gsVector<> quWeights;
+
+        typename gsBasis<>::domainIter domIt = basis.piece(p).makeDomainIterator(boundary::none);
+
+        while (domIt->good())
+        {
+            quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+
+            gsMatrix<index_t> actives;
+            basis.piece(p).active_into(quNodes.col(0), actives);
+
+            int numAct = actives.rows();
+
+            gsMatrix<> localMat(numAct, numAct);
+            localMat.setOnes();
+
+            mapper.localToGlobal(actives, p, actives);
+
+            for (index_t i = 0; i < numAct; ++i)
+            {
+                const index_t ii = actives(i);
+
+                if (mapper.is_free_index(ii))
+                {
+                    for (index_t j = 0; j < numAct; ++j)
+                    {
+                        const index_t jj = actives(j);
+
+                        if (mapper.is_free_index(jj))
+                        {
+                            clockIn.restart();
+                            globalMat2.coeffRef(ii, jj) = localMat(i, j);
+                            insertT2 += clockIn.stop();
+                        }
+                    }
+                }
+            }
+
+            domIt->next();
+        }
+    }
+    assembleT2 = clock.stop();
+
+    globalMat2.makeCompressed();
+
+    gsInfo << "nonzeros = " << globalMat2.nonZeros() << "\n\n";
+    gsInfo << "reserve time = " << reserveT2 << "\n";
+    gsInfo << "insert time = " << insertT2 << "\n\n";
+
+    gsInfo << "----------\n\n";
+
+    // ---------------------------
+    // fill matrix using triplets:
+
+    gsInfo << "Assembling matrix using triplets.\n";
+
+    real_t reserveT3, assembleT3, createTripletsT3, createMatT3;
+
+    gsSparseMatrix<real_t> globalMat3(numDofs, numDofs);
+
+    std::vector<gsEigen::Triplet<real_t> > triplets;
+
+    clock.restart();
+    triplets.reserve(numDofs * nnzPerCol);
+    reserveT3 = clock.stop();
+
+    clock.restart();
+
+    clockIn.restart();
+    for(size_t p = 0; p < patches.nPatches(); p++)
+    {
+        gsVector<index_t> numQuadNodes(dim); 
+        numQuadNodes.setConstant(basis.piece(p).maxDegree()+1);
+        gsGaussRule<> quRule(numQuadNodes);
+        gsMatrix<> quNodes;
+        gsVector<> quWeights;
+
+        typename gsBasis<>::domainIter domIt = basis.piece(p).makeDomainIterator(boundary::none);
+
+        while (domIt->good())
+        {
+            quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+
+            gsMatrix<index_t> actives;
+            basis.piece(p).active_into(quNodes.col(0), actives);
+
+            int numAct = actives.rows();
+
+            gsMatrix<> localMat(numAct, numAct);
+            localMat.setOnes();
+
+            mapper.localToGlobal(actives, p, actives);
+
+            for (index_t i = 0; i < numAct; ++i)
+            {
+                const index_t ii = actives(i);
+
+                if (mapper.is_free_index(ii))
+                {
+                    for (index_t j = 0; j < numAct; ++j)
+                    {
+                        const index_t jj = actives(j);
+
+                        if (mapper.is_free_index(jj))
+                            triplets.push_back(gsEigen::Triplet<real_t>(ii, jj, localMat(i, j)));
+                    }
+                }
+            }
+
+            domIt->next();
+        }
+    }
+    createTripletsT3 = clockIn.stop();
+
+    clockIn.restart();
+    globalMat3.setFromTriplets(triplets.begin(), triplets.end());
+    createMatT3 = clockIn.stop();
+
+    assembleT3 = clock.stop();
+
+    gsInfo << "num triplets = " << triplets.size() << "\n";
+    gsInfo << "nonzeros = " << globalMat3.nonZeros() << "\n\n";
+    gsInfo << "reserve time = " << reserveT3 << "\n";
+    gsInfo << "create triplets time = " << createTripletsT3 << "\n";
+    gsInfo << "setFromTriplets time = " << createMatT3 << "\n\n";
+
+    gsInfo << "==========\n\n";
+    gsInfo << "classic ColMajor total time = " << assembleT1 << "\n";
+    gsInfo << "classic RowMajor total time = " << assembleT2 << "\n";
+    gsInfo << "triplet total time = " << assembleT3 << "\n\n";
+    
+    // -------------------------------
+    // -------------------------------
+    // test of jacobian check:
+
+    // int npts = 10;
+
+    // int deg = 2;
+    // int dim = 2;
+    // int numRefine = 0;
+    // int maxIt = 5;
+    // real_t viscosity = 0.1;
+    // real_t tol = 1e-5;
+
+    // real_t a = 8;
+    // real_t b = 2;
+    // real_t a_in = 1;
+
+    // gsMultiPatch<> patches;
+    // gsFunctionExpr<> f;
+    
+    // switch(dim)
+    // {
+    //     case 2:
+    //         patches = BSplineStep2D<real_t>(deg, a, b, a_in);
+    //         // patches.patch(0).coef(1,1) += 1.1;
+    //         f = gsFunctionExpr<>("0", "0", 2);
+    //         break;
+
+    //     case 3:
+    //         patches = BSplineStep3D<real_t>(deg, a, b, b, a_in);
+    //         f = gsFunctionExpr<>("0", "0", "0", 3);
+    //         break;
+
+    //     default: GISMO_ERROR("Wrong dimension!");
+    // }
+
+    // patches.uniformRefine();
+
+    // gsMultiBasis<> basis(patches);
+    // gsBoundaryConditions<> bcInfo;
+    // std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall; // containers of patch sides corresponding to inflow, outflow and wall boundaries
+    
+    // defineBCs_step(bcInfo, bndIn, bndOut, bndWall, dim); 
+    // refineBasis_step(basis, numRefine, 0, 0, 0, 0, dim, a, b, b);
+
+    // std::vector< gsMultiBasis<> >  discreteBases;
+    // discreteBases.push_back(basis); // basis for velocity
+    // discreteBases.push_back(basis); // basis for pressure
+    // discreteBases[0].degreeElevate(1); // elevate the velocity space (Taylor-Hood element type)
+
+    // gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
+    // gsFlowSolverParams<real_t> params(NSpde, discreteBases);
+    // gsINSSolverSteady<real_t> NSsolver(params);
+
+    // gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
+    // gsInfo << "\ninitialization...\n";
+    // NSsolver.initialize();
+    // //NSsolver.solve(maxIt, tol);
+
+    // int check = NSsolver.checkGeoJacobian(npts);
 
     // gsWriteParaview<>(patches, "domain", 30000, true);
 
