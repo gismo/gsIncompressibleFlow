@@ -30,7 +30,7 @@ public: // *** Smart pointers ***
 protected: // *** Class members ***
 
     unsigned m_geoFlags, m_testFunFlags, m_shapeFunFlags; // evaluation flags
-    gsVector<T> m_coeff; // coefficient of the term (size = number of quadrature points)
+    gsVector<T> m_coeff;
 
 
 public: // *** Constructor/destructor ***
@@ -64,11 +64,25 @@ public: // *** Member functions ***
 
 protected: // *** Member functions ***
 
-    virtual void computeCoeff(const gsMapData<T>& mapData, real_t constValue = 1.0)
-    { 
-        m_coeff.resize(mapData.points.cols());
-        m_coeff.setConstant(constValue);
+    void setConstCoeff(T value)
+    {
+        m_coeff.resize(1);
+        m_coeff << value;
     }
+
+    /**
+     * @brief Evaluate the term coefficient.
+     * 
+     * The result is saved into m_coeff.
+     * If the coefficient is constant, m_coeff is a vector of size 1.
+     * If it is space-dependent, the size of m_coeff is equal to the number of evaluation points.
+     * 
+     * @param[in] mapData       geometry map information (including the evaluation points)
+     */
+    virtual void evalCoeff(const gsMapData<T>& mapData)
+    { setConstCoeff(1.0); }
+
+    virtual gsVector<T> getCoeffWeightsProduct(const gsVector<T>& quWeights);
 
 };
 
@@ -189,10 +203,8 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
-    virtual void computeCoeff(const gsMapData<T>& mapData, real_t constValue = 1.0)
-    { 
-        Base::computeCoeff(mapData, 1./m_timeStep);
-    }
+    virtual void evalCoeff(const gsMapData<T>& mapData0)
+    { this->setConstCoeff(1./m_timeStep); }
 
 };
 
@@ -251,10 +263,9 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
-    virtual void computeCoeff(const gsMapData<T>& mapData, real_t constValue = 1.0)
-    { 
-        Base::computeCoeff(mapData, m_viscosity);
-    }
+    virtual void evalCoeff(const gsMapData<T>& mapData)
+    { this->setConstCoeff(m_viscosity); }
+
 };
 
 // ===================================================================================================================

@@ -19,7 +19,8 @@ namespace gismo
 template<class T>
 void gsINSTermPvalUdiv<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
 { 
-    this->computeCoeff(mapData, -1.0); // -1 to get block -Bt 
+    this->evalCoeff(mapData);
+    gsVector<T> wCoeff = this->getCoeffWeightsProduct(quWeights);
 
     const gsMatrix<T>& testFunGrads = testFunData[1];
     const gsMatrix<T>& shapeFunVals = shapeFunData[0];
@@ -30,7 +31,7 @@ void gsINSTermPvalUdiv<T>::assemble(const gsMapData<T>& mapData, const gsVector<
 
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        const T weight = m_coeff(k) * quWeights(k) * mapData.measure(k);
+        const T weight = wCoeff(k) * mapData.measure(k);
 
         transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
 
@@ -44,7 +45,8 @@ void gsINSTermPvalUdiv<T>::assemble(const gsMapData<T>& mapData, const gsVector<
 template<class T>
 void gsINSTermUdivPval<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
 { 
-    this->computeCoeff(mapData);
+    this->evalCoeff(mapData);
+    gsVector<T> wCoeff = this->getCoeffWeightsProduct(quWeights);
 
     const gsMatrix<T>& testFunVals = testFunData[0];
     const gsMatrix<T>& shapeFunGrads = shapeFunData[1];
@@ -55,7 +57,7 @@ void gsINSTermUdivPval<T>::assemble(const gsMapData<T>& mapData, const gsVector<
 
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        const T weight = m_coeff(k) * quWeights(k) * mapData.measure(k);
+        const T weight = wCoeff(k) * mapData.measure(k);
 
         transformGradients(mapData, k, shapeFunGrads, shapeFunPhysGrad);
 
@@ -69,8 +71,9 @@ void gsINSTermUdivPval<T>::assemble(const gsMapData<T>& mapData, const gsVector<
 template<class T>
 void gsINSTermUsolGradVal<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
 { 
-    this->computeCoeff(mapData);
     this->computeCoeffSolU(mapData);
+    this->evalCoeff(mapData);
+    gsVector<T> wCoeff = this->getCoeffWeightsProduct(quWeights);
 
     const gsMatrix<T>& testFunVals = testFunData[0];
     const gsMatrix<T>& shapeFunGrads = shapeFunData[1];
@@ -81,7 +84,7 @@ void gsINSTermUsolGradVal<T>::assemble(const gsMapData<T>& mapData, const gsVect
 
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        const T weight = m_coeff(k) * quWeights(k) * mapData.measure(k);
+        const T weight = wCoeff(k) * mapData.measure(k);
 
         transformGradients(mapData, k, shapeFunGrads, shapeFunPhysGrad);
 

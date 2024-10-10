@@ -39,6 +39,12 @@ public: // *** Constructor/destructor ***
     }
 
 
+protected: // *** Member functions ***
+
+    virtual void evalCoeff(const gsMapData<T>& mapData0)
+    { this->setConstCoeff(-1.0); } // -1 to get block -Bt 
+
+
 public: // *** Member functions ***
 
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat);
