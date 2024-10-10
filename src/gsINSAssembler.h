@@ -14,36 +14,39 @@
 #include <gsCore/gsField.h>
 #include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsINSVisitors.h>
+#include <gsIncompressibleFlow/src/gsFlowUtils.h>
 
 namespace gismo
 {
 
-/// @brief A base class for incompressible Navier-Stokes assemblers.
-/// @tparam T real number type
-template<class T>
-class gsINSAssembler: public gsFlowAssemblerBase<T>
+/// @brief              A base class for incompressible Navier-Stokes assemblers.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+template<class T, int MatOrder>
+class gsINSAssembler: public gsFlowAssemblerBase<T, MatOrder>
 {
 
 public:
-    typedef gsFlowAssemblerBase<T> Base;
+    typedef gsFlowAssemblerBase<T, MatOrder> Base;
 
 
 protected: // *** Class members ***
 
     T m_viscosity;
-    gsSparseMatrix<T, RowMajor> m_baseMatrix, m_matrix;
+    gsSparseMatrix<T, MatOrder> m_baseMatrix, m_matrix;
     gsMatrix<T> m_baseRhs, m_rhs;
 
     index_t m_udofs;
     index_t m_pdofs;
     index_t m_pshift;
     index_t m_nnzPerRowU, m_nnzPerRowP;
-    gsINSVisitorUUlin<T> m_visitorUUlin;
-    gsINSVisitorUUnonlin<T> m_visitorUUnonlin;
-    gsINSVisitorPU_withUPrhs<T> m_visitorUP;
-    gsINSVisitorRhsU<T> m_visitorF;
-    gsINSVisitorRhsP<T> m_visitorG;
-    gsSparseMatrix<T, RowMajor> m_blockUUlin, m_blockUUnonlin, m_blockUP;
+    gsINSVisitorUUlin<T, MatOrder> m_visitorUUlin;
+    gsINSVisitorUUnonlin<T, MatOrder> m_visitorUUnonlin;
+    gsINSVisitorPU_withUPrhs<T, MatOrder> m_visitorUP;
+    gsINSVisitorRhsU<T, MatOrder> m_visitorF;
+    gsINSVisitorRhsP<T, MatOrder> m_visitorG;
+    gsSparseMatrix<T, MatOrder> m_blockUUlin_comp, m_blockUUnonlin_comp, m_blockUP;
+    gsSparseMatrix<T, MatOrder> m_blockUUlin_whole, m_blockUUnonlin_whole;
     gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsFG;
     gsField<T>  m_currentVelField, m_currentPresField;
 
@@ -97,6 +100,26 @@ protected: // *** Member functions ***
     /// @brief Assemble the linear part of the problem.
     virtual void assembleNonlinearPart();
 
+    /// @brief Fill the velocity-velocity block into the global saddle-point matrix.
+    /// @param globalMat[out]   global saddle-point matrix
+    /// @param sourceMat[in]    velocity-velocity block (either for one velocity component or the whole block for all components)
+    void fillGlobalMat_UU(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat);
+
+    /// @brief Fill the velocity-pressure block into the global saddle-point matrix.
+    /// @param globalMat[out]   global saddle-point matrix
+    /// @param sourceMat[in]    velocity-pressure block
+    void fillGlobalMat_UP(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat);
+
+    /// @brief Fill the pressure-velocity block into the global saddle-point matrix.
+    /// @param globalMat[out]   global saddle-point matrix
+    /// @param sourceMat[in]    pressure-velocitye block
+    void fillGlobalMat_PU(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat);
+
+    /// @brief Fill the pressure-pressure block into the global saddle-point matrix.
+    /// @param globalMat[out]   global saddle-point matrix
+    /// @param sourceMat[in]    pressure-pressure block
+    void fillGlobalMat_PP(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat);
+
     /// @brief Fill the linear part of the global matrix and right-hand side.
     virtual void fillBaseSystem();
 
@@ -120,7 +143,7 @@ public: // *** Member functions ***
     virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk);
 
     /// @brief Fill the matrix and right-hand side for the Stokes problem.
-    virtual void fillStokesSystem(gsSparseMatrix<T, RowMajor>& stokesMat, gsMatrix<T>& stokesRhs);
+    virtual void fillStokesSystem(gsSparseMatrix<T, MatOrder>& stokesMat, gsMatrix<T>& stokesRhs);
 
     /// @brief Construct solution from computed solution vector for unknown \a unk.
     /// @param[in]  solVector   the solution vector obtained from the linear system
@@ -141,7 +164,7 @@ public: // *** Getters/setters ***
     T getViscosity() const { return m_viscosity; }
 
     /// @brief Returns the assembled matrix.
-    virtual const gsSparseMatrix<T, RowMajor>& matrix() const
+    virtual const gsSparseMatrix<T, MatOrder>& matrix() const
     {
         GISMO_ASSERT(m_isSystemReady, "Matrix not ready, is fillGlobalSyst in the solver params true? If so, update() must be called first.");
         return m_matrix;
@@ -171,10 +194,11 @@ public: // *** Getters/setters ***
     index_t getPshift() const { return m_pshift; }
 
     /// @brief Returns the velocity-velocity block of the linear system.
-    virtual gsSparseMatrix<T, RowMajor> getBlockUU() const;
+    /// @param[in] linPartOnly if true, returns only the linear part of the velocity-velocity block
+    virtual gsSparseMatrix<T, MatOrder> getBlockUU(bool linPartOnly = false);
 
     /// @brief Returns the diagonal block of velocity-velocity block for i-th component.
-    virtual gsSparseMatrix<T, RowMajor> getBlockUUcompDiag(index_t i = 0) const
+    virtual gsSparseMatrix<T, MatOrder> getBlockUUcompDiag(index_t i = 0)
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
         return getBlockUU().block(i * m_udofs, i * m_udofs, m_udofs, m_udofs); 
@@ -182,25 +206,25 @@ public: // *** Getters/setters ***
 
 
     /// @brief Returns the velocity-pressure block of the linear system.
-    const gsSparseMatrix<T, RowMajor>& getBlockUP() const
+    const gsSparseMatrix<T, MatOrder>& getBlockUP() const
     { return m_blockUP; }
 
     /// @brief Returns the pressure-velocity block of the linear system.
-    gsSparseMatrix<T, RowMajor> getBlockPU() const
-    { return (-1.0)*gsSparseMatrix<T, RowMajor>(m_blockUP.transpose()); }
+    gsSparseMatrix<T, MatOrder> getBlockPU() const
+    { return (-1.0)*gsSparseMatrix<T, MatOrder>(m_blockUP.transpose()); }
 
     /// @brief Returns the part of velocity-pressure block for i-th velocity component.
-    virtual gsSparseMatrix<T, RowMajor> getBlockUPcomp(index_t i) const
+    virtual gsSparseMatrix<T, MatOrder> getBlockUPcomp(index_t i) const
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
         return getBlockUP().middleRows(i * m_udofs, m_udofs);
     }
 
     /// @brief Returns part of pressure-velocity block for i-th velocity component.
-    virtual gsSparseMatrix<T, RowMajor> getBlockPUcomp(index_t i) const
+    virtual gsSparseMatrix<T, MatOrder> getBlockPUcomp(index_t i) const
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
-        return (-1.0)*gsSparseMatrix<T, RowMajor>(getBlockUPcomp(i).transpose());
+        return (-1.0)*gsSparseMatrix<T, MatOrder>(getBlockUPcomp(i).transpose());
     }
 
     /// @brief /// @brief Returns the velocity part of the right-hand side.
@@ -224,12 +248,12 @@ public: // *** Getters/setters ***
 
 /// @brief  The steady incompressible Navier--Stokes assembler.
 /// @tparam T real number type
-template<class T>
-class gsINSAssemblerSteady: public gsINSAssembler<T>
+template<class T, int MatOrder>
+class gsINSAssemblerSteady: public gsINSAssembler<T, MatOrder>
 {
 
 public:
-    typedef gsINSAssembler<T> Base;
+    typedef gsINSAssembler<T, MatOrder> Base;
 
 
 public: // *** Constructor/destructor ***
@@ -251,18 +275,18 @@ public: // *** Constructor/destructor ***
 
 /// @brief  The unsteady incompressible Navier--Stokes assembler.
 /// @tparam T real number type
-template<class T>
-class gsINSAssemblerUnsteady: public gsINSAssembler<T>
+template<class T, int MatOrder>
+class gsINSAssemblerUnsteady: public gsINSAssembler<T, MatOrder>
 {
 
 public:
-    typedef gsINSAssembler<T> Base;
+    typedef gsINSAssembler<T, MatOrder> Base;
 
 
 protected: // *** Class members ***
 
-    gsINSVisitorUUtimeDiscr<T> m_visitorTimeDiscr;
-    gsSparseMatrix<T, RowMajor> m_blockTimeDiscr;
+    gsINSVisitorUUtimeDiscr<T, MatOrder> m_visitorTimeDiscr;
+    gsSparseMatrix<T, MatOrder> m_blockTimeDiscr;
     gsMatrix<T> m_rhsTimeDiscr;
     gsField<T> m_oldTimeVelField;
 
@@ -328,7 +352,7 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the velocity-velocity block of the linear system.
-    virtual gsSparseMatrix<T, RowMajor> getBlockUU() const
+    virtual gsSparseMatrix<T, MatOrder> getBlockUU()
     { return Base::getBlockUU() + m_blockTimeDiscr; }
 
 

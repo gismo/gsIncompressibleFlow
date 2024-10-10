@@ -15,8 +15,8 @@
 namespace gismo
 {
 
-template<class T>
-T gsFlowLinSystSolver<T>::stopwatchStart()
+template<class T, int MatOrder>
+T gsFlowLinSystSolver<T, MatOrder>::stopwatchStart()
 {
 
 #ifdef GISMO_WITH_PETSC
@@ -33,8 +33,8 @@ T gsFlowLinSystSolver<T>::stopwatchStart()
 }
 
 
-template<class T>
-T gsFlowLinSystSolver<T>::stopwatchStop()
+template<class T, int MatOrder>
+T gsFlowLinSystSolver<T, MatOrder>::stopwatchStop()
 {
 
 #ifdef GISMO_WITH_PETSC
@@ -50,8 +50,8 @@ T gsFlowLinSystSolver<T>::stopwatchStop()
 }
 
 
-template<class T>
-void gsFlowLinSystSolver<T>::applySolver(const gsSparseMatrix<T>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution, real_t alpha_u, real_t alpha_p, index_t usize, index_t pdofs)
+template<class T, int MatOrder>
+void gsFlowLinSystSolver<T, MatOrder>::applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution, real_t alpha_u, real_t alpha_p, index_t usize, index_t pdofs)
 {
     GISMO_ASSERT(solution.rows() > 0, "The solution in applySolver() is empty!");
 
@@ -70,8 +70,8 @@ void gsFlowLinSystSolver<T>::applySolver(const gsSparseMatrix<T>& mat, const gsM
 // ===================================================================================================================
 
 
-template<class T>
-void gsFlowLinSystSolver_direct<T>::setupSolver(const gsSparseMatrix<T>& mat)
+template<class T, int MatOrder>
+void gsFlowLinSystSolver_direct<T, MatOrder>::setupSolver(const gsSparseMatrix<T, MatOrder>& mat)
 {
     real_t time0 = stopwatchStart();
     m_solver.analyzePattern(mat);
@@ -81,8 +81,8 @@ void gsFlowLinSystSolver_direct<T>::setupSolver(const gsSparseMatrix<T>& mat)
 }
 
 
-template<class T>
-void gsFlowLinSystSolver_direct<T>::applySolver(const gsSparseMatrix<T>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution)
+template<class T, int MatOrder>
+void gsFlowLinSystSolver_direct<T, MatOrder>::applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution)
 {
     real_t time0 = stopwatchStart();
     m_solver.factorize(mat);

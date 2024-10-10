@@ -79,13 +79,33 @@ gsMatrix<T> createVectorOfUniqueIndices(const gsMatrix<T>& mat)
 }
 
 
+/// @brief Get a vector of nonzero entries per outer index (row or column depending on the matrix storage order).
+/// @tparam T           real number type
+/// @tparam MatOrder    matrix storage order (RowMajor/ColMajor)
+/// @param mat[in]      a const reference to the matrix
+template<class T, int MatOrder>
+gsVector<index_t> getNnzVectorPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
+{
+    gsVector<index_t> nnzPerOuter(mat.outerSize());
+    nnzPerOuter.setZero();
+
+    for (index_t outer = 0; outer < mat.outerSize(); outer++)
+        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(mat, outer); it; ++it)
+            ++nnzPerOuter[outer];
+
+    return nnzPerOuter;
+}
+
+
 /// @brief Fill a diagonal approximation of an inverse matrix.
+/// @tparam T           real number type
+/// @tparam MatOrder    matrix storage order (RowMajor/ColMajor)
 /// @param[in]  mat     a const reference to the matrix of which the inverse is approximated
 /// @param[out] diagInv a reference to the resulting inverse approximation
 /// @param[in]  repeat  number of the diagonal block repetition (e.g. for velocity components)
 /// @param[in]  lumping use lumping to define the diagonal approximation
-template<class T>
-void diagInvMatrix_into(const gsSparseMatrix<T>& mat, gsSparseMatrix<T>& diagInv, int repeat, bool lumping = false)
+template<class T, int MatOrder>
+void diagInvMatrix_into(const gsSparseMatrix<T, MatOrder>& mat, gsSparseMatrix<T, MatOrder>& diagInv, int repeat, bool lumping = false)
 {
     GISMO_ENSURE(mat.nonZeros() != 0, "diagInvMatrix_into(): The matrix is empty!");
 
@@ -94,8 +114,8 @@ void diagInvMatrix_into(const gsSparseMatrix<T>& mat, gsSparseMatrix<T>& diagInv
     diagInv.resize(repeat*varDofs, repeat*varDofs);
     diagInv.reserve(gsVector<int>::Constant(diagInv.cols(), 1));
 
-    const gsSparseMatrix<T>* matPtr = &mat;
-    gsSparseMatrix<T> lumped(varDofs, varDofs);
+    const gsSparseMatrix<T, MatOrder>* matPtr = &mat;
+    gsSparseMatrix<T, MatOrder> lumped(varDofs, varDofs);
 
     if (lumping)
     {
@@ -106,7 +126,7 @@ void diagInvMatrix_into(const gsSparseMatrix<T>& mat, gsSparseMatrix<T>& diagInv
 
         for (int j = 0; j < varDofs; j++)
         {
-            for (typename gsSparseMatrix<T>::InnerIterator it(mat, j); it; ++it)
+            for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(mat, j); it; ++it)
             {
                 int i = it.row();
 
@@ -129,7 +149,7 @@ void diagInvMatrix_into(const gsSparseMatrix<T>& mat, gsSparseMatrix<T>& diagInv
 
 
 /// @brief Returns a B-spline parametrization of a rectangle of a given degree in both directions.
-/// @tparam T       coefficient type
+/// @tparam T       real number type
 /// @param deg      polynomial degree of the B-spline parametrization
 /// @param llx      \a x coordinate of the lower left corner
 /// @param lly      \a y coordinate of the lower left corner
@@ -153,7 +173,7 @@ gsTensorBSpline<2, T> BSplineRectangle(int deg, const T llx, const T lly, const 
 
 
 /// @brief Returns a B-spline parametrization of a 3D block of a given degree in all directions.
-/// @tparam T       coefficient type
+/// @tparam T       real number type
 /// @param deg      polynomial degree of the B-spline parametrization
 /// @param llx      \a x coordinate of a corner
 /// @param lly      \a y coordinate of a corner
@@ -180,7 +200,7 @@ gsTensorBSpline<3, T> BSplineBlock(int deg, const T llx, const T lly, const T ll
 
 
 /// @brief Returns a B-spline multipatch domain for 2D problems of flow in a cavity.
-/// @tparam T       coefficient type
+/// @tparam T       real number type
 /// @param deg      polynomial degree of the B-spline parametrization
 /// @param a        width of the cavity
 /// @param b        height of the cavity
@@ -205,7 +225,7 @@ gsMultiPatch<T> BSplineCavity2D(int deg, const T a, const T b, const int np = 1,
 
 
 /// @brief Returns a B-spline multipatch domain for 2D problems of flow over a backward facing step.
-/// @tparam T       coefficient type
+/// @tparam T       real number type
 /// @param deg      polynomial degree of the B-spline parametrization
 /// @param a        length of the domain behind the step
 /// @param b        total height of the domain
@@ -237,7 +257,7 @@ gsMultiPatch<T> BSplineStep2D(int deg, const T a, const T b, const T a_in, T h =
 
 
 /// @brief Returns a B-spline multipatch domain for 3D problems of flow over a backward facing step.
-/// @tparam T       coefficient type
+/// @tparam T       real number type
 /// @param deg      polynomial degree of the B-spline parametrization
 /// @param a        length of the domain behind the step
 /// @param b        total height of the domain
@@ -274,7 +294,7 @@ gsMultiPatch<T> BSplineStep3D(int deg, const T a, const T b, const T c, const T 
 
 
 /// @brief Define boundary conditions for the corresponding boundary parts.
-/// @tparam T            coefficient type
+/// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
 /// @param[in]  bndIn    reference to a container of patch sides corresponding to inflow boundaries
 /// @param[in]  bndWall  reference to a container of patch sides corresponding to solid walls
@@ -292,7 +312,7 @@ void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide>
 
 
 /// @brief Define boundary conditions for the 2D lid-driven cavity problem.
-/// @tparam T           coefficient type
+/// @tparam T           real number type
 /// @param[out] bcInfo  reference to the boundary conditions as gsBoundaryConditions 
 /// @param[in]  np      number of patches in each direction
 /// @param[out] bndWall reference to a container of patch sides corresponding to solid walls
@@ -326,7 +346,7 @@ void defineBCs_cavity2D(gsBoundaryConditions<T>& bcInfo, const int np, std::vect
 
 
 /// @brief Define boundary conditions for the 2D backward-facing step problem.
-/// @tparam T            coefficient type
+/// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
 /// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
 /// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
@@ -369,7 +389,7 @@ void defineBCs_step2D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int
 
 
 /// @brief Define boundary conditions for the 3D backward-facing step problem.
-/// @tparam T            coefficient type
+/// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
 /// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
 /// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
@@ -427,7 +447,7 @@ void defineBCs_step3D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int
 
 
 /// @brief Define boundary conditions for the backward-facing step problem.
-/// @tparam T            coefficient type
+/// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
 /// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
 /// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
@@ -454,7 +474,7 @@ void defineBCs_step(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, 
 
 
 /// @brief Define boundary conditions for the 2D blade profile problem.
-/// @tparam T            coefficient type
+/// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
 /// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
 /// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
@@ -478,7 +498,7 @@ void defineBCs_profile2D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<
 
 
 /// @brief Refine basis near wall (the first knot span).
-/// @tparam T           coefficient type
+/// @tparam T           real number type
 /// @tparam d           space dimension
 /// @param basis        reference to the basis to be refined
 /// @param numRefine    number of recursive refinements
@@ -501,7 +521,7 @@ void refineFirstKnotSpan(gsMultiBasis<T>& basis, int numRefine, int patch, int d
 
 
 /// @brief Refine basis near wall (the last knot span).
-/// @tparam T           coefficient type
+/// @tparam T           real number type
 /// @tparam d           space dimension
 /// @param basis        reference to the basis to be refined
 /// @param numRefine    number of recursive refinements
@@ -527,7 +547,7 @@ void refineLastKnotSpan(gsMultiBasis<T>& basis, int numRefine, int patch, int di
 
 
 /// @brief Refine basis for the 2D lid-driven cavity problem.
-/// @tparam T               coefficient type
+/// @tparam T               real number type
 /// @param basis            reference to the basis to be refined
 /// @param numRefine        number of uniform refinements
 /// @param numRefineLocal   number of near-wall refinements
@@ -554,7 +574,7 @@ void refineBasis_cavity2D(gsMultiBasis<T>& basis, int numRefine, int numRefineLo
 
 
 /// @brief Refine basis for the backward-facing step problem near walls.
-/// @tparam T               coefficient type
+/// @tparam T               real number type
 /// @tparam d               space dimension
 /// @param basis            reference to the basis to be refined
 /// @param numRefineWalls   number of refinements near top and bottom walls
@@ -578,7 +598,7 @@ void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int numRefineC
 
 
 /// @brief Refine basis for the backward-facing step problem.
-/// @tparam T               coefficient type
+/// @tparam T               real number type
 /// @param basis            reference to the basis to be refined
 /// @param numRefine        number of uniform refinements
 /// @param numRefineWalls   number of refinements near top and bottom walls
@@ -635,7 +655,7 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
 
 
 /// @brief Refine basis for the 2D profile problem.
-/// @tparam T                   coefficient type
+/// @tparam T                   real number type
 /// @param[in, out] basis       reference to the basis to be refined
 /// @param[in] numRefine        number of uniform refinements
 /// @param[in] numRefineBlade   number of refinements near the blade

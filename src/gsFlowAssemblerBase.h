@@ -17,9 +17,10 @@
 namespace gismo
 {
 
-/// @brief  A base class for all assemblers in gsIncompressibleFlow.
-/// @tparam T real number type
-template<class T>
+/// @brief  A           base class for all assemblers in gsIncompressibleFlow.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+template<class T, int MatOrder>
 class gsFlowAssemblerBase
 {
 
@@ -84,13 +85,13 @@ protected: // *** Member functions ***
     /// @param[in]  testBasisID ID of the test basis
     /// @param[out] block       the resulting matrix block
     /// @param[out] blockRhs    right-hand side for the matrix block (arising from eliminated Dirichlet DOFs)
-    void assembleBlock(gsFlowVisitor<T>& visitor, index_t testBasisID, gsSparseMatrix<T, RowMajor>& block, gsMatrix<T>& blockRhs);
+    void assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs);
 
     /// @brief Assemble the right-hand side.
     /// @param[in]  visitor     visitor for the right-hand side
     /// @param[in]  testBasisID ID of the test basis
     /// @param[out] rhs         the resulting right-hand side vector
-    void assembleRhs(gsFlowVisitor<T>& visitor, index_t testBasisID, gsMatrix<T>& rhs);
+    void assembleRhs(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsMatrix<T>& rhs);
 
     /// @brief Assemble the linear part of the problem.
     virtual void assembleLinearPart()
@@ -193,12 +194,12 @@ public: // *** Getters/setters ***
     gsOptionList options() const { return m_params.options(); }
 
     /// @brief Returns the assembled matrix.
-    virtual const gsSparseMatrix<T, RowMajor>& matrix() const
+    virtual const gsSparseMatrix<T, MatOrder>& matrix() const
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Returns the assembled matrix for unknown with index \a unk (e.g. from two-equation turbulence models).
     /// @param[in] unk index of the unknown
-    virtual const gsSparseMatrix<T, RowMajor>& matrix(index_t unk) const
+    virtual const gsSparseMatrix<T, MatOrder>& matrix(index_t unk) const
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Returns the assembled right-hand side.

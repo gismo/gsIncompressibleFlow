@@ -22,14 +22,15 @@
 namespace gismo
 {
 
-/// @brief A base class for incompressible Navier-Stokes solvers.
-/// @tparam T real number type
-template<class T>
-class gsINSSolver: public gsFlowSolverBase<T>
+/// @brief              A base class for incompressible Navier-Stokes solvers.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+template<class T, int MatOrder>
+class gsINSSolver: public gsFlowSolverBase<T, MatOrder>
 {
 
 public:
-    typedef gsFlowSolverBase<T> Base;
+    typedef gsFlowSolverBase<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -64,21 +65,22 @@ public: // *** Getters/setters ***
     virtual std::string getName() { return "gsINSSolver"; }
 
     /// @brief Returns a pointer to the assembler.
-    virtual gsINSAssembler<T>* getAssembler() const
-    { return dynamic_cast<gsINSAssembler<T>*>(m_assemblerPtr); }
+    virtual gsINSAssembler<T, MatOrder>* getAssembler() const
+    { return dynamic_cast<gsINSAssembler<T, MatOrder>*>(m_assemblerPtr); }
 
 }; // gsINSSolver
 
 // ===================================================================================================================
 
-/// @brief The steady incompressible Navier-Stokes solver.
-/// @tparam T coefficient type
-template<class T>
-class gsINSSolverSteady : public gsINSSolver<T>
+/// @brief              The steady incompressible Navier-Stokes solver.
+/// @tparam T           coefficient type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+template<class T = real_t, int MatOrder = RowMajor>
+class gsINSSolverSteady : public gsINSSolver<T, MatOrder>
 {
 
 public:
-    typedef gsINSSolver<T> Base;
+    typedef gsINSSolver<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -97,7 +99,7 @@ public: // *** Constructor/destructor ***
     gsINSSolverSteady(gsFlowSolverParams<T>& params):
     Base(params)
     { 
-        m_assemblerPtr = new gsINSAssemblerSteady<T>(m_params);
+        m_assemblerPtr = new gsINSAssemblerSteady<T, MatOrder>(m_params);
 
         Base::initMembers();
         m_params.options().setSwitch("unsteady", false);
@@ -113,9 +115,9 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns a pointer to the assembler.
-    virtual gsINSAssemblerSteady<T>* getAssembler() const
+    virtual gsINSAssemblerSteady<T, MatOrder>* getAssembler() const
     {
-        return dynamic_cast<gsINSAssemblerSteady<T>*>(m_assemblerPtr);
+        return dynamic_cast<gsINSAssemblerSteady<T, MatOrder>*>(m_assemblerPtr);
     }
 
     /// @brief Retrurns the name of the class as a string.
@@ -126,14 +128,15 @@ public: // *** Getters/setters ***
 
 // ===================================================================================================================
 
-/// @brief The steady incompressible Navier-Stokes solver.
-/// @tparam T coefficient type
-template<class T>
-class gsINSSolverUnsteady : public gsINSSolver<T>
+/// @brief              The unsteady incompressible Navier-Stokes solver.
+/// @tparam T           coefficient type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+template<class T = real_t, int MatOrder = RowMajor>
+class gsINSSolverUnsteady : public gsINSSolver<T, MatOrder>
 {
 
 public:
-    typedef gsINSSolver<T> Base;
+    typedef gsINSSolver<T, MatOrder> Base;
 
 
 protected: // *** Class members ***
@@ -158,7 +161,7 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     gsINSSolverUnsteady(gsFlowSolverParams<T>& params): Base(params)
     { 
-        m_assemblerPtr = new gsINSAssemblerUnsteady<T>(m_params);
+        m_assemblerPtr = new gsINSAssemblerUnsteady<T, MatOrder>(m_params);
 
         initMembers();
         m_params.options().setSwitch("unsteady", true);
@@ -184,9 +187,9 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns a pointer to the assembler.
-    gsINSAssemblerUnsteady<T>* getAssembler() const
+    gsINSAssemblerUnsteady<T, MatOrder>* getAssembler() const
     {
-        return dynamic_cast<gsINSAssemblerUnsteady<T>*>(m_assemblerPtr);
+        return dynamic_cast<gsINSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
     }
 
     // @brief Returns the elapsed simulation time.

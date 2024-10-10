@@ -20,12 +20,12 @@ namespace gismo
 // ===================================================================================================================
 // VELOCITY-VELOCITY VISITORS
 
-template <class T>
-class gsINSVisitorUU : public gsFlowVisitor<T>
+template <class T, int MatOrder>
+class gsINSVisitorUU : public gsFlowVisitor<T, MatOrder>
 {
 
 public:
-    typedef gsFlowVisitor<T> Base;
+    typedef gsFlowVisitor<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -57,18 +57,18 @@ protected: // *** Member functions ***
 
 public: // *** Member functions ***
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
 };
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorUUlin : public gsINSVisitorUU<T>
+template <class T, int MatOrder>
+class gsINSVisitorUUlin : public gsINSVisitorUU<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorUU<T> Base;
+    typedef gsINSVisitorUU<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -102,12 +102,12 @@ protected: // *** Member functions ***
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorUUnonlin : public gsINSVisitorUU<T>
+template <class T, int MatOrder>
+class gsINSVisitorUUnonlin : public gsINSVisitorUU<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorUU<T> Base;
+    typedef gsINSVisitorUU<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -128,7 +128,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new typename gsFlowVisitor<T>::ConvectionTerm() );
+        m_terms.push_back( new typename gsFlowVisitor<T, MatOrder>::ConvectionTerm() );
 
         // ... other terms, e.g. from stabilizations
     }
@@ -137,12 +137,12 @@ protected: // *** Member functions ***
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorUUtimeDiscr : public gsINSVisitorUUlin<T>
+template <class T, int MatOrder>
+class gsINSVisitorUUtimeDiscr : public gsINSVisitorUUlin<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorUUlin<T> Base;
+    typedef gsINSVisitorUUlin<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -174,12 +174,12 @@ protected: // *** Member functions ***
 // ===================================================================================================================
 
 // VELOCITY-PRESSURE VISITORS
-template <class T>
-class gsINSVisitorPU : public gsFlowVisitorVectorValued<T>  // order: shape, test
+template <class T, int MatOrder>
+class gsINSVisitorPU : public gsFlowVisitorVectorValued<T, MatOrder>  // order: shape, test
 {
 
 public:
-    typedef gsFlowVisitorVectorValued<T> Base;
+    typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -217,18 +217,18 @@ protected: // *** Member functions ***
 
 public: // *** Member functions ***
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
 };
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorPU_withUPrhs : public gsINSVisitorPU<T>  // order: shape, test
+template <class T, int MatOrder>
+class gsINSVisitorPU_withUPrhs : public gsINSVisitorPU<T, MatOrder>  // order: shape, test
 {
 
 public:
-    typedef gsINSVisitorPU<T> Base;
+    typedef gsINSVisitorPU<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -252,7 +252,7 @@ public: // *** Constructor/destructor ***
 
 public: // *** Member functions ***
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
 };
 
@@ -260,12 +260,12 @@ public: // *** Member functions ***
 // ===================================================================================================================
 
 // PRESSURE-VELOCITY VISITORS
-template <class T>
-class gsINSVisitorUP : public gsFlowVisitorVectorValued<T>  // order: shape, test
+template <class T, int MatOrder>
+class gsINSVisitorUP : public gsFlowVisitorVectorValued<T, MatOrder>  // order: shape, test
 {
 
 public:
-    typedef gsFlowVisitorVectorValued<T> Base;
+    typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -303,7 +303,7 @@ protected: // *** Member functions ***
 
 public: // *** Member functions ***
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
 };
 
@@ -311,12 +311,12 @@ public: // *** Member functions ***
 // ===================================================================================================================
 
 // PRESSURE-PRESSURE VISITORS
-template <class T>
-class gsINSVisitorPP : public gsFlowVisitor<T>
+template <class T, int MatOrder>
+class gsINSVisitorPP : public gsFlowVisitor<T, MatOrder>
 {
 
 public:
-    typedef gsFlowVisitor<T> Base;
+    typedef gsFlowVisitor<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -349,18 +349,18 @@ protected: // *** Member functions ***
 
 public: // *** Member functions ***
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
 };
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorPPlin : public gsINSVisitorPP<T>
+template <class T, int MatOrder>
+class gsINSVisitorPPlin : public gsINSVisitorPP<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorPP<T> Base;
+    typedef gsINSVisitorPP<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -389,12 +389,12 @@ protected: // *** Member functions ***
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorPPnonlin : public gsINSVisitorPP<T>
+template <class T, int MatOrder>
+class gsINSVisitorPPnonlin : public gsINSVisitorPP<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorPP<T> Base;
+    typedef gsINSVisitorPP<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -423,12 +423,12 @@ protected: // *** Member functions ***
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorPPmass : public gsINSVisitorPPlin<T>
+template <class T, int MatOrder>
+class gsINSVisitorPPmass : public gsINSVisitorPPlin<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorPPlin<T> Base;
+    typedef gsINSVisitorPPlin<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -456,12 +456,12 @@ protected: // *** Member functions ***
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorPPlaplace : public gsINSVisitorPPlin<T>
+template <class T, int MatOrder>
+class gsINSVisitorPPlaplace : public gsINSVisitorPPlin<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorPPlin<T> Base;
+    typedef gsINSVisitorPPlin<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -489,12 +489,12 @@ protected: // *** Member functions ***
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorPPconvection : public gsINSVisitorPPnonlin<T>
+template <class T, int MatOrder>
+class gsINSVisitorPPconvection : public gsINSVisitorPPnonlin<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorPPnonlin<T> Base;
+    typedef gsINSVisitorPPnonlin<T, MatOrder> Base;
 
 protected: // *** Base class members ***
 
@@ -524,12 +524,12 @@ protected: // *** Member functions ***
 
 // RHS VISITORS
 
-template <class T>
-class gsINSVisitorRhsU : public gsFlowVisitor<T>
+template <class T, int MatOrder>
+class gsINSVisitorRhsU : public gsFlowVisitor<T, MatOrder>
 {
 
 public:
-    typedef gsFlowVisitor<T> Base;
+    typedef gsFlowVisitor<T, MatOrder> Base;
 
 
 protected: // *** Class members ***
@@ -587,12 +587,12 @@ public: // *** Member functions ***
 
 // ===================================================================================================================
 
-template <class T>
-class gsINSVisitorRhsP : public gsFlowVisitor<T>
+template <class T, int MatOrder>
+class gsINSVisitorRhsP : public gsFlowVisitor<T, MatOrder>
 {
 
 public:
-    typedef gsFlowVisitor<T> Base;
+    typedef gsFlowVisitor<T, MatOrder> Base;
 
 
 protected: // *** Class members ***

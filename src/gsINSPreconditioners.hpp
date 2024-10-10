@@ -15,65 +15,65 @@
 namespace gismo
 {
 
-template <class T>
-typename gsINSPreconditioner<T>::uPtr gsINSPreconditioner<T>::make(std::string precType, const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+template <class T, int MatOrder>
+typename gsINSPreconditioner<T, MatOrder>::uPtr gsINSPreconditioner<T, MatOrder>::make(std::string precType, const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
 {
     if (precType == "LSC_FdiagEqual")
-        return gsINSBlockPrecondLSC<T, gsINSPrecondBlockF<T> >::make(mat, opt);
+        return gsINSBlockPrecondLSC<T, MatOrder, gsINSPrecondBlockF<T, MatOrder> >::make(mat, opt);
     else if (precType == "LSC_Fdiag")
-        return gsINSBlockPrecondLSC<T, gsINSPrecondBlockFdiag<T> >::make(mat, opt);
+        return gsINSBlockPrecondLSC<T, MatOrder, gsINSPrecondBlockFdiag<T, MatOrder> >::make(mat, opt);
     else if (precType == "LSC_Fwhole")
-        return gsINSBlockPrecondLSC<T, gsINSPrecondBlockFwhole<T> >::make(mat, opt);
+        return gsINSBlockPrecondLSC<T, MatOrder, gsINSPrecondBlockFwhole<T, MatOrder> >::make(mat, opt);
     else if (precType == "LSC_Fmod")
-        return gsINSBlockPrecondLSC<T, gsINSPrecondBlockFmod<T> >::make(mat, opt);
+        return gsINSBlockPrecondLSC<T, MatOrder, gsINSPrecondBlockFmod<T, MatOrder> >::make(mat, opt);
     else if (precType == "PCD_FdiagEqual")
-        return gsINSBlockPrecondPCD<T, gsINSPrecondBlockF<T> >::make(mat, opt);
+        return gsINSBlockPrecondPCD<T, MatOrder, gsINSPrecondBlockF<T, MatOrder> >::make(mat, opt);
     else if (precType == "PCD_Fdiag")
-        return gsINSBlockPrecondPCD<T, gsINSPrecondBlockFdiag<T> >::make(mat, opt);
+        return gsINSBlockPrecondPCD<T, MatOrder, gsINSPrecondBlockFdiag<T, MatOrder> >::make(mat, opt);
     else if (precType == "PCD_Fwhole")
-        return gsINSBlockPrecondPCD<T, gsINSPrecondBlockFwhole<T> >::make(mat, opt);
+        return gsINSBlockPrecondPCD<T, MatOrder, gsINSPrecondBlockFwhole<T, MatOrder> >::make(mat, opt);
     else if (precType == "PCD_Fmod")
-        return gsINSBlockPrecondPCD<T, gsINSPrecondBlockFmod<T> >::make(mat, opt);
+        return gsINSBlockPrecondPCD<T, MatOrder, gsINSPrecondBlockFmod<T, MatOrder> >::make(mat, opt);
     else if (precType == "PCDmod_FdiagEqual")
-        return gsINSBlockPrecondPCDmod<T, gsINSPrecondBlockF<T> >::make(mat, opt);
+        return gsINSBlockPrecondPCDmod<T, MatOrder, gsINSPrecondBlockF<T, MatOrder> >::make(mat, opt);
     else if (precType == "PCDmod_Fdiag")
-        return gsINSBlockPrecondPCDmod<T, gsINSPrecondBlockFdiag<T> >::make(mat, opt);
+        return gsINSBlockPrecondPCDmod<T, MatOrder, gsINSPrecondBlockFdiag<T, MatOrder> >::make(mat, opt);
     else if (precType == "PCDmod_Fwhole")
-        return gsINSBlockPrecondPCDmod<T, gsINSPrecondBlockFwhole<T> >::make(mat, opt);
+        return gsINSBlockPrecondPCDmod<T, MatOrder, gsINSPrecondBlockFwhole<T, MatOrder> >::make(mat, opt);
     else if (precType == "PCDmod_Fmod")
-        return gsINSBlockPrecondPCDmod<T, gsINSPrecondBlockFmod<T> >::make(mat, opt);
+        return gsINSBlockPrecondPCDmod<T, MatOrder, gsINSPrecondBlockFmod<T, MatOrder> >::make(mat, opt);
     else if (precType == "AL_Fwhole")
-        return gsINSBlockPrecondAL<T, gsINSPrecondBlockFwhole<T> >::make(mat, opt);
+        return gsINSBlockPrecondAL<T, MatOrder, gsINSPrecondBlockFwhole<T, MatOrder> >::make(mat, opt);
     else if (precType == "AL_Fmod")
-        return gsINSBlockPrecondAL<T, gsINSPrecondBlockFmod<T> >::make(mat, opt);
+        return gsINSBlockPrecondAL<T, MatOrder, gsINSPrecondBlockFmod<T, MatOrder> >::make(mat, opt);
     else if (precType == "SIMPLE_FdiagEqual")
-        return gsINSBlockPrecondSIMPLE<T, gsINSPrecondBlockF<T> >::make(mat, opt);
+        return gsINSBlockPrecondSIMPLE<T, MatOrder, gsINSPrecondBlockF<T, MatOrder> >::make(mat, opt);
     else if (precType == "SIMPLE_Fdiag")
-        return gsINSBlockPrecondSIMPLE<T, gsINSPrecondBlockFdiag<T> >::make(mat, opt);
+        return gsINSBlockPrecondSIMPLE<T, MatOrder, gsINSPrecondBlockFdiag<T, MatOrder> >::make(mat, opt);
     else if (precType == "SIMPLE_Fwhole")
-        return gsINSBlockPrecondSIMPLE<T, gsINSPrecondBlockFwhole<T> >::make(mat, opt);
+        return gsINSBlockPrecondSIMPLE<T, MatOrder, gsINSPrecondBlockFwhole<T, MatOrder> >::make(mat, opt);
     else if (precType == "SIMPLE_Fmod")
-        return gsINSBlockPrecondSIMPLE<T, gsINSPrecondBlockFmod<T> >::make(mat, opt);
+        return gsINSBlockPrecondSIMPLE<T, MatOrder, gsINSPrecondBlockFmod<T, MatOrder> >::make(mat, opt);
     else if (precType == "SIMPLER_FdiagEqual")
-        return gsINSBlockPrecondSIMPLER<T, gsINSPrecondBlockF<T> >::make(mat, opt);
+        return gsINSBlockPrecondSIMPLER<T, MatOrder, gsINSPrecondBlockF<T, MatOrder> >::make(mat, opt);
     else if (precType == "SIMPLER_Fdiag")
-        return gsINSBlockPrecondSIMPLER<T, gsINSPrecondBlockFdiag<T> >::make(mat, opt);
+        return gsINSBlockPrecondSIMPLER<T, MatOrder, gsINSPrecondBlockFdiag<T, MatOrder> >::make(mat, opt);
     else if (precType == "SIMPLER_Fwhole")
-        return gsINSBlockPrecondSIMPLER<T, gsINSPrecondBlockFwhole<T> >::make(mat, opt);
+        return gsINSBlockPrecondSIMPLER<T, MatOrder, gsINSPrecondBlockFwhole<T, MatOrder> >::make(mat, opt);
     else if (precType == "SIMPLER_Fmod")
-        return gsINSBlockPrecondSIMPLER<T, gsINSPrecondBlockFmod<T> >::make(mat, opt);
+        return gsINSBlockPrecondSIMPLER<T, MatOrder, gsINSPrecondBlockFmod<T, MatOrder> >::make(mat, opt);
     else if (precType == "MSIMPLER_FdiagEqual")
-        return gsINSBlockPrecondMSIMPLER<T, gsINSPrecondBlockF<T> >::make(mat, opt);
+        return gsINSBlockPrecondMSIMPLER<T, MatOrder, gsINSPrecondBlockF<T, MatOrder> >::make(mat, opt);
     else if (precType == "MSIMPLER_Fdiag")
-        return gsINSBlockPrecondMSIMPLER<T, gsINSPrecondBlockFdiag<T> >::make(mat, opt);
+        return gsINSBlockPrecondMSIMPLER<T, MatOrder, gsINSPrecondBlockFdiag<T, MatOrder> >::make(mat, opt);
     else if (precType == "MSIMPLER_Fwhole")
-        return gsINSBlockPrecondMSIMPLER<T, gsINSPrecondBlockFwhole<T> >::make(mat, opt);
+        return gsINSBlockPrecondMSIMPLER<T, MatOrder, gsINSPrecondBlockFwhole<T, MatOrder> >::make(mat, opt);
     else if (precType == "MSIMPLER_Fmod")
-        return gsINSBlockPrecondMSIMPLER<T, gsINSPrecondBlockFmod<T> >::make(mat, opt);
+        return gsINSBlockPrecondMSIMPLER<T, MatOrder, gsINSPrecondBlockFmod<T, MatOrder> >::make(mat, opt);
     else if (precType == "StokesDiag_FdiagEqual")
-        return gsBlockPrecondStokes<T, gsINSPrecondBlockF<T> >::make(mat, opt);
+        return gsBlockPrecondStokes<T, MatOrder, gsINSPrecondBlockF<T, MatOrder> >::make(mat, opt);
     else if (precType == "StokesTriang_FdiagEqual")
-        return gsBlockPrecondStokesTriang<T, gsINSPrecondBlockF<T> >::make(mat, opt);
+        return gsBlockPrecondStokesTriang<T, MatOrder, gsINSPrecondBlockF<T, MatOrder> >::make(mat, opt);
     /*else if (precType == "SchurEx_LSC_FdiagEqual")
         return uwbINSBlockPrecondSchurEx<T, gsINSPrecondBlockF<T>, gsINSPrecondSchurLSC<T> >::make(mat, opt);
     else if (precType == "SchurEx_SIMPLE_FdiagEqual")
@@ -83,13 +83,13 @@ typename gsINSPreconditioner<T>::uPtr gsINSPreconditioner<T>::make(std::string p
     else
     {
         gsInfo << "Invalid preconditioner type, using LSC_FdiagEqual.\n";
-        return gsINSBlockPrecondLSC<T, gsINSPrecondBlockF<T> >::make(mat, opt);
+        return gsINSBlockPrecondLSC<T, MatOrder, gsINSPrecondBlockF<T, MatOrder> >::make(mat, opt);
     }
 }
 
 
-template <class T>
-gsOptionList gsINSPreconditioner<T>::defaultOptions()
+template <class T, int MatOrder>
+gsOptionList gsINSPreconditioner<T, MatOrder>::defaultOptions()
 {
     gsOptionList opt;
 
@@ -116,8 +116,8 @@ gsOptionList gsINSPreconditioner<T>::defaultOptions()
 }
 
 
-template <class T>
-void gsINSBlockPrecondBase<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder>
+void gsINSBlockPrecondBase<T, MatOrder>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     int uSize = m_Finv->rows();
     int pSize = m_Sinv->rows();
@@ -137,8 +137,8 @@ void gsINSBlockPrecondBase<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x)
 }
 
 
-template <class T, class BlockFType>
-void gsINSBlockPrecondAL<T, BlockFType>::fillALgammaPart_into(gsSparseMatrix<T>& matGammaPart, gsMatrix<T>& rhsGammaPart, const std::map<std::string, gsSparseMatrix<T> >& mat, const gsMatrix<T>& rhs, const gsOptionList& opt)
+template <class T, int MatOrder, class BlockFType>
+void gsINSBlockPrecondAL<T, MatOrder, BlockFType>::fillALgammaPart_into(gsSparseMatrix<T, MatOrder>& matGammaPart, gsMatrix<T>& rhsGammaPart, const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsMatrix<T>& rhs, const gsOptionList& opt)
 {
     gsInfo << "Filling the extra part of Agamma matrix... ";
 
@@ -149,28 +149,26 @@ void gsINSBlockPrecondAL<T, BlockFType>::fillALgammaPart_into(gsSparseMatrix<T>&
     int numDofs = uSize + pdofs;
     real_t gamma = opt.getReal("gamma");
 
-    const gsSparseMatrix<T>& matNS = mat.at("matNS");
-    const gsSparseMatrix<T>& presM = mat.at("matMp");
+    const gsSparseMatrix<T, MatOrder>& matNS = mat.at("matNS");
+    const gsSparseMatrix<T, MatOrder>& presM = mat.at("matMp");
 
-    gsSparseMatrix<T> presMinv(pdofs, pdofs); // approximation of pressure mass matrix inverse
+    gsSparseMatrix<T, MatOrder> presMinv(pdofs, pdofs); // approximation of pressure mass matrix inverse
     presMinv.setIdentity();
     for (int i = 0; i < pdofs; i++)
         presMinv.coeffRef(i, i) = 1 / presM.coeff(i, i);
 
-    gsSparseMatrix<T> Mgamma = gamma * matNS.block(0, uSize, uSize, pdofs) * presMinv * matNS.block(uSize, 0, pdofs, uSize);
+    gsSparseMatrix<T, MatOrder> Mgamma = gamma * matNS.block(0, uSize, uSize, pdofs) * presMinv * matNS.block(uSize, 0, pdofs, uSize);
 
-    gsVector<int> nonZerosPerColumnVector;
-    nonZerosPerColumnVector.setZero(numDofs);
-    
-    for (int i = 0; i < uSize; i++)
-        nonZerosPerColumnVector(i) += Mgamma.col(i).nonZeros();
+    gsVector<index_t> nonZerosVector;
+    nonZerosVector.setZero(numDofs);
+    nonZerosVector.topRows(uSize) = getNnzVectorPerOuter(Mgamma);    
 
     matGammaPart.resize(numDofs, numDofs);
-    matGammaPart.reserve(nonZerosPerColumnVector);
+    matGammaPart.reserve(nonZerosVector);
 
-    for (int col = 0; col < uSize; ++col)
-        for (typename gsSparseMatrix<T>::InnerIterator it(Mgamma, col); it; ++it)
-            matGammaPart.insert(it.row(), col) = Mgamma(it.row(), col);
+    for (int outer = 0; outer < Mgamma.outerSize(); ++outer)
+        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(Mgamma, outer); it; ++it)
+            matGammaPart.insert(it.row(), it.col()) = it.value();
 
     matGammaPart.makeCompressed();
 
@@ -180,12 +178,12 @@ void gsINSBlockPrecondAL<T, BlockFType>::fillALgammaPart_into(gsSparseMatrix<T>&
     gsInfo << "Done.\n";
 }
 
-template <class T, class BlockFType>
-void gsINSBlockPrecondAL<T, BlockFType>::fillALmodifSystem_into(gsSparseMatrix<T>& matGamma, gsMatrix<T>& rhsGamma, const std::map<std::string, gsSparseMatrix<T> >& mat, const gsMatrix<T>& rhs, const gsOptionList& opt)
+template <class T, int MatOrder, class BlockFType>
+void gsINSBlockPrecondAL<T, MatOrder, BlockFType>::fillALmodifSystem_into(gsSparseMatrix<T, MatOrder>& matGamma, gsMatrix<T>& rhsGamma, const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsMatrix<T>& rhs, const gsOptionList& opt)
 {
     gsInfo << "Filling the Agamma matrix... ";
 
-    gsSparseMatrix<T> matGammaPart;
+    gsSparseMatrix<T, MatOrder> matGammaPart;
     gsMatrix<T> rhsGammaPart;
 
     fillALgammaPart_into(matGammaPart, rhsGammaPart, mat, rhs, opt);
@@ -197,8 +195,8 @@ void gsINSBlockPrecondAL<T, BlockFType>::fillALmodifSystem_into(gsSparseMatrix<T
 }
 
 
-template <class T, class BlockFType>
-void gsINSBlockPrecondSIMPLE<T, BlockFType>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder, class BlockFType>
+void gsINSBlockPrecondSIMPLE<T, MatOrder, BlockFType>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     int uSize = m_Finv->rows();
     int pSize = m_Sinv->rows();
@@ -222,8 +220,8 @@ void gsINSBlockPrecondSIMPLE<T, BlockFType>::apply(const gsMatrix<T> & input, gs
 }
 
 
-template <class T, class BlockFType>
-void gsINSBlockPrecondSIMPLER<T, BlockFType>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder, class BlockFType>
+void gsINSBlockPrecondSIMPLER<T, MatOrder, BlockFType>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     int uSize = m_Finv->rows();
     int pSize = m_Sinv->rows();
@@ -253,8 +251,8 @@ void gsINSBlockPrecondSIMPLER<T, BlockFType>::apply(const gsMatrix<T> & input, g
 }
 
 
-template <class T, class BlockFType>
-void gsINSBlockPrecondMSIMPLER<T, BlockFType>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder, class BlockFType>
+void gsINSBlockPrecondMSIMPLER<T, MatOrder, BlockFType>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     int uSize = m_Finv->rows();
     int pSize = m_Sinv->rows();
@@ -284,8 +282,8 @@ void gsINSBlockPrecondMSIMPLER<T, BlockFType>::apply(const gsMatrix<T> & input, 
 }
 
 
-template <class T, class BlockFType>
-void gsBlockPrecondStokes<T, BlockFType>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder, class BlockFType>
+void gsBlockPrecondStokes<T, MatOrder, BlockFType>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     int uSize = m_Finv->rows();
     int pSize = m_Sinv->rows();

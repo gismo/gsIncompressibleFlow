@@ -56,8 +56,8 @@ void gsINSPrecondBlock<T>::setupLinSolver(gsSparseSolver<T>& solver)
 }
 
 
-template <class T>
-void gsINSPrecondBlockF<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder>
+void gsINSPrecondBlockF<T, MatOrder>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     GISMO_ASSERT(input.rows() == m_size, "Wrong input size.");
     x.resize(m_size, 1);
@@ -68,8 +68,8 @@ void gsINSPrecondBlockF<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) co
 }
 
 
-template <class T>
-void gsINSPrecondBlockFwhole<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder>
+void gsINSPrecondBlockFwhole<T, MatOrder>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     GISMO_ASSERT(input.rows() == m_size, "Wrong input size.");
     x.resize(m_size, 1);
@@ -78,8 +78,8 @@ void gsINSPrecondBlockFwhole<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & 
 }
 
 
-template <class T>
-void gsINSPrecondBlockFdiag<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder>
+void gsINSPrecondBlockFdiag<T, MatOrder>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     GISMO_ASSERT(input.rows() == m_size, "Wrong input size.");
     x.resize(m_size, 1);
@@ -93,8 +93,8 @@ void gsINSPrecondBlockFdiag<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x
 }
 
 
-template <class T>
-void gsINSPrecondBlockFmod<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder>
+void gsINSPrecondBlockFmod<T, MatOrder>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     GISMO_ASSERT(input.rows() == m_size, "Wrong input size.");
     x.resize(m_size, 1);
@@ -114,8 +114,8 @@ void gsINSPrecondBlockFmod<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x)
 }
 
 
-template <class T>
-void gsINSPrecondBlockBt<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
+template <class T, int MatOrder>
+void gsINSPrecondBlockBt<T, MatOrder>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
 {
     GISMO_ASSERT(input.rows() == this->cols(), "Wrong input size.");
     x.resize(this->rows(), 1);
@@ -124,8 +124,8 @@ void gsINSPrecondBlockBt<T>::apply(const gsMatrix<T> & input, gsMatrix<T> & x) c
 }
 
 
-template <class T>
-void gsINSPrecondSchurLSC<T>::apply(const gsMatrix<T>& input, gsMatrix<T>& x) const
+template <class T, int MatOrder>
+void gsINSPrecondSchurLSC<T, MatOrder>::apply(const gsMatrix<T>& input, gsMatrix<T>& x) const
 {
     GISMO_ASSERT(input.rows() == this->rows(), "Wrong input size.");
     x.resize(this->rows(), 1);
@@ -137,8 +137,8 @@ void gsINSPrecondSchurLSC<T>::apply(const gsMatrix<T>& input, gsMatrix<T>& x) co
 }
 
 
-template <class T>
-void gsINSPrecondSchurPCD<T>::apply(const gsMatrix<T>& input, gsMatrix<T>& x) const
+template <class T, int MatOrder>
+void gsINSPrecondSchurPCD<T, MatOrder>::apply(const gsMatrix<T>& input, gsMatrix<T>& x) const
 {
     GISMO_ASSERT(input.rows() == this->rows(), "Wrong input size.");
     x.resize(this->rows(), 1);
@@ -151,8 +151,8 @@ void gsINSPrecondSchurPCD<T>::apply(const gsMatrix<T>& input, gsMatrix<T>& x) co
 }
 
 
-template <class T>
-void gsINSPrecondSchurPCDmod<T>::apply(const gsMatrix<T>& input, gsMatrix<T>& x) const
+template <class T, int MatOrder>
+void gsINSPrecondSchurPCDmod<T, MatOrder>::apply(const gsMatrix<T>& input, gsMatrix<T>& x) const
 {
     GISMO_ASSERT(input.rows() == this->rows(), "Wrong input size.");
     x.resize(this->rows(), 1);

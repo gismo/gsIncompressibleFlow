@@ -15,8 +15,8 @@
 namespace gismo
 {
 
-template<class T>
-void gsFlowAssemblerBase<T>::initMembers()
+template<class T, int MatOrder>
+void gsFlowAssemblerBase<T, MatOrder>::initMembers()
 { 
     m_dofs = 0;
     m_tarDim = getPatches().dim();
@@ -26,8 +26,8 @@ void gsFlowAssemblerBase<T>::initMembers()
 }
 
 
-template<class T>
-void gsFlowAssemblerBase<T>::computeDirichletDofs(const index_t unk, const index_t basisID, gsMatrix<T>& ddofVector)
+template<class T, int MatOrder>
+void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofs(const index_t unk, const index_t basisID, gsMatrix<T>& ddofVector)
 {
     GISMO_ASSERT(ddofVector.rows() == m_dofMappers[basisID].boundarySize(), "Dirichlet DOF vector has wrong size.");
 
@@ -66,8 +66,8 @@ void gsFlowAssemblerBase<T>::computeDirichletDofs(const index_t unk, const index
 }
 
 
-template<class T>
-void gsFlowAssemblerBase<T>::computeDirichletDofsIntpl(const index_t unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
+template<class T, int MatOrder>
+void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofsIntpl(const index_t unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
 {
     for (typename gsBoundaryConditions<T>::const_iterator
         it = getBCs().dirichletBegin();
@@ -150,8 +150,8 @@ void gsFlowAssemblerBase<T>::computeDirichletDofsIntpl(const index_t unk, const 
 }
 
 
-template<class T>
-void gsFlowAssemblerBase<T>::computeDirichletDofsL2Proj(const index_t unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
+template<class T, int MatOrder>
+void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofsL2Proj(const index_t unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector)
 {
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
@@ -266,8 +266,8 @@ void gsFlowAssemblerBase<T>::computeDirichletDofsL2Proj(const index_t unk, const
 }
 
 
-template<class T>
-void gsFlowAssemblerBase<T>::assembleBlock(gsFlowVisitor<T>& visitor, index_t testBasisID, gsSparseMatrix<T, RowMajor>& block, gsMatrix<T>& blockRhs)
+template<class T, int MatOrder>
+void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs)
 {
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
@@ -278,7 +278,7 @@ void gsFlowAssemblerBase<T>::assembleBlock(gsFlowVisitor<T>& visitor, index_t te
             index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
 
             for(index_t i = 0; i < nBases; i++)
-            {;
+            {
                 visitor.evaluate(i);
                 visitor.assemble();
                 visitor.localToGlobal(m_ddof, block, blockRhs);
@@ -306,42 +306,58 @@ void gsFlowAssemblerBase<T>::assembleBlock(gsFlowVisitor<T>& visitor, index_t te
 }
 
 
-template<class T>
-void gsFlowAssemblerBase<T>::assembleRhs(gsFlowVisitor<T>& visitor, index_t testBasisID, gsMatrix<T>& rhs)
+template<class T, int MatOrder>
+void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsMatrix<T>& rhs)
 {
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
-        index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
-
         visitor.initOnPatch(p);
 
-        for(index_t i = 0; i < nBases; i++)
+        if (m_params.options().getString("matFormation") == "RbR")
         {
-            visitor.evaluate(i);
-            visitor.assemble();
-            visitor.localToGlobal(rhs);
+            index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
+
+            for(index_t i = 0; i < nBases; i++)
+            {
+                visitor.evaluate(i);
+                visitor.assemble();
+                visitor.localToGlobal(rhs);
+            }
+        }
+        else
+        {
+            typename gsBasis<T>::domainIter domIt = m_params.getBases().front().piece(p).makeDomainIterator(boundary::none);
+
+            while (domIt->good())
+            {
+                visitor.evaluate(domIt.get());
+                visitor.assemble();
+                visitor.localToGlobal(rhs);
+
+                domIt->next();
+            }
         }
     }
 }
 
 
-template<class T>
-void gsFlowAssemblerBase<T>::updateAssembly()
+template<class T, int MatOrder>
+void gsFlowAssemblerBase<T, MatOrder>::updateAssembly()
 {
     assembleNonlinearPart();
 }
 
 
-template<class T>
-void gsFlowAssemblerBase<T>::initialize()
+template<class T, int MatOrder>
+void gsFlowAssemblerBase<T, MatOrder>::initialize()
 {
     assembleLinearPart();
     m_isInitialized = true;
 }
 
 
-template<class T>
-void gsFlowAssemblerBase<T>::update(const gsMatrix<T> & solVector, bool updateSol)
+template<class T, int MatOrder>
+void gsFlowAssemblerBase<T, MatOrder>::update(const gsMatrix<T> & solVector, bool updateSol)
 {
     GISMO_ASSERT(m_isInitialized, "Assembler must be initialized first, call initialize()");
 

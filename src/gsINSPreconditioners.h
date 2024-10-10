@@ -21,7 +21,7 @@ namespace gismo
 
 // === Base class for INS preconditioners === //
 
-template <class T>
+template <class T, int MatOrder>
 class gsINSPreconditioner : public gsLinearOperator<T>
 {
 
@@ -39,23 +39,16 @@ public: // *** Static functions ***
 
     /// @brief Returns a unique pointer to a newly created instance.
     static uPtr make()
-    { return memory::make_unique(new gsINSPreconditioner<T>()); }
+    { return memory::make_unique(new gsINSPreconditioner<T, MatOrder>()); }
 
     /// @brief Returns a unique pointer to a newly created instance of the given preconditioner type.
     /// @param[in] precType the reqiured preconditioner type as a string
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner (assuming the following order: NS system matrix, mass matrix (velocity, pressure or both), other matrices)
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(std::string precType, const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt);
+    static uPtr make(std::string precType, const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt);
 
     /// @brief Returns default preconditioner options as a gsOptionList object.
     static gsOptionList defaultOptions();
-
-    /*/// @brief Fill a diagonal approximation of an inverse matrix.
-    /// @param[in]  mat     a const reference to the matrix of which the inverse is approximated
-    /// @param[out] diagInv a reference to the resulting inverse approximation
-    /// @param[in]  repeat  number of the diagonal block repetition (e.g. for velocity components)
-    /// @param[in]  lumping use lumping to define the diagonal approximation
-    static void diagInvMatrix_into(const gsSparseMatrix<T>& mat, gsSparseMatrix<T>& diagInv, int repeat, bool lumping = false);*/
 
 
 public: // *** Member functions ***
@@ -69,7 +62,7 @@ public: // *** Member functions ***
 
     /// @brief Update the preconditioner (new linearization or time step).
     /// @param[in] mat a const reference to std::map of updated matrices
-    virtual void update(const std::map<std::string, gsSparseMatrix<T> >& mat)
+    virtual void update(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat)
     { GISMO_NO_IMPLEMENTATION }
 
 public: // *** Getters/setters ***
@@ -111,8 +104,8 @@ g
 \right],
 \f].
 */
-template <class T>
-class gsINSBlockPrecondBase : public gsINSPreconditioner<T>
+template <class T, int MatOrder>
+class gsINSBlockPrecondBase : public gsINSPreconditioner<T, MatOrder>
 {
 
 protected: // *** Class members ***
@@ -141,7 +134,7 @@ public: // *** Static functions ***
 
     /// @brief Returns a unique pointer to a newly created instance.
     static uPtr make(gsINSPrecondBlock<T>* Finv, gsLinearOperator<T>* B, gsINSPrecondBlock<T>* Sinv, const gsOptionList& opt)
-    { return memory::make_unique(new gsINSBlockPrecondBase<T>(Finv, B, Sinv, opt)); }
+    { return memory::make_unique(new gsINSBlockPrecondBase<T, MatOrder>(Finv, B, Sinv, opt)); }
 
 public: // *** Member functions ***
 
@@ -193,12 +186,12 @@ public: // *** Getters/setters ***
 /// @brief Least-squares commutator preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
-template <class T, class BlockFType = gsINSPrecondBlockF<T> >
-class gsINSBlockPrecondLSC : public gsINSBlockPrecondBase<T>
+template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
+class gsINSBlockPrecondLSC : public gsINSBlockPrecondBase<T, MatOrder>
 {
 
 public:
-    typedef gsINSBlockPrecondBase<T> Base;
+    typedef gsINSBlockPrecondBase<T, MatOrder> Base;
 
 protected: // *** Class members ***
 
@@ -215,10 +208,10 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] mat a reference to the std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    gsINSBlockPrecondLSC(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt) :
+    gsINSBlockPrecondLSC(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt) :
         Base(new BlockFType(mat.at("matNS"), opt),
-             new gsINSPrecondBlockBt<T>(mat.at("matNS"), opt),
-             new gsINSPrecondSchurLSC<T>(mat, opt), opt)
+             new gsINSPrecondBlockBt<T, MatOrder>(mat.at("matNS"), opt),
+             new gsINSPrecondSchurLSC<T, MatOrder>(mat, opt), opt)
     { }
 
 public: // *** Static functions ***
@@ -226,18 +219,18 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+    static uPtr make(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
     {
-        return memory::make_unique(new gsINSBlockPrecondLSC<T, BlockFType>(mat, opt));
+        return memory::make_unique(new gsINSBlockPrecondLSC<T, MatOrder, BlockFType>(mat, opt));
     }
 
 public: // *** Member functions ***
 
     /// @brief Update the preconditioner (new linearization or time step).
     /// @param[in] mat a const reference to std::map of updated matrices
-    virtual void update(const std::map<std::string, gsSparseMatrix<T> >& mat)
+    virtual void update(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat)
     {
-        Base::update(new BlockFType(mat.at("matNS"), m_opt), new gsINSPrecondSchurLSC<T>(mat, m_opt));
+        Base::update(new BlockFType(mat.at("matNS"), m_opt), new gsINSPrecondSchurLSC<T, MatOrder>(mat, m_opt));
     }
 
     /// @brief Returns the preconditioner name as a string.
@@ -255,12 +248,12 @@ public: // *** Member functions ***
 /// @brief Pressure convection-diffusion preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
-template <class T, class BlockFType = gsINSPrecondBlockF<T> >
-class gsINSBlockPrecondPCD : public gsINSBlockPrecondBase<T>
+template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
+class gsINSBlockPrecondPCD : public gsINSBlockPrecondBase<T, MatOrder>
 {
 
 public:
-    typedef gsINSBlockPrecondBase<T> Base;
+    typedef gsINSBlockPrecondBase<T, MatOrder> Base;
 
 protected: // *** Class members ***
 
@@ -277,10 +270,10 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] mat a reference to the std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    gsINSBlockPrecondPCD(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt) :
+    gsINSBlockPrecondPCD(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt) :
         Base(new BlockFType(mat.at("matNS"), opt),
-            new gsINSPrecondBlockBt<T>(mat.at("matNS"), opt),
-            new gsINSPrecondSchurPCD<T>(mat, opt), opt)
+            new gsINSPrecondBlockBt<T, MatOrder>(mat.at("matNS"), opt),
+            new gsINSPrecondSchurPCD<T, MatOrder>(mat, opt), opt)
     { }
 
 public: // *** Static functions ***
@@ -288,18 +281,18 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+    static uPtr make(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
     {
-        return memory::make_unique(new gsINSBlockPrecondPCD<T, BlockFType>(mat, opt));
+        return memory::make_unique(new gsINSBlockPrecondPCD<T, MatOrder, BlockFType>(mat, opt));
     }
 
 public: // *** Member functions ***
 
     /// @brief Update the preconditioner (new linearization or time step).
     /// @param[in] mat a const reference to std::map of updated matrices
-    virtual void update(const std::map<std::string, gsSparseMatrix<T> >& mat)
+    virtual void update(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat)
     {
-        Base::update(new BlockFType(mat.at("matNS"), m_opt), new gsINSPrecondSchurPCD<T>(mat, m_opt));
+        Base::update(new BlockFType(mat.at("matNS"), m_opt), new gsINSPrecondSchurPCD<T, MatOrder>(mat, m_opt));
     }
 
     /// @brief Returns the preconditioner name as a string.
@@ -317,12 +310,12 @@ public: // *** Member functions ***
 /// @brief Modified pressure convection-diffusion preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
-template <class T, class BlockFType = gsINSPrecondBlockF<T> >
-class gsINSBlockPrecondPCDmod : public gsINSBlockPrecondBase<T>
+template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
+class gsINSBlockPrecondPCDmod : public gsINSBlockPrecondBase<T, MatOrder>
 {
 
 public:
-    typedef gsINSBlockPrecondBase<T> Base;
+    typedef gsINSBlockPrecondBase<T, MatOrder> Base;
 
 protected: // *** Class members ***
 
@@ -339,10 +332,10 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] mat a reference to the std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    gsINSBlockPrecondPCDmod(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt) :
+    gsINSBlockPrecondPCDmod(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt) :
         Base(new BlockFType(mat.at("matNS"), opt),
-            new gsINSPrecondBlockBt<T>(mat.at("matNS"), opt),
-            new gsINSPrecondSchurPCDmod<T>(mat, opt), opt)
+            new gsINSPrecondBlockBt<T, MatOrder>(mat.at("matNS"), opt),
+            new gsINSPrecondSchurPCDmod<T, MatOrder>(mat, opt), opt)
     { }
 
 public: // *** Static functions ***
@@ -350,18 +343,18 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+    static uPtr make(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
     {
-        return memory::make_unique(new gsINSBlockPrecondPCDmod<T, BlockFType>(mat, opt));
+        return memory::make_unique(new gsINSBlockPrecondPCDmod<T, MatOrder, BlockFType>(mat, opt));
     }
 
 public: // *** Member functions ***
 
     /// @brief Update the preconditioner (new linearization or time step).
     /// @param[in] mat a const reference to std::map of updated matrices
-    virtual void update(const std::map<std::string, gsSparseMatrix<T> >& mat)
+    virtual void update(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat)
     {
-        Base::update(new BlockFType(mat.at("matNS"), m_opt), new gsINSPrecondSchurPCDmod<T>(mat, m_opt));
+        Base::update(new BlockFType(mat.at("matNS"), m_opt), new gsINSPrecondSchurPCDmod<T, MatOrder>(mat, m_opt));
     }
 
     /// @brief Returns the preconditioner name as a string.
@@ -379,12 +372,12 @@ public: // *** Member functions ***
 /// @brief Augmented Lagrangian preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
-template <class T, class BlockFType = gsINSPrecondBlockFwhole<T> >
-class gsINSBlockPrecondAL : public gsINSBlockPrecondBase<T>
+template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockFwhole<T, MatOrder> >
+class gsINSBlockPrecondAL : public gsINSBlockPrecondBase<T, MatOrder>
 {
 
 public:
-    typedef gsINSBlockPrecondBase<T> Base;
+    typedef gsINSBlockPrecondBase<T, MatOrder> Base;
 
  protected: // *** Class members ***
 
@@ -401,10 +394,10 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] mat a reference to the std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    gsINSBlockPrecondAL(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt) :
+    gsINSBlockPrecondAL(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt) :
         Base(new BlockFType(mat.at("matNS"), opt),
-            new gsINSPrecondBlockBt<T>(mat.at("matNS"), opt),
-            new gsINSPrecondSchurAL<T>(mat, opt), opt)
+            new gsINSPrecondBlockBt<T, MatOrder>(mat.at("matNS"), opt),
+            new gsINSPrecondSchurAL<T, MatOrder>(mat, opt), opt)
     { }
 
 public: // *** Static functions ***
@@ -412,9 +405,9 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+    static uPtr make(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
     {
-        return memory::make_unique(new gsINSBlockPrecondAL<T, BlockFType>(mat, opt));
+        return memory::make_unique(new gsINSBlockPrecondAL<T, MatOrder, BlockFType>(mat, opt));
     }
 
 public: // *** Static functions ***
@@ -425,7 +418,7 @@ public: // *** Static functions ***
     /// @param[in]  mat         a const reference to std::map of labeled blocks of the original system
     /// @param[in]  rhs         the original right-hand side
     /// @param[in]  opt         a list of options for the preconditioner
-    static void fillALgammaPart_into(gsSparseMatrix<T>& matGammaPart, gsMatrix<T>& rhsGammaPart, const std::map<std::string, gsSparseMatrix<T> >& mat, const gsMatrix<T>& rhs, const gsOptionList& opt);
+    static void fillALgammaPart_into(gsSparseMatrix<T, MatOrder>& matGammaPart, gsMatrix<T>& rhsGammaPart, const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsMatrix<T>& rhs, const gsOptionList& opt);
 
     /// @brief Fill the Augmented Lagrangian linear system.
     /// @param[out] matGamma    a reference to the resulting matrix
@@ -433,13 +426,13 @@ public: // *** Static functions ***
     /// @param[in]  mat         a const reference to std::map of labeled blocks of the original system
     /// @param[in]  rhs         the original right-hand side
     /// @param[in]  opt         a list of options for the preconditioner
-    static void fillALmodifSystem_into(gsSparseMatrix<T>& matGamma, gsMatrix<T>& rhsGamma, const std::map<std::string, gsSparseMatrix<T> >& mat, const gsMatrix<T>& rhs, const gsOptionList& opt);
+    static void fillALmodifSystem_into(gsSparseMatrix<T, MatOrder>& matGamma, gsMatrix<T>& rhsGamma, const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsMatrix<T>& rhs, const gsOptionList& opt);
 
 public: // *** Member functions ***
 
     /// @brief Update the preconditioner (new linearization or time step).
     /// @param[in] mat a const reference to std::map of updated matrices
-    virtual void update(const std::map<std::string, gsSparseMatrix<T> >& mat)
+    virtual void update(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat)
     {
         Base::update(new BlockFType(mat.at("matNS"), m_opt));
     }
@@ -459,16 +452,16 @@ public: // *** Member functions ***
 /// @brief SIMPLE preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
-template <class T, class BlockFType = gsINSPrecondBlockF<T> >
-class gsINSBlockPrecondSIMPLE : public gsINSBlockPrecondBase<T>
+template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
+class gsINSBlockPrecondSIMPLE : public gsINSBlockPrecondBase<T, MatOrder>
 {
 
 public:
-    typedef gsINSBlockPrecondBase<T> Base;
+    typedef gsINSBlockPrecondBase<T, MatOrder> Base;
 
 protected: // *** Class members ***
 
-    gsSparseMatrix<T> m_Dinv, m_B;
+    gsSparseMatrix<T, MatOrder> m_Dinv, m_B;
     real_t m_alphaP;
 
 protected: // *** Base class members ***
@@ -488,17 +481,17 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] mat a reference to the std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    gsINSBlockPrecondSIMPLE(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt) :
+    gsINSBlockPrecondSIMPLE(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt) :
         Base(new BlockFType(mat.at("matNS"), opt),
-            new gsINSPrecondBlockBt<T>(mat.at("matNS"), opt),
-            new gsINSPrecondSchurSIMPLE<T>(mat, opt), opt)
+            new gsINSPrecondBlockBt<T, MatOrder>(mat.at("matNS"), opt),
+            new gsINSPrecondSchurSIMPLE<T, MatOrder>(mat, opt), opt)
     {
         int uSize = opt.getInt("dim") * opt.getInt("udofs");
         int pdofs = opt.getInt("pdofs");
 
-        const gsSparseMatrix<T>& matNS = mat.at("matNS");
+        const gsSparseMatrix<T, MatOrder>& matNS = mat.at("matNS");
 
-        gsSparseMatrix<T> blockA = matNS.block(0, 0, uSize, uSize);
+        gsSparseMatrix<T, MatOrder> blockA = matNS.block(0, 0, uSize, uSize);
         diagInvMatrix_into(blockA, m_Dinv, 1, opt.getSwitch("lumpingA"));
 
         m_B = matNS.block(uSize, 0, pdofs, uSize);
@@ -511,18 +504,18 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+    static uPtr make(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
     {
-        return memory::make_unique(new gsINSBlockPrecondSIMPLE<T, BlockFType>(mat, opt));
+        return memory::make_unique(new gsINSBlockPrecondSIMPLE<T, MatOrder, BlockFType>(mat, opt));
     }
 
 public: // *** Member functions ***
 
     /// @brief Update the preconditioner (new linearization or time step).
     /// @param[in] mat a const reference to std::map of updated matrices
-    virtual void update(const std::map<std::string, gsSparseMatrix<T> >& mat)
+    virtual void update(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat)
     {
-        Base::update(new BlockFType(mat.at("matNS"), m_opt), new gsINSPrecondSchurSIMPLE<T>(mat, m_opt));
+        Base::update(new BlockFType(mat.at("matNS"), m_opt), new gsINSPrecondSchurSIMPLE<T, MatOrder>(mat, m_opt));
     }
 
     /// @brief Apply the preconditioner.
@@ -546,25 +539,25 @@ public: // *** Member functions ***
 /// @brief SIMPLER preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
-template <class T, class BlockFType = gsINSPrecondBlockF<T> >
-class gsINSBlockPrecondSIMPLER : public gsINSBlockPrecondSIMPLE<T, BlockFType>
+template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
+class gsINSBlockPrecondSIMPLER : public gsINSBlockPrecondSIMPLE<T, MatOrder, BlockFType>
 {
 
 public:
-    typedef gsINSBlockPrecondSIMPLE<T, BlockFType> Base;
+    typedef gsINSBlockPrecondSIMPLE<T, MatOrder, BlockFType> Base;
 
 protected: // *** Class members ***
 
-    gsSparseMatrix<T> m_BDinv;
+    gsSparseMatrix<T, MatOrder> m_BDinv;
 
 protected: // *** Base class members ***
 
     using Base::m_Dinv;
     using Base::m_B;
     using Base::m_alphaP;
-    using gsINSBlockPrecondBase<T>::m_Finv;
-    using gsINSBlockPrecondBase<T>::m_Bt;
-    using gsINSBlockPrecondBase<T>::m_Sinv;
+    using gsINSBlockPrecondBase<T, MatOrder>::m_Finv;
+    using gsINSBlockPrecondBase<T, MatOrder>::m_Bt;
+    using gsINSBlockPrecondBase<T, MatOrder>::m_Sinv;
 
 public: // *** Smart pointers ***
 
@@ -576,7 +569,7 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] mat a reference to the std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    gsINSBlockPrecondSIMPLER(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt) :
+    gsINSBlockPrecondSIMPLER(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt) :
         Base(mat, opt)
     {
         m_BDinv = m_B * m_Dinv;
@@ -587,9 +580,9 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+    static uPtr make(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
     {
-        return memory::make_unique(new gsINSBlockPrecondSIMPLER<T, BlockFType>(mat, opt));
+        return memory::make_unique(new gsINSBlockPrecondSIMPLER<T, MatOrder, BlockFType>(mat, opt));
     }
 
 public: // *** Member functions ***
@@ -615,16 +608,16 @@ public: // *** Member functions ***
 /// @brief MSIMPLER preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
-template <class T, class BlockFType = gsINSPrecondBlockF<T> >
-class gsINSBlockPrecondMSIMPLER : public gsINSBlockPrecondBase<T>
+template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
+class gsINSBlockPrecondMSIMPLER : public gsINSBlockPrecondBase<T, MatOrder>
 {
 
 public:
-    typedef gsINSBlockPrecondBase<T> Base;
+    typedef gsINSBlockPrecondBase<T, MatOrder> Base;
 
 protected: // *** Class members ***
 
-    gsSparseMatrix<T> m_velMinv, m_B, m_BMinv;
+    gsSparseMatrix<T, MatOrder> m_velMinv, m_B, m_BMinv;
     real_t m_alphaP;
 
 protected: // *** Base class members ***
@@ -644,18 +637,18 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] mat a reference to the std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    gsINSBlockPrecondMSIMPLER(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt) :
+    gsINSBlockPrecondMSIMPLER(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt) :
         Base(new BlockFType(mat.at("matNS"), opt),
-            new gsINSPrecondBlockBt<T>(mat.at("matNS"), opt),
-            new gsINSPrecondSchurMSIMPLER<T>(mat, opt), opt)
+            new gsINSPrecondBlockBt<T, MatOrder>(mat.at("matNS"), opt),
+            new gsINSPrecondSchurMSIMPLER<T, MatOrder>(mat, opt), opt)
     {
         int dim = opt.getInt("dim");
         int udofs = opt.getInt("udofs");
         int uSize = dim * udofs;
         int pdofs = opt.getInt("pdofs");
 
-        const gsSparseMatrix<T>& matNS = mat.at("matNS");
-        const gsSparseMatrix<T>& velM = mat.at("matMu");
+        const gsSparseMatrix<T, MatOrder>& matNS = mat.at("matNS");
+        const gsSparseMatrix<T, MatOrder>& velM = mat.at("matMu");
 
        // approximation of velocity mass matrix inverse
         diagInvMatrix_into(velM, m_velMinv, uSize / velM.rows(), opt.getSwitch("lumpingM"));
@@ -671,16 +664,16 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+    static uPtr make(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
     {
-        return memory::make_unique(new gsINSBlockPrecondMSIMPLER<T, BlockFType>(mat, opt));
+        return memory::make_unique(new gsINSBlockPrecondMSIMPLER<T, MatOrder, BlockFType>(mat, opt));
     }
 
 public: // *** Member functions ***
 
     /// @brief Update the preconditioner (new linearization or time step).
     /// @param[in] mat a const reference to std::map of updated matrices
-    virtual void update(const std::map<std::string, gsSparseMatrix<T> >& mat)
+    virtual void update(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat)
     {
         Base::update(new BlockFType(mat.at("matNS"), m_opt));
     }
@@ -706,8 +699,8 @@ public: // *** Member functions ***
 /// @brief Block diagonal preconditioner for the Stokes problem.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
-template <class T, class BlockFType = gsINSPrecondBlockF<T> >
-class gsBlockPrecondStokes : public gsINSPreconditioner<T>
+template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
+class gsBlockPrecondStokes : public gsINSPreconditioner<T, MatOrder>
 {
 
 protected: // *** Class members ***
@@ -725,8 +718,8 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] mat a reference to the std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    gsBlockPrecondStokes(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt) :
-        m_Finv(new BlockFType(mat.at("matNS"), opt)), m_Sinv(new gsINSPrecondSchurStokes<T>(mat, opt)), m_opt(opt)
+    gsBlockPrecondStokes(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt) :
+        m_Finv(new BlockFType(mat.at("matNS"), opt)), m_Sinv(new gsINSPrecondSchurStokes<T, MatOrder>(mat, opt)), m_opt(opt)
     {}
 
 public: // *** Static functions ***
@@ -734,16 +727,16 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+    static uPtr make(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
     {
-        return memory::make_unique(new gsBlockPrecondStokes<T, BlockFType>(mat, opt));
+        return memory::make_unique(new gsBlockPrecondStokes<T, MatOrder, BlockFType>(mat, opt));
     }
 
 public: // *** Member functions ***
 
     /// @brief Update the preconditioner (new linearization or time step).
     /// @param[in] mat a const reference to std::map of updated matrices
-    virtual void update(const std::map<std::string, gsSparseMatrix<T> >& mat)
+    virtual void update(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat)
     {
         m_Finv.reset(new BlockFType(mat.at("matNS"), m_opt));
     }
@@ -784,12 +777,12 @@ public: // *** Getters/setters ***
 /// @brief Block triangular preconditioner for the Stokes problem.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
-template <class T, class BlockFType = gsINSPrecondBlockF<T> >
-class gsBlockPrecondStokesTriang : public gsINSBlockPrecondBase<T>
+template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
+class gsBlockPrecondStokesTriang : public gsINSBlockPrecondBase<T, MatOrder>
 {
 
 public:
-    typedef gsINSBlockPrecondBase<T> Base;
+    typedef gsINSBlockPrecondBase<T, MatOrder> Base;
 
 protected: // *** Base class members ***
 
@@ -806,10 +799,10 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] mat a reference to the std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    gsBlockPrecondStokesTriang(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt) :
+    gsBlockPrecondStokesTriang(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt) :
         Base(new BlockFType(mat.at("matNS"), opt),
-            new gsINSPrecondBlockBt<T>(mat.at("matNS"), opt),
-            new gsINSPrecondSchurStokes<T>(mat, opt), opt)
+            new gsINSPrecondBlockBt<T, MatOrder>(mat.at("matNS"), opt),
+            new gsINSPrecondSchurStokes<T, MatOrder>(mat, opt), opt)
     { }
 
 public: // *** Static functions ***
@@ -817,16 +810,16 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static uPtr make(const std::map<std::string, gsSparseMatrix<T> >& mat, const gsOptionList& opt)
+    static uPtr make(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat, const gsOptionList& opt)
     {
-        return memory::make_unique(new gsBlockPrecondStokesTriang<T, BlockFType>(mat, opt));
+        return memory::make_unique(new gsBlockPrecondStokesTriang<T, MatOrder, BlockFType>(mat, opt));
     }
 
 public: // *** Member functions ***
 
     /// @brief Update the preconditioner (new linearization or time step).
     /// @param[in] mat a const reference to std::map of updated matrices
-    virtual void update(const std::map<std::string, gsSparseMatrix<T> >& mat)
+    virtual void update(const std::map<std::string, gsSparseMatrix<T, MatOrder> >& mat)
     {
         Base::update(new BlockFType(mat.at("matNS"), m_opt));
     }

@@ -5,7 +5,11 @@
 
 namespace gismo
 {
-    CLASS_TEMPLATE_INST gsFlowLinSystSolver<real_t>;
-    CLASS_TEMPLATE_INST gsFlowLinSystSolver_direct<real_t>;
+    CLASS_TEMPLATE_INST gsFlowLinSystSolver<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsFlowLinSystSolver_direct<real_t, RowMajor>;
+
+    CLASS_TEMPLATE_INST gsFlowLinSystSolver<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsFlowLinSystSolver_direct<real_t, ColMajor>;
+
 
 } // namespace gismo

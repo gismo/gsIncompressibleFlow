@@ -15,13 +15,13 @@
 namespace gismo
 {
 
-template<class T>
-void gsINSSolver<T>::solveStokes()
+template<class T, int MatOrder>
+void gsINSSolver<T, MatOrder>::solveStokes()
 {
     GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
     gsWriteOutputLine(m_outFile, "Computing the steady Stokes problem...", m_fileOutput, m_dispOutput);
 
-    gsSparseMatrix<T, RowMajor> stokesMat;
+    gsSparseMatrix<T, MatOrder> stokesMat;
     gsMatrix<T> stokesRhs;
 
     getAssembler()->fillStokesSystem(stokesMat, stokesRhs);
@@ -30,8 +30,8 @@ void gsINSSolver<T>::solveStokes()
 
 // ===================================================================================================================
 
-template<class T>
-void gsINSSolverSteady<T>::nextIteration()
+template<class T, int MatOrder>
+void gsINSSolverSteady<T, MatOrder>::nextIteration()
 {
     GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
 
@@ -47,8 +47,8 @@ void gsINSSolverSteady<T>::nextIteration()
 
 // ===================================================================================================================
 
-template<class T>
-void gsINSSolverUnsteady<T>::initMembers()
+template<class T, int MatOrder>
+void gsINSSolverUnsteady<T, MatOrder>::initMembers()
 {
     Base::initMembers();
     m_time = 0;
@@ -59,8 +59,8 @@ void gsINSSolverUnsteady<T>::initMembers()
 }
 
 
-template<class T>
-void gsINSSolverUnsteady<T>::nextIteration()
+template<class T, int MatOrder>
+void gsINSSolverUnsteady<T, MatOrder>::nextIteration()
 {
     GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
 

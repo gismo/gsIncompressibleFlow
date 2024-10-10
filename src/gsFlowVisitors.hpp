@@ -15,8 +15,8 @@
 namespace gismo
 {
 
-template<class T>
-void gsFlowVisitor<T>::gatherEvalFlags()
+template <class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::gatherEvalFlags()
 {
     m_geoFlags = 0;
     m_testFunFlags = 0;
@@ -27,59 +27,117 @@ void gsFlowVisitor<T>::gatherEvalFlags()
 }    
 
 
-template<class T>
-void gsFlowVisitor<T>::evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, const gsMatrix<index_t>& basisActives, std::vector< gsMatrix<T> >& basisData)
+template <class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::evalSingleFunData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, const index_t funID, std::vector< gsMatrix<T> >& basisData)
 {
     basisData.clear();
     basisData.resize(3); // 0 - value, 1 - deriv, 2 - deriv2
 
+    if(basisFlags & NEED_VALUE)
+        basisPtr->evalSingle_into(funID, m_quNodes, basisData[0]);
+
+    if(basisFlags & NEED_DERIV)
+        basisPtr->derivSingle_into(funID, m_quNodes, basisData[1]);
+
+    if(basisFlags & NEED_DERIV2)
+        basisPtr->deriv2Single_into(funID, m_quNodes, basisData[2]);
+}
+
+
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, gsMatrix<index_t>& activesUnique, std::vector< gsMatrix<T> >& basisData)
+{
+    basisData.clear();
+    basisData.resize(3); // 0 - value, 1 - deriv, 2 - deriv2
+
+    gsMatrix<index_t> actives;
+    basisPtr->active_into(m_quNodes, actives);
+    activesUnique = createVectorOfUniqueIndices(actives);
+
+    bool multipleElem = (activesUnique.rows() > actives.rows());
+    std::unordered_map<int, int> activesUnique_val_to_ID;
+
+    if (multipleElem)
+    {
+        for (int i = 0; i < activesUnique.size(); ++i)
+            activesUnique_val_to_ID[activesUnique(i)] = i;
+    }
+
     index_t dim = m_params.getPde().dim();
-    index_t numAct = basisActives.rows();
+    index_t numAct = activesUnique.rows();
 
     if(basisFlags & NEED_VALUE)
     {
-        basisData[0].setZero(numAct, m_quNodes.cols());
+        gsMatrix<real_t> basisVals;
+        basisPtr->eval_into(m_quNodes, basisVals);
 
-        gsMatrix<T> tmpData;
-        
-        for(index_t i = 0; i < numAct; i++)
+        if (multipleElem)
         {
-            basisPtr->evalSingle_into(basisActives(i), m_quNodes, tmpData);
-            basisData[0].row(i) = tmpData;
+            basisData[0].setZero(numAct, m_quNodes.cols());
+
+            for (index_t i = 0; i < actives.rows(); i++)
+                for (index_t j = 0; j < actives.cols(); j++)
+                    basisData[0](activesUnique_val_to_ID[actives(i, j)], j) = basisVals(i,j);
+        }
+        else
+        {
+            basisData[0] = basisVals;
         }
     }
 
     if(basisFlags & NEED_DERIV)
     {
-        basisData[1].setZero(dim*numAct, m_quNodes.cols());
+        gsMatrix<real_t> basisDers;
+        basisPtr->deriv_into(m_quNodes, basisDers);
 
-        gsMatrix<T> tmpData;
-
-        for(index_t i = 0; i < numAct; i++)
+        if (multipleElem)
         {
-            basisPtr->derivSingle_into(basisActives(i), m_quNodes, tmpData);
-            basisData[1].middleRows(dim*i, dim) = tmpData;
+            basisData[1].setZero(dim*numAct, m_quNodes.cols());
+
+            for (index_t i = 0; i < actives.rows(); i++)
+            {
+                for (index_t j = 0; j < actives.cols(); j++)
+                {
+                    index_t ii = activesUnique_val_to_ID[actives(i, j)];
+                    basisData[1].block(dim*ii, j, dim, 1) = basisDers.block(dim*i, j, dim, 1);
+                }
+            }
+        }
+        else
+        {
+            basisData[1] = basisDers;
         }
     }
 
     if(basisFlags & NEED_DERIV2)
     {
-        index_t dimSq = dim*dim;
-        basisData[2].setZero(dimSq*numAct, m_quNodes.cols());
+        gsMatrix<real_t> basisDers2;
+        basisPtr->deriv2_into(m_quNodes, basisDers2);
 
-        gsMatrix<T> tmpData;
-        
-        for(index_t i = 0; i < numAct; i++)
+        if (multipleElem)
         {
-            basisPtr->deriv2Single_into(basisActives(i), m_quNodes, tmpData);
-            basisData[2].middleRows(dimSq*i, dimSq) = tmpData;
+            index_t dimSq = dim*dim;
+            basisData[2].setZero(dimSq*numAct, m_quNodes.cols());
+
+            for (index_t i = 0; i < actives.rows(); i++)
+            {
+                for (index_t j = 0; j < actives.cols(); j++)
+                {
+                    index_t ii = activesUnique_val_to_ID[actives(i, j)];
+                    basisData[2].block(dimSq*ii, j, dimSq, 1) = basisDers2.block(dimSq*i, dimSq ,j, 1);
+                }
+            }
+        }
+        else
+        {
+            basisData[2] = basisDers2;
         }
     }
 }
 
 
-template<class T>
-void gsFlowVisitor<T>::initialize()
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::initialize()
 {
     defineTestShapeUnknowns();  
     m_params.createDofMappers(m_dofMappers);  
@@ -91,8 +149,8 @@ void gsFlowVisitor<T>::initialize()
 }
 
 
-template<class T>
-void gsFlowVisitor<T>::initOnPatch(index_t patchID)
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::initOnPatch(index_t patchID)
 {
     m_patchID = patchID;
     m_mapData.patchId = m_patchID;
@@ -101,8 +159,8 @@ void gsFlowVisitor<T>::initOnPatch(index_t patchID)
 }
 
 
-template<class T>
-void gsFlowVisitor<T>::setCurrentSolution(std::vector<gsField<T> >& solutions)
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::setCurrentSolution(std::vector<gsField<T> >& solutions)
 { 
     for (size_t i = 0; i < m_terms.size(); i++)
     {
@@ -114,8 +172,8 @@ void gsFlowVisitor<T>::setCurrentSolution(std::vector<gsField<T> >& solutions)
 }
 
 
-template<class T>
-void gsFlowVisitor<T>::setCurrentSolution(gsField<T>& solution)
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::setCurrentSolution(gsField<T>& solution)
 { 
     for (size_t i = 0; i < m_terms.size(); i++)
     {
@@ -127,8 +185,8 @@ void gsFlowVisitor<T>::setCurrentSolution(gsField<T>& solution)
 }
 
 
-template<class T>
-void gsFlowVisitor<T>::assemble()
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::assemble()
 {
     m_localMat.setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
 
@@ -138,8 +196,8 @@ void gsFlowVisitor<T>::assemble()
 
 // ===================================================================================================================
 
-template <class T>
-void gsFlowVisitorVectorValued<T>::assemble()
+template <class T, int MatOrder>
+void gsFlowVisitorVectorValued<T, MatOrder>::assemble()
 {
     m_locMatVec.resize(m_params.getPde().dim());
 
@@ -154,8 +212,8 @@ void gsFlowVisitorVectorValued<T>::assemble()
 // ===================================================================================================================
 // to be changed:
 
-template<class T>
-void gsFlowVisitor<T>::setupQuadrature()
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::setupQuadrature()
 {
     gsVector<index_t> numQuadNodes(m_params.getPde().dim()); 
 
@@ -167,8 +225,8 @@ void gsFlowVisitor<T>::setupQuadrature()
     m_quRule = gsGaussRule<T>(numQuadNodes);
 }
 
-template<class T>
-void gsFlowVisitor<T>::evaluate(index_t testFunID)
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::evaluate(index_t testFunID)
 {
     // shape basis (on the whole support of testFunID)
 
@@ -222,31 +280,33 @@ void gsFlowVisitor<T>::evaluate(index_t testFunID)
     m_mapData.points = m_quNodes;
     m_params.getPde().patches().patch(m_patchID).computeMap(m_mapData);
 
-    gsMatrix<index_t> allActives;
-    m_shapeBasisPtr->active_into(m_quNodes, allActives);
-    m_shapeFunActives = createVectorOfUniqueIndices(allActives);
-    
     evalBasisData(m_shapeFunFlags, m_shapeBasisPtr, m_shapeFunActives, m_shapeFunData);
 
     // test basis
     m_testFunActives.resize(1,1);
     m_testFunActives << testFunID;
-    evalBasisData(m_testFunFlags, m_testBasisPtr, m_testFunActives, m_testFunData);
+    evalSingleFunData(m_testFunFlags, m_testBasisPtr, testFunID, m_testFunData);
 }
 
 
-template<class T>
-void gsFlowVisitor<T>::evaluate(const gsDomainIterator<T>* domIt)
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     m_quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), m_quNodes, m_quWeights);
     m_mapData.points = m_quNodes;
     m_params.getPde().patches().patch(m_patchID).computeMap(m_mapData);
 
-    m_testBasisPtr->active_into(m_quNodes.col(0), m_testFunActives);
-    m_shapeBasisPtr->active_into(m_quNodes.col(0), m_shapeFunActives);
-
     evalBasisData(m_testFunFlags, m_testBasisPtr, m_testFunActives, m_testFunData);
-    evalBasisData(m_shapeFunFlags, m_shapeBasisPtr, m_shapeFunActives, m_shapeFunData);
+
+    if (m_shapeUnkID == m_testUnkID)
+        m_shapeFunActives = m_testFunActives;
+    else
+        m_shapeBasisPtr->active_into(m_quNodes.col(0), m_shapeFunActives);
+
+    if ( (m_shapeUnkID == m_testUnkID) && (m_testFunFlags == m_shapeFunFlags) )
+        m_shapeFunData = m_testFunData;
+    else
+        evalBasisData(m_shapeFunFlags, m_shapeBasisPtr, m_shapeFunActives, m_shapeFunData);
 }
 
 

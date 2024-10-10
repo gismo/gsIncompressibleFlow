@@ -18,8 +18,8 @@
 
 using namespace gismo;
 
-void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo);
-void markElimDof(gsINSSolver<real_t>& NSsolver);
+template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
+template<class T, int MatOrder> void markElimDof(gsINSSolver<T, MatOrder>& NSsolver);
 
 int main(int argc, char *argv[])
 {
@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
     {
         solveOpt.setInt("id", id);
 
-        gsINSSolverSteady<real_t> NSsolver(params);
+        gsINSSolverSteady<real_t, ColMajor> NSsolver(params);
 
         gsInfo << "\nSolving the steady problem with direct linear solver.\n";
 
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
         params.options().setInt("maxIt_picard", picardIt);
         params.options().setReal("tol_picard", picardTol);
 
-        gsINSSolverUnsteady<real_t> NSsolver(params);
+        gsINSSolverUnsteady<real_t, RowMajor> NSsolver(params);
 
         gsInfo << "\nSolving the unsteady problem with direct linear solver.\n";
 
@@ -296,7 +296,8 @@ int main(int argc, char *argv[])
 }
 
 
-void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo)
+template<class T, int MatOrder>
+void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 {
     gsStopwatch clock;
 
@@ -368,7 +369,8 @@ void solveProblem(gsINSSolver<real_t>& NSsolver, gsOptionList opt, int geo)
 }
 
 // mark one pressure DoF in the domain corner as fixed zero (for the lid driven cavity problem)
-void markElimDof(gsINSSolver<real_t>& NSsolver)
+template<class T, int MatOrder>
+void markElimDof(gsINSSolver<T, MatOrder>& NSsolver)
 {
     std::vector<gsMatrix<index_t> > elimDof(1);
     elimDof[0].setZero(1,1);

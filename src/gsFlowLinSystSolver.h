@@ -16,9 +16,10 @@
 namespace gismo
 {
 
-/// @brief  Interface for classes solving linear systems inside the incompressible flow solvers (classes derived from gsFlowSolverBase).
-/// @tparam T real number type type
-template<class T>
+/// @brief              Interface for classes solving linear systems inside the incompressible flow solvers (classes derived from gsFlowSolverBase).
+/// @tparam T           real number type type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+template<class T, int MatOrder>
 class gsFlowLinSystSolver
 {
 
@@ -55,14 +56,14 @@ protected: // *** Member functions ***
 public: // *** Member functions ***
 
     /// @brief Setup the linear solver for a given matrix.
-    virtual void setupSolver(const gsSparseMatrix<T>& mat)
+    virtual void setupSolver(const gsSparseMatrix<T, MatOrder>& mat)
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Solve the linear system.
     /// @param[in]  mat         a const reference to the system matrix
     /// @param[in]  rhs         a const reference to the system right-hand side
     /// @param[out] solution    a reference to the vector, where the computed solution will be stored
-    virtual void applySolver(const gsSparseMatrix<T>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution)
+    virtual void applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution)
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Solve the Navier--Stokes linear system with underrelaxation.
@@ -73,7 +74,7 @@ public: // *** Member functions ***
     /// @param[in]  alpha_p     pressure relaxation parameter
     /// @param[in]  usize       size of the velocity part of the system
     /// @param[in]  pdofs       number of pressure DOFs
-    virtual void applySolver(const gsSparseMatrix<T>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution, real_t alpha_u, real_t alpha_p, index_t usize, index_t pdofs);
+    virtual void applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution, real_t alpha_u, real_t alpha_p, index_t usize, index_t pdofs);
 
 
 public: // *** Getters ***
@@ -91,12 +92,12 @@ public: // *** Getters ***
 
 /// @brief Direct solver for linear systems inside the incompressible flow solvers (classes derived from gsFlowSolverBase).
 /// @tparam T   coefficient type
-template<class T>
-class gsFlowLinSystSolver_direct: public gsFlowLinSystSolver<T>
+template<class T, int MatOrder>
+class gsFlowLinSystSolver_direct: public gsFlowLinSystSolver<T, MatOrder>
 {
 
 public:
-    typedef gsFlowLinSystSolver<T> Base;
+    typedef gsFlowLinSystSolver<T, MatOrder> Base;
 
 
 protected: // *** Class members ***
@@ -146,11 +147,11 @@ public: // *** Static functions ***
 public: // *** Member functions ***
 
     /// @brief Setup the linear solver for a given matrix.
-    virtual void setupSolver(const gsSparseMatrix<T>& mat);
+    virtual void setupSolver(const gsSparseMatrix<T, MatOrder>& mat);
 
     /// @brief Solve the linear system.
     /// @param[out] solution    a reference to the vector, where the computed solution will be stored
-    virtual void applySolver(const gsSparseMatrix<T>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution);
+    virtual void applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution);
 
 
 }; // gsFlowLinSystSolver_direct
@@ -159,21 +160,21 @@ public: // *** Member functions ***
 
 // ===================================================================================================================
 
-template<class T>
-gsFlowLinSystSolver<T>* createLinSolver(const gsFlowSolverParams<T>& params)
+template<class T, int MatOrder>
+gsFlowLinSystSolver<T, MatOrder>* createLinSolver(const gsFlowSolverParams<T>& params)
 {
     std::string type = params.options().getString("linSolver");
 
     if (type == "direct")
-        return new gsFlowLinSystSolver_direct<T>(params);
+        return new gsFlowLinSystSolver_direct<T, MatOrder>(params);
     // else if (type == _"iter")
-    //     return new gsFlowLinSystSolver_iter<T>(params);
+    //     return new gsFlowLinSystSolver_iter<T, MatOrder>(params);
     // else if (type == _"petsc")
-    //     return new gsFlowLinSystSolver_PETSc<T>(params);
+    //     return new gsFlowLinSystSolver_PETSc<T, MatOrder>(params);
     else
     {
         gsInfo << "Invalid linear system solver type, using direct.\n";
-        return new gsFlowLinSystSolver_direct<T>(params);
+        return new gsFlowLinSystSolver_direct<T, MatOrder>(params);
     }
 
 }

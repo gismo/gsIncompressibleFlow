@@ -16,8 +16,8 @@ namespace gismo
 {
 
 
-template <class T>
-void gsINSVisitorUU<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
+template <class T, int MatOrder>
+void gsINSVisitorUU<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_params.getPde().dim();
     const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for one velocity component
@@ -51,7 +51,7 @@ void gsINSVisitorUU<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminate
                 {
                     const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
 
-                    for (index_t d = 0; d < nComponents; d++)
+                    for (index_t d = 0; d < dim; d++)
                         globalRhs(ii + d*uCompSize, 0) -= m_localMat(i, j) * eliminatedDofs[m_shapeUnkID](bb, d);
                 }
             }
@@ -61,8 +61,8 @@ void gsINSVisitorUU<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminate
 
 // ===================================================================================================================
 
-template <class T>
-void gsINSVisitorPU<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
+template <class T, int MatOrder>
+void gsINSVisitorPU<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_params.getPde().dim();
     const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for one velocity component
@@ -105,8 +105,8 @@ void gsINSVisitorPU<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminate
 
 // ===================================================================================================================
 
-template <class T>
-void gsINSVisitorPU_withUPrhs<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
+template <class T, int MatOrder>
+void gsINSVisitorPU_withUPrhs<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_params.getPde().dim();
     const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for one velocity component
@@ -166,8 +166,8 @@ void gsINSVisitorPU_withUPrhs<T>::localToGlobal(const std::vector<gsMatrix<T> >&
 
 // ===================================================================================================================
 
-template <class T>
-void gsINSVisitorUP<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
+template <class T, int MatOrder>
+void gsINSVisitorUP<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_params.getPde().dim();
     const index_t uCompSize = m_dofMappers[m_shapeUnkID].freeSize(); // number of dofs for one velocity component
@@ -213,8 +213,8 @@ void gsINSVisitorUP<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminate
 
 // ===================================================================================================================
 
-template <class T>
-void gsINSVisitorPP<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
+template <class T, int MatOrder>
+void gsINSVisitorPP<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     m_dofMappers[m_testUnkID].localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
     m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
@@ -249,8 +249,8 @@ void gsINSVisitorPP<T>::localToGlobal(const std::vector<gsMatrix<T> >& eliminate
 
 // ===================================================================================================================
 
-template <class T>
-void gsINSVisitorRhsU<T>::assemble()
+template <class T, int MatOrder>
+void gsINSVisitorRhsU<T, MatOrder>::assemble()
 {
     m_localMat.setZero(m_testFunActives.rows(), m_params.getPde().dim());
 
@@ -259,8 +259,8 @@ void gsINSVisitorRhsU<T>::assemble()
 }
 
 
-template <class T>
-void gsINSVisitorRhsU<T>::localToGlobal(gsMatrix<T>& globalRhs)
+template <class T, int MatOrder>
+void gsINSVisitorRhsU<T, MatOrder>::localToGlobal(gsMatrix<T>& globalRhs)
 {
     index_t dim = m_params.getPde().dim();
     const index_t uCompSize = m_dofMappers[0].freeSize(); // number of dofs for one velocity component
@@ -283,8 +283,8 @@ void gsINSVisitorRhsU<T>::localToGlobal(gsMatrix<T>& globalRhs)
 
 // ===================================================================================================================
 
-template <class T>
-void gsINSVisitorRhsP<T>::assemble()
+template <class T, int MatOrder>
+void gsINSVisitorRhsP<T, MatOrder>::assemble()
 {
     m_localMat.setZero(m_testFunActives.rows(), 1);
 
@@ -293,8 +293,8 @@ void gsINSVisitorRhsP<T>::assemble()
 }
 
 
-template <class T>
-void gsINSVisitorRhsP<T>::localToGlobal(gsMatrix<T>& globalRhs)
+template <class T, int MatOrder>
+void gsINSVisitorRhsP<T, MatOrder>::localToGlobal(gsMatrix<T>& globalRhs)
 {
     index_t dim = m_params.getPde().dim();
     const index_t uCompSize = m_dofMappers[0].freeSize(); // number of dofs for one velocity component

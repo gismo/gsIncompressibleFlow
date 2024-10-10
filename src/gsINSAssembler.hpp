@@ -15,8 +15,8 @@
 namespace gismo
 {
 
-template<class T>
-void gsINSAssembler<T>::initMembers()
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::initMembers()
 { 
     Base::initMembers();
 
@@ -37,26 +37,26 @@ void gsINSAssembler<T>::initMembers()
 
     updateSizes();
 
-    m_visitorUUlin = gsINSVisitorUUlin<T>(m_params);
+    m_visitorUUlin = gsINSVisitorUUlin<T, MatOrder>(m_params);
     m_visitorUUlin.initialize();
 
-    m_visitorUUnonlin = gsINSVisitorUUnonlin<T>(m_params);
+    m_visitorUUnonlin = gsINSVisitorUUnonlin<T, MatOrder>(m_params);
     m_visitorUUnonlin.initialize();
     m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
 
-    m_visitorUP = gsINSVisitorPU_withUPrhs<T>(m_params);
+    m_visitorUP = gsINSVisitorPU_withUPrhs<T, MatOrder>(m_params);
     m_visitorUP.initialize();
 
-    m_visitorF = gsINSVisitorRhsU<T>(m_params);
+    m_visitorF = gsINSVisitorRhsU<T, MatOrder>(m_params);
     m_visitorF.initialize();
 
-    m_visitorG = gsINSVisitorRhsP<T>(m_params);
+    m_visitorG = gsINSVisitorRhsP<T, MatOrder>(m_params);
     m_visitorG.initialize();
 }
 
 
-template<class T>
-void gsINSAssembler<T>::updateSizes()
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::updateSizes()
 {
     m_udofs = m_dofMappers.front().freeSize();
     m_pdofs = m_dofMappers.back().freeSize();
@@ -76,8 +76,10 @@ void gsINSAssembler<T>::updateSizes()
 
     m_currentVelField = constructSolution(m_solution, 0);
 
-    m_blockUUlin.resize(m_pshift, m_pshift);
-    m_blockUUnonlin.resize(m_pshift, m_pshift);
+    m_blockUUlin_comp.resize(m_udofs, m_udofs);
+    m_blockUUnonlin_comp.resize(m_udofs, m_udofs);
+    m_blockUUlin_whole.resize(m_pshift, m_pshift);
+    m_blockUUnonlin_whole.resize(m_pshift, m_pshift);
     m_blockUP.resize(m_pshift, m_pdofs);
 
     m_baseMatrix.resize(m_dofs, m_dofs);
@@ -92,8 +94,8 @@ void gsINSAssembler<T>::updateSizes()
 }
 
 
-template<class T>
-void gsINSAssembler<T>::updateDofMappers()
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::updateDofMappers()
 {
     m_visitorUUlin.updateDofMappers(m_dofMappers);
     m_visitorUUnonlin.updateDofMappers(m_dofMappers);
@@ -103,8 +105,8 @@ void gsINSAssembler<T>::updateDofMappers()
 }
 
 
-template<class T>
-void gsINSAssembler<T>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
 {
     if (updateSol)
         m_solution = solVector;
@@ -114,21 +116,28 @@ void gsINSAssembler<T>::updateCurrentSolField(const gsMatrix<T> & solVector, boo
 }
 
 
-template<class T>
-void gsINSAssembler<T>::assembleLinearPart()
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::assembleLinearPart()
 {
     // matrix and rhs cleaning
-    m_blockUUlin.resize(m_pshift, m_pshift);
+    m_blockUUlin_comp.resize(m_udofs, m_udofs);
     m_blockUP.resize(m_pshift, m_pdofs);
     m_rhsUlin.setZero();
     m_rhsBtB.setZero();
     m_rhsFG.setZero();
 
-    // memory allocation
-    m_blockUUlin.reserve(gsVector<index_t>::Constant(m_blockUUlin.rows(), m_nnzPerRowU));
-    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.rows(), m_nnzPerRowU));
+    int nnzPerOuterUP = 0;
 
-    this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin, m_rhsUlin);
+    if (MatOrder == RowMajor)
+        nnzPerOuterUP = m_nnzPerRowP;
+    else 
+        nnzPerOuterUP = m_tarDim * m_nnzPerRowU;
+
+    // memory allocation
+    m_blockUUlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUlin_comp.outerSize(), m_nnzPerRowU));
+    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.outerSize(), nnzPerOuterUP));
+
+    this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_comp, m_rhsUlin);
     this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
     this->assembleRhs(m_visitorF, 0, m_rhsFG);
 
@@ -137,51 +146,98 @@ void gsINSAssembler<T>::assembleLinearPart()
 }
 
 
-template<class T>
-void gsINSAssembler<T>::assembleNonlinearPart()
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
 {
     // matrix and rhs cleaning
-    m_blockUUnonlin.resize(m_pshift, m_pshift);
-    m_blockUUnonlin.data().squeeze();
+    m_blockUUnonlin_comp.resize(m_udofs, m_udofs);
     m_rhsUnonlin.setZero();
 
     // memory allocation
-    m_blockUUnonlin.reserve(gsVector<index_t>::Constant(m_blockUUnonlin.rows(), m_nnzPerRowU));
+    m_blockUUnonlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_comp.outerSize(), m_nnzPerRowU));
 
-    this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin, m_rhsUnonlin);
+    this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_comp, m_rhsUnonlin);
 }
 
 
-template<class T>
-void gsINSAssembler<T>::fillBaseSystem() 
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::fillGlobalMat_UU(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat)
 {
-    gsVector<index_t> nnzPerRowVector;
-    nnzPerRowVector.setZero(m_dofs);
-
-    gsSparseMatrix<T, RowMajor> blockPU = gsSparseMatrix<T, RowMajor>(-m_blockUP.transpose());
-
-    for (index_t i = 0; i < m_pshift; i++)
-        nnzPerRowVector(i) = m_blockUUlin.row(i).nonZeros() + m_blockUP.row(i).nonZeros();
-
-    for (index_t i = 0; i < m_pdofs; i++)
-        nnzPerRowVector(m_pshift + i) = blockPU.row(i).nonZeros();
-
-    m_baseMatrix.resize(m_dofs, m_dofs);
-    m_baseMatrix.reserve(nnzPerRowVector);
-
-    for (index_t row = 0; row < m_pshift; row++)
+    if (sourceMat.rows() == m_udofs) // sourceMat is a block for one velocity component
     {
-        for (typename gsSparseMatrix<T, RowMajor>::InnerIterator it(m_blockUUlin, row); it; ++it)
-            m_baseMatrix.insert(row, it.col()) = it.value();
+        for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
+            for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
+                for (short_t d = 0; d < m_tarDim; d++)
+                    globalMat.coeffRef(it.row() + d*m_udofs, it.col() + d*m_udofs) += it.value();
+    }
+    else // sourceMat is the whole UU block
+    {
+        for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
+            for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
+                globalMat.coeffRef(it.row(), it.col()) += it.value();
+    }
+}
 
-        for (typename gsSparseMatrix<T, RowMajor>::InnerIterator it(m_blockUP, row); it; ++it)
-            m_baseMatrix.insert(row, m_pshift + it.col()) = it.value();
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::fillGlobalMat_UP(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat)
+{
+    for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
+        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
+                globalMat.coeffRef(it.row(), it.col() + m_pshift) += it.value();
+
+}
+
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::fillGlobalMat_PU(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat)
+{
+    for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
+        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
+            globalMat.coeffRef(it.row() + m_pshift, it.col()) += it.value();
+}
+
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::fillGlobalMat_PP(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat)
+{
+    for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
+        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
+            globalMat.coeffRef(it.row() + m_pshift, it.col() + m_pshift) += it.value();
+}
+
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::fillBaseSystem() 
+{
+    gsVector<index_t> nonZerosVector(m_dofs);
+    gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(m_blockUUlin_comp);
+
+    for (short_t d = 0; d < m_tarDim; d++)
+        nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
+
+    nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(m_blockUUlin_whole);
+
+    gsSparseMatrix<T, MatOrder> blockPU = gsSparseMatrix<T, MatOrder>(-m_blockUP.transpose());
+
+    if (MatOrder == ColMajor)
+    {
+        nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(blockPU);
+        nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(m_blockUP);
+    }
+    else
+    {
+        nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(m_blockUP);
+        nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(blockPU);
     }
 
-    for (index_t row = 0; row < m_pdofs; row++)
-        for (typename gsSparseMatrix<T, RowMajor>::InnerIterator it(blockPU, row); it; ++it)
-            m_baseMatrix.insert(m_pshift + row, it.col()) = it.value();
+    m_baseMatrix.resize(m_dofs, m_dofs);
+    m_baseMatrix.reserve(nonZerosVector);
 
+    fillGlobalMat_UU(m_baseMatrix, m_blockUUlin_comp);
+    fillGlobalMat_UU(m_baseMatrix, m_blockUUlin_whole);
+    fillGlobalMat_UP(m_baseMatrix, m_blockUP);
+    fillGlobalMat_PU(m_baseMatrix, blockPU);
 
     m_baseRhs.noalias() = m_rhsFG + m_rhsBtB;
     m_baseRhs.topRows(m_pshift) += m_rhsUlin;
@@ -191,14 +247,13 @@ void gsINSAssembler<T>::fillBaseSystem()
 }
 
 
-template<class T>
-void gsINSAssembler<T>::fillSystem()
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::fillSystem()
 {
     m_matrix = m_baseMatrix;
 
-    for (index_t row = 0; row < m_pshift; row++)
-        for (typename gsSparseMatrix<T, RowMajor>::InnerIterator it(m_blockUUnonlin, row); it; ++it)
-            m_matrix.coeffRef(row, it.col()) += it.value();
+    fillGlobalMat_UU(m_matrix, m_blockUUnonlin_comp);
+    fillGlobalMat_UU(m_matrix, m_blockUUnonlin_whole);
 
     if (!m_matrix.isCompressed())
         m_matrix.makeCompressed();
@@ -210,8 +265,8 @@ void gsINSAssembler<T>::fillSystem()
 }
 
 
-template<class T>
-void gsINSAssembler<T>::initialize()
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::initialize()
 {
     Base::initialize();
 
@@ -220,8 +275,8 @@ void gsINSAssembler<T>::initialize()
 }
 
 
-template<class T>
-void gsINSAssembler<T>::update(const gsMatrix<T> & solVector, bool updateSol)
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::update(const gsMatrix<T> & solVector, bool updateSol)
 {
     Base::update(solVector, updateSol);
 
@@ -230,8 +285,8 @@ void gsINSAssembler<T>::update(const gsMatrix<T> & solVector, bool updateSol)
 }
 
 
-template<class T>
-void gsINSAssembler<T>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
 {
     m_dofMappers[unk] = gsDofMapper(getBases().at(unk), getBCs(), unk);
 
@@ -251,8 +306,8 @@ void gsINSAssembler<T>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< i
 }
 
 
-template<class T>
-void gsINSAssembler<T>::fillStokesSystem(gsSparseMatrix<T, RowMajor>& stokesMat, gsMatrix<T>& stokesRhs)
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::fillStokesSystem(gsSparseMatrix<T, MatOrder>& stokesMat, gsMatrix<T>& stokesRhs)
 {
     if (!m_isBaseReady)
         this->fillBaseSystem();
@@ -262,8 +317,8 @@ void gsINSAssembler<T>::fillStokesSystem(gsSparseMatrix<T, RowMajor>& stokesMat,
 }
 
 
-template<class T>
-gsField<T> gsINSAssembler<T>::constructSolution(const gsMatrix<T>& solVector, index_t unk) const
+template<class T, int MatOrder>
+gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& solVector, index_t unk) const
 {
     GISMO_ASSERT(m_dofs == solVector.rows(), "Something went wrong, is solution vector valid?");
 
@@ -306,8 +361,8 @@ gsField<T> gsINSAssembler<T>::constructSolution(const gsMatrix<T>& solVector, in
 }
 
 
-template<class T>
-T gsINSAssembler<T>::computeFlowRate(index_t patch, boxSide side, gsMatrix<T> solution) const
+template<class T, int MatOrder>
+T gsINSAssembler<T, MatOrder>::computeFlowRate(index_t patch, boxSide side, gsMatrix<T> solution) const
 {
     T flowRate = 0;
 
@@ -359,8 +414,8 @@ T gsINSAssembler<T>::computeFlowRate(index_t patch, boxSide side, gsMatrix<T> so
 }
 
 
-template<class T>
-index_t gsINSAssembler<T>::numDofsUnk(index_t i)
+template<class T, int MatOrder>
+index_t gsINSAssembler<T, MatOrder>::numDofsUnk(index_t i)
 {
     if (i == 0)
         return m_udofs;
@@ -371,18 +426,49 @@ index_t gsINSAssembler<T>::numDofsUnk(index_t i)
 }
 
 
-template<class T>
-gsSparseMatrix<T, RowMajor> gsINSAssembler<T>::getBlockUU() const
+template<class T, int MatOrder>
+gsSparseMatrix<T, MatOrder> gsINSAssembler<T, MatOrder>::getBlockUU(bool linPartOnly)
 {
-    if (m_isSystemReady)
+    if (m_isSystemReady && !linPartOnly)
+    {
         return m_matrix.topLeftCorner(m_pshift, m_pshift);
+    }
+    else if (m_isBaseReady && linPartOnly)
+    {
+        return m_baseMatrix.topLeftCorner(m_pshift, m_pshift);
+    }
     else
-        return m_blockUUlin + m_blockUUnonlin;
+    {
+        gsSparseMatrix<T, MatOrder> blockUUcomp = m_blockUUlin_comp;
+
+        if(!linPartOnly)
+            blockUUcomp += m_blockUUnonlin_comp;
+
+        gsSparseMatrix<T, MatOrder> blockUU(m_pshift, m_pshift);
+
+        gsVector<index_t> nonZerosVector(m_pshift);
+        gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);
+
+        for (short_t d = 0; d < m_tarDim; d++)
+            nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
+
+        blockUU.reserve(nonZerosVector);
+        fillGlobalMat_UU(blockUU, blockUUcomp);
+
+        blockUU += m_blockUUlin_whole;
+
+        if(!linPartOnly)
+            blockUU += m_blockUUnonlin_whole;
+
+        blockUU.makeCompressed();
+
+        return blockUU;
+    }
 }
 
 
-template<class T>
-gsMatrix<T> gsINSAssembler<T>::getRhsU() const
+template<class T, int MatOrder>
+gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU() const
 { 
     if (m_isSystemReady)
         return m_rhs.topRows(m_pshift);
@@ -394,8 +480,8 @@ gsMatrix<T> gsINSAssembler<T>::getRhsU() const
 }
 
 
-template<class T>
-gsMatrix<T> gsINSAssembler<T>::getRhsP() const
+template<class T, int MatOrder>
+gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsP() const
 {
     if (m_isSystemReady)
         return m_rhs.bottomRows(m_pdofs);
@@ -406,19 +492,19 @@ gsMatrix<T> gsINSAssembler<T>::getRhsP() const
 // =============================================================================
 
 
-template<class T>
-void gsINSAssemblerUnsteady<T>::initMembers()
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::initMembers()
 {
     Base::initMembers();
     updateSizes();
 
-    m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T>(m_params);
+    m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T, MatOrder>(m_params);
     m_visitorTimeDiscr.initialize();
 }
 
 
-template<class T>
-void gsINSAssemblerUnsteady<T>::updateSizes()
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::updateSizes()
 {
     Base::updateSizes();
 
@@ -428,12 +514,12 @@ void gsINSAssemblerUnsteady<T>::updateSizes()
     m_rhsTimeDiscr.setZero(m_pshift, 1);
 
     // memory allocation
-    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.rows(), m_nnzPerRowU));
+    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.outerSize(), m_nnzPerRowU));
 }
 
 
-template<class T>
-void gsINSAssemblerUnsteady<T>::updateDofMappers()
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::updateDofMappers()
 {
     Base::updateDofMappers();
 
@@ -441,8 +527,8 @@ void gsINSAssemblerUnsteady<T>::updateDofMappers()
 }
 
 
-template<class T>
-void gsINSAssemblerUnsteady<T>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
 {
     Base::updateCurrentSolField(solVector, updateSol);
 
@@ -451,13 +537,13 @@ void gsINSAssemblerUnsteady<T>::updateCurrentSolField(const gsMatrix<T> & solVec
 }
 
 
-template<class T>
-void gsINSAssemblerUnsteady<T>::assembleLinearPart()
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
 {
     Base::assembleLinearPart();
 
     // matrix cleaning
-    //m_blockTimeDiscr.setZero();
+    m_blockTimeDiscr.resize(m_pshift, m_pshift);
 
     gsMatrix<T> dummyRhs;
     dummyRhs.setZero(m_pshift, 1);
@@ -468,20 +554,16 @@ void gsINSAssemblerUnsteady<T>::assembleLinearPart()
 }
 
 
-template<class T>
-void gsINSAssemblerUnsteady<T>::fillBaseSystem() 
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::fillBaseSystem() 
 {
     Base::fillBaseSystem();
-
-    for (index_t row = 0; row < m_pshift; row++)
-        for (typename gsSparseMatrix<T, RowMajor>::InnerIterator it(m_blockTimeDiscr, row); it; ++it)
-            m_baseMatrix.coeffRef(row, it.col()) += it.value();
-
+    this->fillGlobalMat_UU(m_baseMatrix, m_blockTimeDiscr);
 }
 
 
-template<class T>
-void gsINSAssemblerUnsteady<T>::fillSystem()
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::fillSystem()
 {
     Base::fillSystem();
 
@@ -489,10 +571,10 @@ void gsINSAssemblerUnsteady<T>::fillSystem()
 }
 
 
-template<class T>
-void gsINSAssemblerUnsteady<T>::update(const gsMatrix<T> & solVector, bool updateSol)
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector, bool updateSol)
 {
-    gsFlowAssemblerBase<T>::update(solVector, updateSol);
+    gsFlowAssemblerBase<T, MatOrder>::update(solVector, updateSol);
 
     if(updateSol)
         m_rhsTimeDiscr = m_blockTimeDiscr * m_solution.topRows(m_pshift);

@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowTerms.h>
@@ -19,9 +21,10 @@
 namespace gismo
 {
 
-/// @brief      Base class for incompressible flow visitors.
-/// @tparam T   real number type
-template <class T>
+/// @brief              Base class for incompressible flow visitors.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+template <class T, int MatOrder>
 class gsFlowVisitor
 {
 
@@ -71,7 +74,7 @@ public: // *** Constructor/destructor ***
     {
         deleteTerms();
     }
-
+    
 
 protected: // *** Member functions ***
 
@@ -105,13 +108,20 @@ protected: // *** Member functions ***
     void setupQuadrature();
     //{ GISMO_NO_IMPLEMENTATION }
 
+    /// @brief Evaluate required data for the given basis function.
+    /// @param[in]  basisFlags      evaluation flags
+    /// @param[in]  basisPtr        the given basis
+    /// @param[in ] funID           index of the function to be evaluated
+    /// @param[out] basisData       resulting data
+    void evalSingleFunData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, const index_t funID, std::vector< gsMatrix<T> >& basisData);
+
     /// @brief Evaluate required data for the given basis.
     /// @param[in]  basisFlags      evaluation flags
     /// @param[in]  basisPtr        the given basis
-    /// @param[in]  basisActives    active basis functions
+    /// @param[out] activesUnique   vector of indices of basis functions that are nonzero in any of quNodes
     /// @param[out] basisData       resulting data
-    void evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, const gsMatrix<index_t>& basisActives, std::vector< gsMatrix<T> >& basisData);
-
+    void evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, gsMatrix<index_t>& activesUnique, std::vector< gsMatrix<T> >& basisData);
+    
 
 public: // *** Member functions ***
 
@@ -149,7 +159,7 @@ public: // *** Member functions ***
     /// @param[in]  eliminatedDofs  coefficients of the eliminated Dirichlet DoFs
     /// @param[out] globalMat       resulting global matrix
     /// @param[out] globalRhs       resulting global rhs
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, RowMajor>& globalMat, gsMatrix<T>& globalRhs)
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
     { GISMO_NO_IMPLEMENTATION } 
 
     /// @brief Map local rhs vector to the global rhs vector.
@@ -161,12 +171,12 @@ public: // *** Member functions ***
 
 // ===================================================================================================================
 
-template <class T>
-class gsFlowVisitorVectorValued : public gsFlowVisitor<T> 
+template <class T, int MatOrder>
+class gsFlowVisitorVectorValued : public gsFlowVisitor<T, MatOrder> 
 {
 
 public:
-    typedef gsFlowVisitor<T> Base;
+    typedef gsFlowVisitor<T, MatOrder> Base;
 
 
 protected: // *** Class members ***

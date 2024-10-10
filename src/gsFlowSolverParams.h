@@ -57,7 +57,7 @@ public: // *** Constructor/destructor ***
         m_assembOpt.intStrategy = iFace::glue;
 
         m_opt = gsFlowSolverParams<T>::defaultOptions();
-        m_precOpt = gsINSPreconditioner<T>::defaultOptions();
+        m_precOpt = gsINSPreconditioner<T, RowMajor>::defaultOptions();
     }
 
     ~gsFlowSolverParams()

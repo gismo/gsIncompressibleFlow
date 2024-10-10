@@ -6,6 +6,7 @@
 namespace gismo
 {
     
-    CLASS_TEMPLATE_INST gsFlowSolverBase<real_t>;
+    CLASS_TEMPLATE_INST gsFlowSolverBase<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsFlowSolverBase<real_t, ColMajor>;
 
 } // namespace gismo

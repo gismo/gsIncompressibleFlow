@@ -16,8 +16,8 @@
 namespace gismo
 {
 
-template<class T>
-void gsFlowSolverBase<T>::initMembers()
+template<class T, int MatOrder>
+void gsFlowSolverBase<T, MatOrder>::initMembers()
 {
     m_solution.setZero(getAssembler()->numDofs(), 1);
     m_iterationNumber = 0;
@@ -34,15 +34,15 @@ void gsFlowSolverBase<T>::initMembers()
 }
 
 
-template<class T>
-void gsFlowSolverBase<T>::updateSizes()
+template<class T, int MatOrder>
+void gsFlowSolverBase<T, MatOrder>::updateSizes()
 {
     m_solution.setZero(getAssembler()->numDofs(), 1);
 }
 
 
-template<class T>
-void gsFlowSolverBase<T>::createOutputFile()
+template<class T, int MatOrder>
+void gsFlowSolverBase<T, MatOrder>::createOutputFile()
 {
     std::string fileName = m_params.options().getString("outFile");
 
@@ -57,8 +57,8 @@ void gsFlowSolverBase<T>::createOutputFile()
 }
 
 
-template<class T>
-real_t gsFlowSolverBase<T>::stopwatchStart()
+template<class T, int MatOrder>
+real_t gsFlowSolverBase<T, MatOrder>::stopwatchStart()
 {
 
 #ifdef GISMO_WITH_PETSC
@@ -75,8 +75,8 @@ real_t gsFlowSolverBase<T>::stopwatchStart()
 }
 
 
-template<class T>
-real_t gsFlowSolverBase<T>::stopwatchStop()
+template<class T, int MatOrder>
+real_t gsFlowSolverBase<T, MatOrder>::stopwatchStop()
 {
 
 #ifdef GISMO_WITH_PETSC
@@ -92,8 +92,8 @@ real_t gsFlowSolverBase<T>::stopwatchStop()
 }
 
 
-template<class T>
-void gsFlowSolverBase<T>::initialize()
+template<class T, int MatOrder>
+void gsFlowSolverBase<T, MatOrder>::initialize()
 { 
     if (!getAssembler()->isInitialized())
     {
@@ -106,8 +106,8 @@ void gsFlowSolverBase<T>::initialize()
 }
 
 
-template<class T>
-void gsFlowSolverBase<T>::nextIteration(const unsigned numberOfIterations)
+template<class T, int MatOrder>
+void gsFlowSolverBase<T, MatOrder>::nextIteration(const unsigned numberOfIterations)
 {
     GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
 
@@ -116,8 +116,8 @@ void gsFlowSolverBase<T>::nextIteration(const unsigned numberOfIterations)
 }
 
 
-template<class T>
-void gsFlowSolverBase<T>::solve(const int maxIterations, const T epsilon, const int minIterations)
+template<class T, int MatOrder>
+void gsFlowSolverBase<T, MatOrder>::solve(const int maxIterations, const T epsilon, const int minIterations)
 {
     GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
     int iter = 0;
@@ -141,8 +141,8 @@ void gsFlowSolverBase<T>::solve(const int maxIterations, const T epsilon, const 
 }
 
 
-template<class T>
-void gsFlowSolverBase<T>::updateAssembler(const gsMatrix<T>& sol, bool updateSol)
+template<class T, int MatOrder>
+void gsFlowSolverBase<T, MatOrder>::updateAssembler(const gsMatrix<T>& sol, bool updateSol)
 { 
     real_t time0 = stopwatchStart();
     getAssembler()->update(sol, updateSol);
@@ -152,8 +152,8 @@ void gsFlowSolverBase<T>::updateAssembler(const gsMatrix<T>& sol, bool updateSol
 }
 
 
-template<class T>
-T gsFlowSolverBase<T>::solutionChangeRelNorm() const
+template<class T, int MatOrder>
+T gsFlowSolverBase<T, MatOrder>::solutionChangeRelNorm() const
 {
     T relNorm;
 
@@ -166,8 +166,8 @@ T gsFlowSolverBase<T>::solutionChangeRelNorm() const
 }
 
 
-template<class T>
-T gsFlowSolverBase<T>::solutionChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew) const
+template<class T, int MatOrder>
+T gsFlowSolverBase<T, MatOrder>::solutionChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew) const
 {
     gsMatrix<T> solChangeVector = solOld - solNew;
     T relNorm = solChangeVector.norm() / solNew.norm();
@@ -176,8 +176,8 @@ T gsFlowSolverBase<T>::solutionChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> sol
 }
 
 
-template<class T>
-void gsFlowSolverBase<T>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew)
+template<class T, int MatOrder>
+void gsFlowSolverBase<T, MatOrder>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew)
 {
     m_outStream.str("");
     m_outStream << "     [u, p] solution change relative norm: ";
@@ -189,16 +189,16 @@ void gsFlowSolverBase<T>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> 
 }
 
 
-template<class T>
-void gsFlowSolverBase<T>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk)
+template<class T, int MatOrder>
+void gsFlowSolverBase<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk)
 {
     getAssembler()->markDofsAsEliminatedZeros(boundaryDofs, unk);
     updateSizes();
 }
 
 
-template<class T>
-int gsFlowSolverBase<T>::checkGeoJacobian(int npts, T dist, T tol)
+template<class T, int MatOrder>
+int gsFlowSolverBase<T, MatOrder>::checkGeoJacobian(int npts, T dist, T tol)
 {
     // default values
 

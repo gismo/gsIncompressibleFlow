@@ -19,17 +19,18 @@
 namespace gismo
 {
 
-/// @brief  A base class for all flow solvers in gsIncompressibleFlow.
-/// @tparam T real number type
-template<class T>
+/// @brief              A base class for all flow solvers in gsIncompressibleFlow.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+template<class T, int MatOrder>
 class gsFlowSolverBase
 {
 
 protected: // *** Class members ***
 
     gsFlowSolverParams<T> m_params;
-    gsFlowAssemblerBase<T>* m_assemblerPtr;
-    gsFlowLinSystSolver<T>* m_linSolverPtr;
+    gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr;
+    gsFlowLinSystSolver<T, MatOrder>* m_linSolverPtr;
 
     gsMatrix<T> m_solution;
     unsigned m_iterationNumber;
@@ -47,7 +48,7 @@ public: // *** Constructor/destructor ***
     m_params(params)
     {
         m_assemblerPtr = NULL;
-        m_linSolverPtr = createLinSolver(params);
+        m_linSolverPtr = createLinSolver<T, MatOrder>(params);
     }
 
     virtual ~gsFlowSolverBase()
@@ -171,10 +172,10 @@ public: // *** Getters/setters ***
     virtual gsFlowSolverParams<T> getParams() { return m_params; }
 
     /// @brief Returns a pointer to the assembler.
-    virtual gsFlowAssemblerBase<T>* getAssembler() const { return m_assemblerPtr; }
+    virtual gsFlowAssemblerBase<T, MatOrder>* getAssembler() const { return m_assemblerPtr; }
 
     /// @brief Returns a pointer to the linear system solver.
-    gsFlowLinSystSolver<T>* getLinSolver() const { return m_linSolverPtr; }
+    gsFlowLinSystSolver<T, MatOrder>* getLinSolver() const { return m_linSolverPtr; }
 
     /// @brief Returns the current solution vector.
     const gsMatrix<T> & getSolution() const { return m_solution; }
