@@ -30,9 +30,9 @@ class gsFlowVisitor
 
 protected: // *** Type definitions ***
 
-    typedef gsFlowTermValVal<T>     MassTerm;
-    typedef gsINSTermPvalUdiv<T>    PressureGradTerm;
-    typedef gsINSTermUsolGradVal<T> ConvectionTerm;
+    typedef gsFlowTerm_ValVal<T>     MassTerm;
+    typedef gsINSTerm_PvalUdiv<T>    PressureGradTerm;
+    typedef gsINSTerm_UsolGradVal<T> ConvectionTerm;
 
 
 protected: // *** Class members ***
@@ -40,7 +40,7 @@ protected: // *** Class members ***
     // constant and same for all visitors
     index_t m_patchID;
     gsFlowSolverParams<T> m_params; // pde, bases, assemblerOptions, options, precOptions
-    // pde members: dim, viscosity, rhs (f,g), gsBoundaryConditions, patches, unknownDim
+                                    // pde members: dim, viscosity, rhs (f,g), gsBoundaryConditions, patches, unknownDim
  
     // constant for individual visitors
     index_t m_testUnkID, m_shapeUnkID; // used, e.g., to reference the corresponding mapper

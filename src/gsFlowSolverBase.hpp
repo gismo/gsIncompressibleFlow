@@ -203,13 +203,13 @@ int gsFlowSolverBase<T, MatOrder>::checkGeoJacobian(int npts, T dist, T tol)
     // default values
 
     if (npts == -1)
-        npts = m_params.options().getInt("jac_npts");
+        npts = m_params.options().getInt("jac.npts");
 
     if (dist == -1)
-        dist = m_params.options().getReal("jac_dist");
+        dist = m_params.options().getReal("jac.dist");
 
     if (tol == -1)
-        tol = m_params.options().getReal("jac_tol");
+        tol = m_params.options().getReal("jac.tol");
 
     short_t dim = m_params.getPde().patches().domainDim();
     size_t np = m_params.getPde().patches().nPatches();

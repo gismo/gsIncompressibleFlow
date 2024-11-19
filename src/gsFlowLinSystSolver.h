@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 
 namespace gismo
@@ -125,23 +126,9 @@ public: // *** Constructor/destructor ***
     Base(params)
     {
         #ifdef GISMO_WITH_PARDISO
-        pardisoSetup(m_solver);
+        pardisoSetup<T>(m_solver);
         #endif
     }
-
-
-public: // *** Static functions ***
-
-#ifdef GISMO_WITH_PARDISO
-    /// @brief Setup the pardiso solver.
-    /// @param[in,out] solver a reference to the pardiso solver
-    static void pardisoSetup(typename gsSparseSolver<T>::PardisoLU& solver)
-    {
-        solver.setParam(7, 15);
-        solver.setParam(9, 13);
-        solver.setParam(12, 0);
-    }
-#endif
 
 
 public: // *** Member functions ***
@@ -163,7 +150,7 @@ public: // *** Member functions ***
 template<class T, int MatOrder>
 gsFlowLinSystSolver<T, MatOrder>* createLinSolver(const gsFlowSolverParams<T>& params)
 {
-    std::string type = params.options().getString("linSolver");
+    std::string type = params.options().getString("lin.solver");
 
     if (type == "direct")
         return new gsFlowLinSystSolver_direct<T, MatOrder>(params);

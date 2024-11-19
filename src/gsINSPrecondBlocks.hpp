@@ -50,8 +50,8 @@ void gsINSPrecondBlock<T>::setupLinSolver(gsSparseSolver<T>& solver)
     {
         #ifdef GISMO_WITH_PARDISO
             typename gsSparseSolver<T>::PardisoLU* pSolver = dynamic_cast<typename gsSparseSolver<T>::PardisoLU*>(&solver);
-            gsINSSolverBase<T>::pardisoSetup(*pSolver);
-            #endif
+            pardisoSetup<T>(*pSolver);
+        #endif
     }
 }
 

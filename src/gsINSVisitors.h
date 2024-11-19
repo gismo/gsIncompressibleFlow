@@ -90,7 +90,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTermDiffusion<T>(m_params.getPde().viscosity()) );
+        m_terms.push_back( new gsFlowTerm_Diffusion<T>(m_params.getPde().viscosity()) );
 
         // if(m_params.options().getSwitch("unsteady"))
         //     m_terms.push_back( new gsFlowTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
@@ -164,7 +164,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
+        m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_params.options().getReal("timeStep")) );
     }
 
 };
@@ -206,7 +206,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsINSTermPvalUdiv<T>() );
+        m_terms.push_back( new gsINSTerm_PvalUdiv<T>() );
     }
 
     virtual void defineTestShapeUnknowns()
@@ -292,7 +292,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsINSTermUdivPval<T>() );
+        m_terms.push_back( new gsINSTerm_UdivPval<T>() );
     }
 
     virtual void defineTestShapeUnknowns()
@@ -449,7 +449,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTermValVal<T>() );
+        m_terms.push_back( new gsFlowTerm_ValVal<T>() );
     }
 
 };
@@ -482,7 +482,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTermGradGrad<T>() );
+        m_terms.push_back( new gsFlowTerm_GradGrad<T>() );
     }
 
 };
@@ -514,7 +514,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsINSTermUsolGradVal<T>() );
+        m_terms.push_back( new gsINSTerm_UsolGradVal<T>() );
     }
 
 };
@@ -574,7 +574,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTermRhs<T>(m_pRhsFun) );
+        m_terms.push_back( new gsFlowTerm_rhs<T>(m_pRhsFun) );
     }
 
 public: // *** Member functions ***
@@ -637,7 +637,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTermRhs<T>(m_pRhsFun) );
+        m_terms.push_back( new gsFlowTerm_rhs<T>(m_pRhsFun) );
     }
 
 public: // *** Member functions ***

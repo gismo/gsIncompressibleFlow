@@ -97,6 +97,11 @@ public: // *** Member functions ***
     virtual void initIteration()
     { getLinSolver()->setupSolver(getAssembler()->matrix()); }
 
+    /// @brief Prepare for the solution process.
+    /// @param[in] the linear system matrix
+    virtual void initIteration(const gsSparseMatrix<T, MatOrder>& mat)
+    { getLinSolver()->setupSolver(mat); }
+
     /// @brief Solve the linear system.
     /// @param[out] solution a reference to the vector, where the computed solution will be stored
     virtual void applySolver(gsMatrix<T>& solution)
@@ -193,8 +198,8 @@ public: // *** Getters/setters ***
     /// @brief Returns the time of the initial matrix assembly.
     virtual const T getInitAssemblyTime() const { return m_initAssembT; }
 
-    /// @brief Returns the total time spent on matrix assembly (without the initial phase).
-    virtual const T getAssemblyTime() const { return m_assembT; }
+    /// @brief Returns the total time spent on matrix assembly.
+    virtual const T getAssemblyTime() const { return m_initAssembT + m_assembT; }
 
     /// @brief Returns the total time spent on linear solver setup.
     virtual const T getSolverSetupTime() const { return getLinSolver()->getSolverSetupTime(); }

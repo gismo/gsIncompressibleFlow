@@ -7,10 +7,10 @@ namespace gismo
 {
     CLASS_TEMPLATE_INST gsFlowTerm<real_t>;
     CLASS_TEMPLATE_INST gsFlowTermNonlin<real_t>;
-    CLASS_TEMPLATE_INST gsFlowTermValVal<real_t>;
-    CLASS_TEMPLATE_INST gsFlowTermTimeDiscr<real_t>;
-    CLASS_TEMPLATE_INST gsFlowTermGradGrad<real_t>;
-    CLASS_TEMPLATE_INST gsFlowTermDiffusion<real_t>;
-    CLASS_TEMPLATE_INST gsFlowTermRhs<real_t>;
+    CLASS_TEMPLATE_INST gsFlowTerm_ValVal<real_t>;
+    CLASS_TEMPLATE_INST gsFlowTerm_TimeDiscr<real_t>;
+    CLASS_TEMPLATE_INST gsFlowTerm_GradGrad<real_t>;
+    CLASS_TEMPLATE_INST gsFlowTerm_Diffusion<real_t>;
+    CLASS_TEMPLATE_INST gsFlowTerm_rhs<real_t>;
 
 } // namespace gismo

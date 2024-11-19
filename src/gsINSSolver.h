@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
 #include <gsIncompressibleFlow/src/gsINSAssembler.h>
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
@@ -37,6 +38,7 @@ protected: // *** Base class members ***
 
     using Base::m_assemblerPtr;
     using Base::m_solution;
+    using Base::m_iterationNumber;
     using Base::m_outFile;
     using Base::m_fileOutput;
     using Base::m_dispOutput;
@@ -173,11 +175,15 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     virtual void initMembers();
 
+    void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNameSuffix, unsigned plotPts);
+
 
 public: // *** Member functions ***
 
     /// @brief Perform next iteration step.
     virtual void nextIteration();
+
+    void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, const int minIterations = 1);
 
     /// @brief Solve the generalized Stokes problem.
     virtual void solveGeneralizedStokes(const int maxIterations, const T epsilon, const int minIterations = 1)

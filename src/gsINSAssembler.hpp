@@ -544,6 +544,7 @@ void gsINSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
 
     // matrix cleaning
     m_blockTimeDiscr.resize(m_pshift, m_pshift);
+    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.outerSize(), m_nnzPerRowU));
 
     gsMatrix<T> dummyRhs;
     dummyRhs.setZero(m_pshift, 1);

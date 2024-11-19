@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     gsFlowSolverParams<real_t> params(NSpde, discreteBases);
     params.options().setSwitch("quiet", quiet);
-    params.options().setString("matFormation", matFormation);
+    params.options().setString("assemb.loop", matFormation);
 
     // bool stokesInit, bool plot
     gsOptionList solveOpt;
@@ -219,8 +219,8 @@ int main(int argc, char *argv[])
         solveOpt.setInt("id", id);
 
         params.options().setReal("timeStep", timeStep);
-        params.options().setInt("maxIt_picard", picardIt);
-        params.options().setReal("tol_picard", picardTol);
+        params.options().setInt("nonlin.maxIt", picardIt);
+        params.options().setReal("nonlin.tol", picardTol);
 
         gsINSSolverUnsteady<real_t, RowMajor> NSsolver(params);
 

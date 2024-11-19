@@ -18,6 +18,35 @@
 namespace gismo
 {
 
+#ifdef GISMO_WITH_PARDISO
+/// @brief Setup the pardiso solver.
+/// @param[in,out] solver a reference to the pardiso solver
+template <class T>
+inline void pardisoSetup(typename gsSparseSolver<T>::PardisoLU& solver)
+{
+    solver.setParam(7, 15);
+    solver.setParam(9, 13);
+    solver.setParam(12, 0);
+}
+#endif
+
+
+inline void startAnimationFile(std::ofstream& file)
+{
+    file << "<?xml version=\"1.0\"?>\n";
+    file << "<VTKFile type=\"Collection\" version=\"0.1\">";
+    file << "<Collection>\n";
+}
+
+
+inline void endAnimationFile(std::ofstream& file)
+{
+    file << "</Collection>\n";
+    file << "</VTKFile>\n";
+    file.close();
+}
+
+
 /// @brief Writes an output into the given file and optionally also into terminal.
 /// @param[out] file            the output file
 /// @param[in]  output          the output to write
@@ -750,6 +779,13 @@ struct gsVectorHash
         return seed;
     }
 };
+
+
+inline index_t mapTensorID(index_t i, index_t j, index_t k, size_t size1, size_t size2)
+{
+    index_t result = (k*size1*size2)+(j*size1)+i;
+    return result;
+}
 
 
 } //namespace gismo

@@ -19,23 +19,16 @@ namespace gismo
 /// @brief      A class for integrals of the form: pressure shape function value * velocity test function divergence.
 /// @tparam T   real number type
 template <class T>
-class gsINSTermPvalUdiv : public gsFlowTerm<T> // order: shape, test
+class gsINSTerm_PvalUdiv : public gsFlowTerm<T> // order: shape, test
 {
-
-public:
-    typedef gsFlowTerm<T> Base;
-
-protected: // *** Base class members ***
-
-    using Base::m_coeff;
 
 public: // *** Constructor/destructor ***
 
-    gsINSTermPvalUdiv()
+    gsINSTerm_PvalUdiv()
     {
-        Base::m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
-        Base::m_testFunFlags = NEED_DERIV;
-        Base::m_shapeFunFlags = NEED_VALUE;
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        this->m_testFunFlags = NEED_DERIV;
+        this->m_shapeFunFlags = NEED_VALUE;
     }
 
 
@@ -56,23 +49,16 @@ public: // *** Member functions ***
 /// @brief      A class for integrals of the form: velocity shape function divergence * pressure test function value.
 /// @tparam T   real number type
 template <class T>
-class gsINSTermUdivPval : public gsFlowTerm<T> // order: shape, test
+class gsINSTerm_UdivPval : public gsFlowTerm<T> // order: shape, test
 {
-
-public:
-    typedef gsFlowTerm<T> Base;
-
-protected: // *** Base class members ***
-
-    using Base::m_coeff;
 
 public: // *** Constructor/destructor ***
 
-    gsINSTermUdivPval()
+    gsINSTerm_UdivPval()
     {
-        Base::m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
-        Base::m_testFunFlags = NEED_VALUE;
-        Base::m_shapeFunFlags = NEED_DERIV;
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        this->m_testFunFlags = NEED_VALUE;
+        this->m_shapeFunFlags = NEED_DERIV;
     }
 
 
@@ -87,24 +73,16 @@ public: // *** Member functions ***
 /// @brief      A class for integrals of the form: velocity solution * shape function gradient * test function value.
 /// @tparam T   real number type
 template <class T>
-class gsINSTermUsolGradVal : public gsFlowTermNonlin<T> // order: shape, test
+class gsINSTerm_UsolGradVal : public gsFlowTermNonlin<T> // order: shape, test
 {
-
-public:
-    typedef gsFlowTermNonlin<T> Base;
-
-protected: // *** Base class members ***
-
-    using Base::m_solUVals;
-    using gsFlowTerm<T>::m_coeff;
 
 public: // *** Constructor/destructor ***
 
-    gsINSTermUsolGradVal()
+    gsINSTerm_UsolGradVal()
     {
-        Base::m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
-        Base::m_testFunFlags = NEED_VALUE;
-        Base::m_shapeFunFlags = NEED_DERIV;
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        this->m_testFunFlags = NEED_VALUE;
+        this->m_shapeFunFlags = NEED_DERIV;
     }
 
 

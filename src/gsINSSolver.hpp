@@ -25,6 +25,10 @@ void gsINSSolver<T, MatOrder>::solveStokes()
     gsMatrix<T> stokesRhs;
 
     getAssembler()->fillStokesSystem(stokesMat, stokesRhs);
+
+    if (!m_iterationNumber)
+        this->initIteration(stokesMat);
+
     this->getLinSolver()->applySolver(stokesMat, stokesRhs, m_solution);
 }
 
@@ -53,9 +57,37 @@ void gsINSSolverUnsteady<T, MatOrder>::initMembers()
     Base::initMembers();
     m_time = 0;
     m_timeStepSize = m_params.options().getReal("timeStep");
-    m_innerIter = m_params.options().getInt("maxIt_picard");
-    m_innerTol = m_params.options().getReal("tol_picard");
+    m_innerIter = m_params.options().getInt("nonlin.maxIt");
+    m_innerTol = m_params.options().getReal("nonlin.tol");
     m_avgPicardIter = 0;
+}
+
+
+template<class T, int MatOrder>
+void gsINSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNameSuffix, unsigned plotPts)
+{
+    int numPatches = m_params.getPde().patches().nPatches();
+
+    gsField<T> uSol = this->constructSolution(0);
+    std::stringstream filenameU;
+    filenameU << "velocity" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    gsWriteParaview<T>(uSol, filenameU.str(), plotPts);
+
+    gsField<T> pSol = this->constructSolution(1);
+    std::stringstream filenameP;
+    filenameP << "pressure" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    gsWriteParaview<T>(pSol, filenameP.str(), plotPts);
+
+    for (int p = 0; p < numPatches; p++)
+    {
+        std::stringstream fnU;
+        fnU << filenameU.str() << p << ".vts";
+        fileU << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnU.str() << "\"/>\n";
+
+        std::stringstream fnP;
+        fnP << filenameP.str() << p << ".vts";
+        fileP << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnP.str() << "\"/>\n";
+    }
 }
 
 
@@ -99,6 +131,35 @@ void gsINSSolverUnsteady<T, MatOrder>::nextIteration()
     m_time += m_timeStepSize;
     m_avgPicardIter += picardIter;
     m_iterationNumber++;
+}
+
+
+template<class T, int MatOrder>
+void gsINSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix, const T epsilon, unsigned plotPts, const int minIterations)
+{
+    // prepare plotting
+    std::string fileNameU = "velocity" + fileNameSuffix + "_animation.pvd";
+    std::ofstream fileU(fileNameU.c_str());
+    GISMO_ASSERT(fileU.is_open(), "Error creating " << fileNameU);
+
+    std::string fileNameP = "pressure" + fileNameSuffix + "_animation.pvd";
+    std::ofstream fileP(fileNameP.c_str());
+    GISMO_ASSERT(fileP.is_open(), "Error creating " << fileNameP);
+
+    startAnimationFile(fileU);
+    startAnimationFile(fileP);
+
+    plotCurrentTimeStep(fileU, fileP, fileNameSuffix, plotPts);
+
+    for (int i = 0; i < totalIter; i += iterStep)
+    {
+        this->solve(math::min(iterStep, totalIter), epsilon, minIterations);
+
+        plotCurrentTimeStep(fileU, fileP, fileNameSuffix, plotPts);
+    }
+
+    endAnimationFile(fileU);
+    endAnimationFile(fileP);
 }
 
 // from old version of the solver (TODO):

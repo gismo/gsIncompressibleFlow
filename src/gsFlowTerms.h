@@ -48,9 +48,21 @@ public: // *** Constructor/destructor ***
 
 public: // *** Member functions ***
 
+    /// @brief Assemble the current local matrix.
+    /// @param[in]  mapData         geometry mapping information
+    /// @param[in]  quWeights       quadrature weights
+    /// @param[in]  testFunData     test basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
+    /// @param[in]  shapeFunData    shape basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
+    /// @param[out] localMat        resulting local matrix
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
     { GISMO_NO_IMPLEMENTATION }
 
+    /// @brief Assemble the current local matrices.
+    /// @param[in]  mapData         geometry mapping information
+    /// @param[in]  quWeights       quadrature weights
+    /// @param[in]  testFunData     test basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
+    /// @param[in]  shapeFunData    shape basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
+    /// @param[out] localMat        vector of resulting local matrices (e.g. one for each velocity component)
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
     { GISMO_NO_IMPLEMENTATION }
 
@@ -82,7 +94,7 @@ protected: // *** Member functions ***
     virtual void evalCoeff(const gsMapData<T>& mapData)
     { setConstCoeff(1.0); }
 
-    virtual gsVector<T> getCoeffWeightsProduct(const gsVector<T>& quWeights);
+    virtual gsVector<T> getCoeffGeoMapProduct(const gsMapData<T>& mapData);
 
 };
 
@@ -150,24 +162,16 @@ protected: // *** Member functions ***
 /// @brief      A class for integrals of the form: test function value * shape function value.
 /// @tparam T   real number type
 template <class T>
-class gsFlowTermValVal : public gsFlowTerm<T>
+class gsFlowTerm_ValVal : public gsFlowTerm<T>
 {
-
-public:
-    typedef gsFlowTerm<T> Base;
-
-
-protected: // *** Base class members ***
-
-    using Base::m_coeff;
 
 public: // *** Constructor/destructor ***
 
-    gsFlowTermValVal()
+    gsFlowTerm_ValVal()
     {
-        Base::m_geoFlags = NEED_MEASURE;
-        Base::m_testFunFlags = NEED_VALUE;
-        Base::m_shapeFunFlags = NEED_VALUE;
+        this->m_geoFlags = NEED_MEASURE;
+        this->m_testFunFlags = NEED_VALUE;
+        this->m_shapeFunFlags = NEED_VALUE;
     }
 
 
@@ -182,12 +186,8 @@ public: // *** Member functions ***
 /// @brief      A class for integrals of the form: (1 / time step) * test function value * shape function value.
 /// @tparam T   real number type
 template <class T>
-class gsFlowTermTimeDiscr : public gsFlowTermValVal<T>
+class gsFlowTerm_TimeDiscr : public gsFlowTerm_ValVal<T>
 {
-
-public:
-    typedef gsFlowTermValVal<T> Base;
-
 
 protected: // *** Class members ***
 
@@ -196,7 +196,7 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsFlowTermTimeDiscr(real_t timeStep) :
+    gsFlowTerm_TimeDiscr(real_t timeStep) :
     m_timeStep(timeStep)
     { }
 
@@ -213,23 +213,16 @@ protected: // *** Member functions ***
 /// @brief      A class for integrals of the form: test function gradient * shape function gradient.
 /// @tparam T   real number type
 template <class T>
-class gsFlowTermGradGrad : public gsFlowTerm<T>
+class gsFlowTerm_GradGrad : public gsFlowTerm<T>
 {
-
-public:
-    typedef gsFlowTerm<T> Base;
-
-protected: // *** Base class members ***
-
-    using Base::m_coeff;
 
 public: // *** Constructor/destructor ***
 
-    gsFlowTermGradGrad()
+    gsFlowTerm_GradGrad()
     {
-        Base::m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
-        Base::m_testFunFlags = NEED_DERIV;
-        Base::m_shapeFunFlags = NEED_DERIV;
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        this->m_testFunFlags = NEED_DERIV;
+        this->m_shapeFunFlags = NEED_DERIV;
     }
 
 
@@ -244,11 +237,8 @@ public: // *** Member functions ***
 /// @brief      A class for integrals of the form: viscosity * test function gradient * shape function gradient.
 /// @tparam T   real number type
 template <class T>
-class gsFlowTermDiffusion : public gsFlowTermGradGrad<T>
+class gsFlowTerm_Diffusion : public gsFlowTerm_GradGrad<T>
 {
-
-public:
-    typedef gsFlowTermGradGrad<T> Base;
 
 protected: // *** Class members ***
 
@@ -256,7 +246,7 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsFlowTermDiffusion(real_t viscosity) :
+    gsFlowTerm_Diffusion(real_t viscosity) :
     m_viscosity(viscosity)
     { }
 
@@ -274,31 +264,20 @@ protected: // *** Member functions ***
 /// @brief      A class for integrals of the form: test function value * rhs function value.
 /// @tparam T   real number type
 template <class T>
-class gsFlowTermRhs : public gsFlowTerm<T>
+class gsFlowTerm_rhs : public gsFlowTerm<T>
 {
-
-public:
-    typedef gsFlowTerm<T> Base;
-
 
 protected: // *** Class members ***
 
     const gsFunction<T>* m_pRhsFun;
     gsMatrix<T> m_rhsVals;
 
-
-protected: // *** Base class members ***
-
-    using Base::m_geoFlags;
-    using Base::m_testFunFlags;
-
-
 public: // *** Constructor/destructor ***
 
-    gsFlowTermRhs(const gsFunction<T>* pRhsFun)
+    gsFlowTerm_rhs(const gsFunction<T>* pRhsFun)
     {
-        m_geoFlags = NEED_VALUE | NEED_MEASURE;
-        m_testFunFlags = NEED_VALUE;
+        this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
+        this->m_testFunFlags = NEED_VALUE;
         m_pRhsFun = pRhsFun;
     }
 

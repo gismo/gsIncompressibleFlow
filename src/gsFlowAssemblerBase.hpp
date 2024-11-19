@@ -273,7 +273,7 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
     {
         visitor.initOnPatch(p);
 
-        if (m_params.options().getString("matFormation") == "RbR")
+        if (m_params.options().getString("assemb.loop") == "RbR")
         {
             index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
 
@@ -286,7 +286,7 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
         }
         else
         {
-            if (m_params.options().getString("matFormation") != "EbE")
+            if (m_params.options().getString("assemb.loop") != "EbE")
                 gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
 
             typename gsBasis<T>::domainIter domIt = m_params.getBases().front().piece(p).makeDomainIterator(boundary::none);
@@ -313,7 +313,7 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(gsFlowVisitor<T, MatOrder>& v
     {
         visitor.initOnPatch(p);
 
-        if (m_params.options().getString("matFormation") == "RbR")
+        if (m_params.options().getString("assemb.loop") == "RbR")
         {
             index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
 
