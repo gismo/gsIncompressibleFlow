@@ -231,9 +231,9 @@ void gsFlowVisitor<T, MatOrder>::evaluate(index_t testFunID)
 {
     // shape basis (on the whole support of testFunID)
 
-    index_t dim = m_params.getPde().dim();
+    index_t dim = m_testBasisPtr->domainDim();
     gsMatrix<T> support = m_testBasisPtr->support(testFunID);
-    typename gsBasis<T>::domainIter domIt = m_params.getBases().front().piece(m_patchID).makeDomainIterator(boundary::none);
+    typename gsBasis<T>::domainIter domIt = m_testBasisPtr->makeDomainIterator(boundary::none);
 
     gsMatrix<T> quNodes; // quad. nodes for the current element
     gsVector<T> quWeights; // weights for the current element
@@ -309,6 +309,5 @@ void gsFlowVisitor<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
     else
         evalBasisData(m_shapeFunFlags, m_shapeBasisPtr, m_shapeFunActives, m_shapeFunData);
 }
-
 
 } // namespace gismo

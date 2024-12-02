@@ -13,6 +13,8 @@
 
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
+#include <gsIncompressibleFlow/src/gsINSAssembler.h>
+#include <gsSolver/gsGMRes.h>
 
 namespace gismo
 {
@@ -90,9 +92,11 @@ public: // *** Getters ***
 }; // gsFlowLinSystSolver
 
 // ===================================================================================================================
+// ===================================================================================================================
 
 /// @brief Direct solver for linear systems inside the incompressible flow solvers (classes derived from gsFlowSolverBase).
-/// @tparam T   coefficient type
+/// @tparam T           coefficient type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
 template<class T, int MatOrder>
 class gsFlowLinSystSolver_direct: public gsFlowLinSystSolver<T, MatOrder>
 {
@@ -145,17 +149,144 @@ public: // *** Member functions ***
 
 // ===================================================================================================================
 
+/// @brief G+Smo/Eigen iterative solver for linear systems inside the incompressible flow solvers (classes derived from gsFlowSolverBase).
+/// @tparam T           coefficient type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @tparam SolverType  the G+Smp/Eigen iterative solver type
+template<class T, int MatOrder, class SolverType>
+class gsFlowLinSystSolver_iter: public gsFlowLinSystSolver<T, MatOrder>
+{
+
+public:
+    typedef gsFlowLinSystSolver<T, MatOrder> Base;
+
+
+protected: // *** Class members ***
+
+    typename gsLinearOperator<T>::Ptr m_precPtr;
+    std::vector<index_t> m_linIterVector;
+
+
+protected: // *** Base class members ***
+
+    using Base::m_paramsRef;
+    using Base::m_setupT;
+    using Base::m_solveT;
+    using Base::stopwatchStart;
+    using Base::stopwatchStop;
+
+
+public: // *** Constructor/destructor ***
+
+    /// @brief Constructor.
+    gsFlowLinSystSolver_iter(const gsFlowSolverParams<T>& params):
+    Base(params)
+    { }
+
+
+public: // *** Member functions ***
+
+    /// @brief Setup the linear solver for a given matrix (nothing happens here).
+    virtual void setupSolver(const gsSparseMatrix<T, MatOrder>& mat)
+    { }
+
+    /// @brief Setup the preconditioner for a given matrix.
+    virtual void setupPreconditioner(const gsSparseMatrix<T, MatOrder>& mat);
+
+    /// @brief Solve the linear system.
+    /// @param[out] solution    a reference to the vector, where the computed solution will be stored
+    virtual void applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution);
+
+
+public: // *** Getters/setters ***
+
+    /// @brief Returns vector of iteration counts of the linear solver for each call of applySolver().
+    std::vector<index_t> getLinIterVector() const { return m_linIterVector; }
+
+    /// @brief Returns the average iteration count of the linear solver per applySolver() call.
+    T getAvgLinIterations() const
+    {
+        index_t linIterSum = 0;
+
+        for (size_t i = 0; i < m_linIterVector.size(); i++)
+            linIterSum += m_linIterVector[i];
+
+        return (T)linIterSum / m_linIterVector.size();
+    }
+
+}; // gsFlowLinSystSolver_iter
+
 // ===================================================================================================================
 
-template<class T, int MatOrder>
-gsFlowLinSystSolver<T, MatOrder>* createLinSolver(const gsFlowSolverParams<T>& params)
+/// @brief G+Smo/Eigen iterative solver for saddle-point linear systems inside the incompressible flow solvers (classes derived from gsFlowSolverBase) with block preconditioners.
+/// @tparam T           coefficient type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @tparam SolverType  the G+Smp/Eigen iterative solver type
+template<class T, int MatOrder, class SolverType>
+class gsFlowLinSystSolver_iterSP: public gsFlowLinSystSolver_iter<T, MatOrder, SolverType>
 {
+
+public:
+    typedef gsFlowLinSystSolver_iter<T, MatOrder, SolverType> Base;
+
+
+protected: // *** Class members ***
+
+    std::string m_precType;
+    gsOptionList m_precOpt;
+    const gsINSAssembler<T, MatOrder>* m_assemblerPtr;
+    std::map<std::string, gsSparseMatrix<T, MatOrder> > m_matrices;
+    std::vector<index_t> m_linIterVector;
+
+
+protected: // *** Base class members ***
+
+    using Base::m_precPtr;
+    using Base::m_paramsRef;
+    using Base::m_setupT;
+    using Base::m_solveT;
+    using Base::stopwatchStart;
+    using Base::stopwatchStop;
+
+
+public: // *** Constructor/destructor ***
+
+    /// @brief Constructor.
+    gsFlowLinSystSolver_iterSP(const gsFlowSolverParams<T>& params, const gsINSAssembler<T, MatOrder>* assemblerPtr):
+    Base(params), m_assemblerPtr(assemblerPtr)
+    {
+        m_precType = m_paramsRef.options().getString("lin.precType");
+        m_precOpt = m_paramsRef.precOptions();
+        m_precOpt.addInt("dim", "Problem dimension", m_assemblerPtr->getTarDim());
+        m_precOpt.addReal("visc", "Viscosity", m_paramsRef.getPde().viscosity());
+        m_precOpt.addInt("udofs", "Number of velocity dofs", m_assemblerPtr->getUdofs());
+        m_precOpt.addInt("pdofs", "Number of pressure dofs", m_assemblerPtr->getPdofs());
+    }
+
+
+public: // *** Member functions ***
+
+    /// @brief Setup the preconditioner for a given matrix.
+    virtual void setupPreconditioner(const gsSparseMatrix<T, MatOrder>& mat);
+
+}; // gsFlowLinSystSolver_iterSP
+
+// ===================================================================================================================
+// ===================================================================================================================
+
+template<class T, int MatOrder, class SolverType = gsGMRes<T> >
+gsFlowLinSystSolver<T, MatOrder>* createLinSolver(const gsFlowSolverParams<T>& params, const gsFlowAssemblerBase<T, MatOrder>* assemblerPtr = NULL)
+{
+    const gsINSAssembler<T, MatOrder>* INSassembPtr = dynamic_cast< const gsINSAssembler<T, MatOrder>* >(assemblerPtr);
+
     std::string type = params.options().getString("lin.solver");
 
     if (type == "direct")
         return new gsFlowLinSystSolver_direct<T, MatOrder>(params);
-    // else if (type == _"iter")
-    //     return new gsFlowLinSystSolver_iter<T, MatOrder>(params);
+    else if (type == "iter" && INSassembPtr == NULL) // assembler is not an INS assembler
+        return new gsFlowLinSystSolver_iter<T, MatOrder, SolverType>(params);
+    else if (type == "iter" && INSassembPtr != NULL) // assembler is an INS assembler
+        return new gsFlowLinSystSolver_iterSP<T, MatOrder, SolverType>(params, INSassembPtr);
     // else if (type == _"petsc")
     //     return new gsFlowLinSystSolver_PETSc<T, MatOrder>(params);
     else

@@ -202,6 +202,14 @@ public: // *** Getters/setters ***
     virtual const gsSparseMatrix<T, MatOrder>& matrix(index_t unk) const
     {GISMO_NO_IMPLEMENTATION}
 
+    /// @brief Returns the mass matrix for unknown with index \a unk. There is also a const version.
+    /// @param[in] unkID index of the unknown
+    virtual gsSparseMatrix<T, MatOrder>& getMassMatrix(index_t unkID)
+    {GISMO_NO_IMPLEMENTATION}
+    
+    virtual const gsSparseMatrix<T, MatOrder>& getMassMatrix(index_t unkID) const
+    {GISMO_NO_IMPLEMENTATION}
+
     /// @brief Returns the assembled right-hand side.
     virtual const gsMatrix<T>& rhs() const
     {GISMO_NO_IMPLEMENTATION}

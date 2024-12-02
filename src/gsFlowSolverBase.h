@@ -48,7 +48,6 @@ public: // *** Constructor/destructor ***
     m_params(params)
     {
         m_assemblerPtr = NULL;
-        m_linSolverPtr = createLinSolver<T, MatOrder>(params);
     }
 
     virtual ~gsFlowSolverBase()

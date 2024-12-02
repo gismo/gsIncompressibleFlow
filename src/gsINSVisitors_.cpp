@@ -13,8 +13,8 @@ namespace gismo
     CLASS_TEMPLATE_INST gsINSVisitorPU_withUPrhs<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorUP<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPP<real_t, RowMajor>;
-    CLASS_TEMPLATE_INST gsINSVisitorPPlin<real_t, RowMajor>;
-    CLASS_TEMPLATE_INST gsINSVisitorPPnonlin<real_t, RowMajor>;
+    // CLASS_TEMPLATE_INST gsINSVisitorPPlin<real_t, RowMajor>;
+    // CLASS_TEMPLATE_INST gsINSVisitorPPnonlin<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPPmass<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPPlaplace<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPPconvection<real_t, RowMajor>;
@@ -29,8 +29,8 @@ namespace gismo
     CLASS_TEMPLATE_INST gsINSVisitorPU_withUPrhs<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorUP<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPP<real_t, ColMajor>;
-    CLASS_TEMPLATE_INST gsINSVisitorPPlin<real_t, ColMajor>;
-    CLASS_TEMPLATE_INST gsINSVisitorPPnonlin<real_t, ColMajor>;
+    // CLASS_TEMPLATE_INST gsINSVisitorPPlin<real_t, ColMajor>;
+    // CLASS_TEMPLATE_INST gsINSVisitorPPnonlin<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPPmass<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPPlaplace<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPPconvection<real_t, ColMajor>;

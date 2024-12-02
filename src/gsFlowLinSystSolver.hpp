@@ -68,6 +68,7 @@ void gsFlowLinSystSolver<T, MatOrder>::applySolver(const gsSparseMatrix<T, MatOr
 
 
 // ===================================================================================================================
+// ===================================================================================================================
 
 
 template<class T, int MatOrder>
@@ -94,6 +95,71 @@ void gsFlowLinSystSolver_direct<T, MatOrder>::applySolver(const gsSparseMatrix<T
 
     m_setupT += time1 - time0;
     m_solveT += time2 - time1;
+}
+
+// ===================================================================================================================
+
+template<class T, int MatOrder, class SolverType>
+void gsFlowLinSystSolver_iter<T, MatOrder, SolverType>::setupPreconditioner(const gsSparseMatrix<T, MatOrder>& mat)
+{
+    real_t time0 = stopwatchStart();
+    m_precPtr = gsGaussSeidelOp< gsSparseMatrix<T, MatOrder>, gsGaussSeidel::symmetric >::make(mat);
+    real_t time1 = stopwatchStop();
+
+    m_setupT += time1 - time0;
+}
+
+template<class T, int MatOrder, class SolverType>
+void gsFlowLinSystSolver_iter<T, MatOrder, SolverType>::applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution)
+{
+    real_t time0 = stopwatchStart();
+
+    this->setupPreconditioner(mat);
+    
+    SolverType solver(mat, m_precPtr);
+    solver.setMaxIterations(m_paramsRef.options().getInt("lin.maxIt"));
+    solver.setTolerance(m_paramsRef.options().getReal("lin.tol"));
+
+    real_t time1 = stopwatchStop();
+    
+    solver.solve(rhs, solution);
+
+    real_t time2 = stopwatchStop();
+
+    m_setupT += time1 - time0;
+    m_solveT += time2 - time1;
+
+    m_linIterVector.push_back(solver.iterations());
+}
+
+// ===================================================================================================================
+
+template<class T, int MatOrder, class SolverType>
+void gsFlowLinSystSolver_iterSP<T, MatOrder, SolverType>::setupPreconditioner(const gsSparseMatrix<T, MatOrder>& mat)
+{
+    real_t time0 = stopwatchStart();
+    
+    m_matrices.clear();
+    m_matrices.insert(std::make_pair("matNS", mat));
+    m_matrices.insert(std::make_pair("matMu", m_assemblerPtr->getMassMatrix(0)));
+    m_matrices.insert(std::make_pair("matMp", m_assemblerPtr->getMassMatrix(1)));
+
+    if (m_precType.substr(0, 3) == "PCD")
+    {
+        gsWarn << "PCD preconditioner not fully implemented yet, using LSC instead.";
+        m_precType.replace(0, 3, "LSC");
+
+        // gsSparseMatrix<T> Ap, Fp;
+        // m_assemblerPtr->fillPCDblocks(Ap, Fp, m_precOpt.getInt("pcd_bcType"), m_precOpt.getSwitch("pcd_assembAp"), m_precOpt.getSwitch("pcd_assembFp"), m_precOpt.getSwitch("lumpingM"));
+        // m_matrices.insert(std::make_pair("matFp", Fp));
+        // m_matrices.insert(std::make_pair("matAp", Ap));
+    }
+
+    m_precPtr = gsINSPreconditioner<T, MatOrder>::make(m_precType, m_matrices, m_precOpt);
+
+    real_t time1 = stopwatchStop();
+
+    m_setupT += time1 - time0;
 }
 
 

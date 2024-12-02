@@ -138,11 +138,45 @@ protected: // *** Member functions ***
 // ===================================================================================================================
 
 template <class T, int MatOrder>
-class gsINSVisitorUUtimeDiscr : public gsINSVisitorUUlin<T, MatOrder>
+class gsINSVisitorUUmass : public gsINSVisitorUU<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorUUlin<T, MatOrder> Base;
+    typedef gsINSVisitorUU<T, MatOrder> Base;
+
+
+protected: // *** Base class members ***
+
+    using Base::m_params;
+    using Base::m_terms;
+
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorUUmass() {}
+
+    gsINSVisitorUUmass(const gsFlowSolverParams<T>& params) :
+    Base(params)
+    { }
+
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsFlowTerm_ValVal<T>() );
+    }
+
+};
+
+// ===================================================================================================================
+
+template <class T, int MatOrder>
+class gsINSVisitorUUtimeDiscr : public gsINSVisitorUU<T, MatOrder>
+{
+
+public:
+    typedef gsINSVisitorUU<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -355,80 +389,80 @@ public: // *** Member functions ***
 
 // ===================================================================================================================
 
-template <class T, int MatOrder>
-class gsINSVisitorPPlin : public gsINSVisitorPP<T, MatOrder>
-{
+// template <class T, int MatOrder>
+// class gsINSVisitorPPlin : public gsINSVisitorPP<T, MatOrder>
+// {
 
-public:
-    typedef gsINSVisitorPP<T, MatOrder> Base;
-
-
-protected: // *** Base class members ***
-
-    using Base::m_params;
-    using Base::m_terms;
+// public:
+//     typedef gsINSVisitorPP<T, MatOrder> Base;
 
 
-public: // *** Constructor/destructor ***
+// protected: // *** Base class members ***
 
-    gsINSVisitorPPlin() {}
-
-    gsINSVisitorPPlin(const gsFlowSolverParams<T>& params) : Base(params)
-    { }
+//     using Base::m_params;
+//     using Base::m_terms;
 
 
-protected: // *** Member functions ***
+// public: // *** Constructor/destructor ***
 
-    virtual void defineTerms()
-    {
-        // no default pressure-pressure terms in the Navier-Stokes eqns
-        // optionally stabilization for inf-sup unstable discretizations
-    }
+//     gsINSVisitorPPlin() {}
 
-};
+//     gsINSVisitorPPlin(const gsFlowSolverParams<T>& params) : Base(params)
+//     { }
+
+
+// protected: // *** Member functions ***
+
+//     virtual void defineTerms()
+//     {
+//         // no default pressure-pressure terms in the Navier-Stokes eqns
+//         // optionally stabilization for inf-sup unstable discretizations
+//     }
+
+// };
+
+// // ===================================================================================================================
+
+// template <class T, int MatOrder>
+// class gsINSVisitorPPnonlin : public gsINSVisitorPP<T, MatOrder>
+// {
+
+// public:
+//     typedef gsINSVisitorPP<T, MatOrder> Base;
+
+
+// protected: // *** Base class members ***
+
+//     using Base::m_params;
+//     using Base::m_terms;
+
+
+// public: // *** Constructor/destructor ***
+
+//     gsINSVisitorPPnonlin() {}
+
+//     gsINSVisitorPPnonlin(const gsFlowSolverParams<T>& params) : Base(params)
+//     { }
+
+
+// protected: // *** Member functions ***
+
+//     virtual void defineTerms()
+//     {
+//         // no default pressure-pressure terms in the Navier-Stokes eqns
+//         // optionally stabilization for inf-sup unstable discretizations
+//     }
+
+// };
 
 // ===================================================================================================================
 
 template <class T, int MatOrder>
-class gsINSVisitorPPnonlin : public gsINSVisitorPP<T, MatOrder>
+class gsINSVisitorPPmass : public gsINSVisitorPP<T, MatOrder>
 {
 
 public:
     typedef gsINSVisitorPP<T, MatOrder> Base;
-
-
-protected: // *** Base class members ***
-
-    using Base::m_params;
-    using Base::m_terms;
-
-
-public: // *** Constructor/destructor ***
-
-    gsINSVisitorPPnonlin() {}
-
-    gsINSVisitorPPnonlin(const gsFlowSolverParams<T>& params) : Base(params)
-    { }
-
-
-protected: // *** Member functions ***
-
-    virtual void defineTerms()
-    {
-        // no default pressure-pressure terms in the Navier-Stokes eqns
-        // optionally stabilization for inf-sup unstable discretizations
-    }
-
-};
-
-// ===================================================================================================================
-
-template <class T, int MatOrder>
-class gsINSVisitorPPmass : public gsINSVisitorPPlin<T, MatOrder>
-{
-
-public:
-    typedef gsINSVisitorPPlin<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -457,11 +491,11 @@ protected: // *** Member functions ***
 // ===================================================================================================================
 
 template <class T, int MatOrder>
-class gsINSVisitorPPlaplace : public gsINSVisitorPPlin<T, MatOrder>
+class gsINSVisitorPPlaplace : public gsINSVisitorPP<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorPPlin<T, MatOrder> Base;
+    typedef gsINSVisitorPP<T, MatOrder> Base;
 
 
 protected: // *** Base class members ***
@@ -490,11 +524,11 @@ protected: // *** Member functions ***
 // ===================================================================================================================
 
 template <class T, int MatOrder>
-class gsINSVisitorPPconvection : public gsINSVisitorPPnonlin<T, MatOrder>
+class gsINSVisitorPPconvection : public gsINSVisitorPP<T, MatOrder>
 {
 
 public:
-    typedef gsINSVisitorPPnonlin<T, MatOrder> Base;
+    typedef gsINSVisitorPP<T, MatOrder> Base;
 
 protected: // *** Base class members ***
 
@@ -518,6 +552,38 @@ protected: // *** Member functions ***
     }
 
 };
+
+// ===================================================================================================================
+
+// template <class T, int MatOrder>
+// class gsINSVisitorPP_PCDrobinBC : public gsINSVisitorPP<T, MatOrder>
+// {
+
+// public:
+//     typedef gsINSVisitorPP<T, MatOrder> Base;
+
+// protected: // *** Base class members ***
+
+//     using Base::m_params;
+//     using Base::m_terms;
+
+
+// public: // *** Constructor/destructor ***
+
+//     gsINSVisitorPP_PCDrobinBC() {}
+
+//     gsINSVisitorPP_PCDrobinBC(const gsFlowSolverParams<T>& params) : Base(params)
+//     { }
+
+
+// protected: // *** Member functions ***
+
+//     virtual void defineTerms()
+//     {
+//         // TODO
+//     }
+
+// };
 
 // ===================================================================================================================
 // ===================================================================================================================

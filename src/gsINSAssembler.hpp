@@ -52,6 +52,9 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 
     m_visitorG = gsINSVisitorRhsP<T, MatOrder>(m_params);
     m_visitorG.initialize();
+
+    m_isMassMatReady = false;
+    m_massMatBlocks.resize(2); // [velocity, pressure]
 }
 
 
@@ -143,6 +146,47 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
 
     if(m_params.getPde().source()) // if the continuity eqn rhs is given
         this->assembleRhs(m_visitorG, 1, m_rhsFG);
+
+    // mass matrices for velocity and pressure (needed for preconditioners)
+    if ( m_params.options().getString("lin.solver") == "iter" )
+    {
+        gsMatrix<T> dummyRhsU(m_pshift, 1);
+        gsMatrix<T> dummyRhsP(m_pdofs, 1);
+
+        gsINSVisitorUUmass<T, MatOrder> visitorUUmass(m_params);
+        gsINSVisitorPPmass<T, MatOrder> visitorPPmass(m_params);
+        
+        visitorUUmass.initialize();
+        visitorPPmass.initialize();
+
+        m_massMatBlocks[0].resize(m_udofs, m_udofs);
+        m_massMatBlocks[1].resize(m_pdofs, m_pdofs);
+        m_massMatBlocks[0].reserve(gsVector<index_t>::Constant(m_udofs, m_nnzPerRowU));
+        m_massMatBlocks[1].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerRowP));
+
+        this->assembleBlock(visitorUUmass, 0, m_massMatBlocks[0], dummyRhsU);
+        this->assembleBlock(visitorPPmass, 0, m_massMatBlocks[1], dummyRhsP);
+
+        m_isMassMatReady = true;
+        
+
+        // linear operators needed for PCD preconditioner
+        // if ( m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
+        // {
+        //     // pressure Laplace operator
+
+        //     gsINSVisitorPPlaplace<T, MatOrder> visitorPPlaplace(m_params);
+        //     visitorPPlaplace.initialize();
+
+        //     m_pcdBlocks[0].resize(m_pdofs, m_pdofs);
+        //     m_pcdBlocks[0].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerRowP));
+
+        //     this->assembleBlock(visitorPPlaplace, 0, m_pcdBlocks[0], dummyRhsP);
+
+        //     // prepare for BCs
+        //     findPressureBoundaryIDs();
+        // }
+    }
 }
 
 
@@ -157,6 +201,27 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
     m_blockUUnonlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_comp.outerSize(), m_nnzPerRowU));
 
     this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_comp, m_rhsUnonlin);
+
+    // linear operators needed for PCD preconditioner
+    // if ( m_params.options().getString("lin.solver") == "iter" &&  m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
+    // {
+    //     gsMatrix<T> dummyRhsP(m_pdofs, 1);
+
+    //     // Robin BC
+
+    //     // TODO
+
+    //     // pressure convection operator
+
+    //     gsINSVisitorPPconvection<T, MatOrder> visitorPPconv(m_params);
+    //     visitorPPconv.initialize();
+    //     visitorPPconv.setCurrentSolution(m_currentVelField);
+
+    //     m_pcdBlocks[2].resize(m_pdofs, m_pdofs);
+    //     m_pcdBlocks[2].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerRowP));
+
+    //     this->assembleBlock(visitorPPconv, 0, m_pcdBlocks[2], dummyRhsP);
+    // }
 }
 
 
@@ -488,6 +553,34 @@ gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsP() const
     else
         return (m_rhsFG + m_rhsBtB).bottomRows(m_pdofs);
 }
+
+
+// --- PCD functions ---
+
+// template<class T, int MatOrder>
+// void gsINSAssembler<T, MatOrder>::findPressureBoundaryIDs()
+// {
+//     findPressureBoundaryPartIDs(m_params.getBndIn(), m_presInIDs);
+//     findPressureBoundaryPartIDs(m_params.getBndOut(), m_presOutIDs);
+//     findPressureBoundaryPartIDs(m_params.getBndWall(), m_presWallIDs);
+// }
+
+// template<class T, int MatOrder>
+// void gsINSAssembler<T, MatOrder>::findPressureBoundaryPartIDs(std::vector<std::pair<int, boxSide> > bndPart, std::vector<index_t>& idVector)
+//     {
+//         const gsMultiBasis<T>& pBasis = getBases()[1];
+
+//         gsMatrix<index_t> bnd;
+//         idVector.clear();
+
+//         for (std::vector<std::pair<int, boxSide> >::iterator it = bndPart.begin(); it != bndPart.end(); it++)
+//         {
+//             bnd = pBasis.piece(it->first).boundary(it->second);
+
+//             for (int i = 0; i < bnd.rows(); i++)
+//                 idVector.push_back(this->getMappers()[1].index(bnd(i, 0), it->first));
+//         }
+//     }
 
 // =============================================================================
 

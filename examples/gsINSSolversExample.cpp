@@ -19,6 +19,7 @@
 using namespace gismo;
 
 template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
+template<class T, int MatOrder, class LinSolver> void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr);
 template<class T, int MatOrder> void markElimDof(gsINSSolver<T, MatOrder>& NSsolver);
 
 int main(int argc, char *argv[])
@@ -28,9 +29,9 @@ int main(int argc, char *argv[])
     // ========================================= Settings ========================================= 
 
     bool steady = false;
-    //bool steadyIt = false;
+    bool steadyIt = false;
     bool unsteady = false;
-    //bool unsteadyIt = false;
+    bool unsteadyIt = false;
     //bool stokesInit = false;
 
     int deg = 1;
@@ -39,13 +40,13 @@ int main(int argc, char *argv[])
     int wallRefine = 0;
     int maxIt = 10;
     int picardIt = 5;
-    //int linIt = 100;
+    int linIt = 50;
     real_t viscosity = 0.1;
     real_t timeStep = 0.1;
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
-    //real_t linTol = 1e-6;
-    //std::string precond = "PCDmod_FdiagEqual";
+    real_t linTol = 1e-6;
+    std::string precond = "MSIMPLER_FdiagEqual";
     std::string matFormation = "EbE";
 
     bool plot = false;
@@ -62,9 +63,9 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Solves the Navier-Stokes problem in a 2D domain (step, cavity).");
 
     cmd.addSwitch("steady", "Solve steady problem with direct linear solver", steady);
-    //cmd.addSwitch("steadyIt", "Solve steady problem with preconditioned GMRES as linear solver", steadyIt);
+    cmd.addSwitch("steadyIt", "Solve steady problem with preconditioned GMRES as linear solver", steadyIt);
     cmd.addSwitch("unsteady", "Solve unsteady problem with direct linear solver", unsteady);
-    //cmd.addSwitch("unsteadyIt", "Solve unsteady problem with preconditioned GMRES as linear solver", unsteadyIt);
+    cmd.addSwitch("unsteadyIt", "Solve unsteady problem with preconditioned GMRES as linear solver", unsteadyIt);
     //cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
     cmd.addSwitch("plotMesh", "Plot the computational mesh", plotMesh);
@@ -78,7 +79,7 @@ int main(int argc, char *argv[])
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
     cmd.addInt("", "maxIt", "Max. number of Picard iterations or time steps", maxIt);
     cmd.addInt("", "picardIt", "Max. number of inner Picard iterations for unsteady problem", picardIt);
-    //cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
+    cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
 
     cmd.addReal("v", "visc", "Viscosity value", viscosity);
     cmd.addReal("", "timeStep", "Time discretization step for unsteady problem", timeStep);
@@ -86,10 +87,10 @@ int main(int argc, char *argv[])
     cmd.addReal("", "picardTol", "Tolerance for inner Picard iteration for unsteady problem", picardTol);
     cmd.addReal("", "inVelX", "x-coordinate of inflow velocity (for profile geometry)", inVelX);
     cmd.addReal("", "inVelY", "y-coordinate of inflow velocity (for profile geometry)", inVelY);
-    //cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
+    cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
 
     cmd.addString("", "matForm", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
-    //cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
+    cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
@@ -197,6 +198,7 @@ int main(int argc, char *argv[])
     if (steady)
     {
         solveOpt.setInt("id", id);
+        params.options().setString("lin.solver", "direct");
 
         gsINSSolverSteady<real_t, ColMajor> NSsolver(params);
 
@@ -214,6 +216,28 @@ int main(int argc, char *argv[])
         id++;
     }
 
+    if (steadyIt)
+    {
+        solveOpt.setInt("id", id);
+        params.options().setString("lin.solver", "iter");
+        params.options().setInt("lin.maxIt", linIt);
+        params.options().setReal("lin.tol", linTol);
+        params.options().setString("lin.precType", precond);
+        // params.precOptions().setReal("gamma", 1); // parameter for AL preconditioner
+
+        gsINSSolverSteady<real_t, ColMajor > NSsolver(params);
+
+        gsInfo << "\nSolving the steady problem with preconditioned GMRES as linear solver.\n";
+        gsInfo << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
+
+        solveProblem(NSsolver, solveOpt, geo);
+
+        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver());
+        reportLinIterations(linSolverPtr);
+
+        id++;
+    }
+
     if (unsteady)
     {
         solveOpt.setInt("id", id);
@@ -221,6 +245,7 @@ int main(int argc, char *argv[])
         params.options().setReal("timeStep", timeStep);
         params.options().setInt("nonlin.maxIt", picardIt);
         params.options().setReal("nonlin.tol", picardTol);
+        params.options().setString("lin.solver", "direct");
 
         gsINSSolverUnsteady<real_t, RowMajor> NSsolver(params);
 
@@ -231,66 +256,30 @@ int main(int argc, char *argv[])
         id++;
     }
 
-    // if (steadyIt)
-    // {
-    //     solveOpt.setInt("id", id);
-    //     params.options().setInt("maxIt_lin", linIt);
-    //     params.options().setReal("tol_lin", linTol);
-    //     params.options().setString("precType", precond);
-    //     // params.precOptions().setReal("gamma", 1); // parameter for AL preconditioner
+    if (unsteadyIt)
+    {
+        solveOpt.setInt("id", id);
+        params.options().setReal("timeStep", timeStep);
+        params.options().setInt("nonlin.maxIt", picardIt);
+        params.options().setReal("nonlin.tol", picardTol);
+        params.options().setString("lin.solver", "iter");
+        params.options().setInt("lin.maxIt", linIt);
+        params.options().setReal("lin.tol", linTol);
+        params.options().setString("lin.precType", precond);
+        // params.precOptions().setReal("gamma", 10); // parameter for AL preconditioner
 
-    //     gsINSSolverSteadyIter<real_t, LinSolver > NSsolver(params);
+        gsINSSolverUnsteady<real_t, ColMajor > NSsolver(params);
 
-    //     gsInfo << "\nSolving the steady problem with preconditioned GMRES as linear solver.\n";
-    //     gsInfo << "Used preconditioner: " << params.options().getString("precType") << "\n";
+        gsInfo << "\nSolving the unsteady problem with preconditioned GMRES as linear solver.\n";
+        gsInfo << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
 
-    //     if (params.options().getString("precType").substr(0, 3) == "PCD")
-    //         NSsolver.getAssembler()->preparePCDboundary(bndIn, bndOut, bndWall, params.precOptions().getInt("pcd_bcType"));
-
-    //     solveProblem(NSsolver, solveOpt);
-
-    //     std::vector<index_t> itVector = NSsolver.getLinIterVector();
-
-    //     gsInfo << "Iterations of linear solver in each Picard iteration:\n";
-    //     for (size_t i = 0; i < itVector.size(); i++)
-    //         gsInfo << itVector[i] << ", ";
-
-    //     gsInfo << "\nAverage number of linear solver iterations per Picard iteration: " << NSsolver.getAvgLinIterations() << "\n";
+        solveProblem(NSsolver, solveOpt, geo);
         
-    //     id++;
-    // }
+        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver());
+        reportLinIterations(linSolverPtr);
 
-    // if (unsteadyIt)
-    // {
-    //     solveOpt.setInt("id", id);
-    //     params.options().setReal("timeStep", timeStep);
-    //     params.options().setInt("maxIt_picard", picardIt);
-    //     params.options().setReal("tol_picard", picardTol);
-    //     params.options().setInt("maxIt_lin", linIt);
-    //     params.options().setReal("tol_lin", linTol);
-    //     params.options().setString("precType", precond);
-    //     // params.precOptions().setReal("gamma", 10); // parameter for AL preconditioner
-
-    //     gsINSSolverUnsteadyIter<real_t, LinSolver > NSsolver(params);
-
-    //     gsInfo << "\nSolving the unsteady problem with preconditioned GMRES as linear solver.\n";
-    //     gsInfo << "Used preconditioner: " << params.options().getString("precType") << "\n";
-
-    //     if (params.options().getString("precType").substr(0, 3) == "PCD")
-    //         NSsolver.getAssembler()->preparePCDboundary(bndIn, bndOut, bndWall, params.precOptions().getInt("pcd_bcType"));
-
-    //     solveProblem(NSsolver, solveOpt);
-        
-    //     std::vector<index_t> itVector = NSsolver.getLinIterVector();
-
-    //     gsInfo << "Iterations of linear solver in each Picard iteration:\n";
-    //     for (size_t i = 0; i < itVector.size(); i++)
-    //         gsInfo << itVector[i] << ", ";
-
-    //     gsInfo << "\nAverage number of linear solver iterations per Picard iteration: " << NSsolver.getAvgLinIterations() << "\n";
-
-    //     id++;
-    // }
+        id++;
+    }
 
     return 0; 
 }
@@ -366,6 +355,18 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
         // plotQuantityFromSolution("divergence", velocity, geoStr + "_solver" + util::to_string(id) + "_velocityDivergence", plotPts);
         gsInfo << " done.\n";
     }
+}
+
+template<class T, int MatOrder, class LinSolver>
+void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr)
+{
+    std::vector<index_t> itVector = linSolverPtr->getLinIterVector();
+
+    gsInfo << "Iterations of linear solver in each Picard iteration:\n";
+    for (size_t i = 0; i < itVector.size(); i++)
+        gsInfo << itVector[i] << ", ";
+
+    gsInfo << "\nAverage number of linear solver iterations per Picard iteration: " << linSolverPtr->getAvgLinIterations() << "\n";
 }
 
 // mark one pressure DoF in the domain corner as fixed zero (for the lid driven cavity problem)

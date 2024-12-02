@@ -50,6 +50,13 @@ protected: // *** Class members ***
     gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsFG;
     gsField<T>  m_currentVelField, m_currentPresField;
 
+    bool m_isMassMatReady;
+    std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;
+
+    // PCD members
+    // std::vector<index_t> m_presInIDs, m_presOutIDs, m_presWallIDs
+    // std::vector< gsSparseMatrix<T, MatOrder> > m_pcdBlocks(3); // [laplaceP, robinBCblock, convectionP]
+
 
 protected: // *** Base class members ***
 
@@ -125,6 +132,13 @@ protected: // *** Member functions ***
 
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();
+
+
+    // --- PCD member functions ---
+
+    // void findPressureBoundaryIDs();
+
+    // void findPressureBoundaryPartIDs(std::vector<std::pair<int, boxSide> > bndPart, std::vector<index_t>& idVector);
 
 
 public: // *** Member functions ***
@@ -225,6 +239,22 @@ public: // *** Getters/setters ***
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
         return (-1.0)*gsSparseMatrix<T, MatOrder>(getBlockUPcomp(i).transpose());
+    }
+
+    /// @brief Returns the mass matrix for unknown with index \a unk.  There is also a const version.
+    /// @param[in] unkID index of the unknown (0 - velocity, 1 - pressure)
+    virtual gsSparseMatrix<T, MatOrder>& getMassMatrix(index_t unkID)
+    { 
+        GISMO_ASSERT(unkID == 0 || unkID == 1, "unkID must be 0 (velocity) or 1 (pressure).");
+        GISMO_ASSERT(m_isMassMatReady, "Mass matrices not assembled in gsINSAssembler.");
+        return m_massMatBlocks[unkID];
+    }
+
+    virtual const gsSparseMatrix<T, MatOrder>& getMassMatrix(index_t unkID) const
+    { 
+        GISMO_ASSERT(unkID == 0 || unkID == 1, "unkID must be 0 (velocity) or 1 (pressure).");
+        GISMO_ASSERT(m_isMassMatReady, "Mass matrices not assembled in gsINSAssembler.");
+        return m_massMatBlocks[unkID];
     }
 
     /// @brief /// @brief Returns the velocity part of the right-hand side.

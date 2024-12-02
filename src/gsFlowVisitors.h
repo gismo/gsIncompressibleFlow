@@ -98,14 +98,14 @@ protected: // *** Member functions ***
     void gatherEvalFlags();
 
     /// @brief Set pointers to test and shape basis.
-    void defineTestShapeBases()
+    virtual void defineTestShapeBases()
     { 
         m_testBasisPtr = &(m_params.getBases()[m_testUnkID].piece(m_patchID));
         m_shapeBasisPtr = &(m_params.getBases()[m_shapeUnkID].piece(m_patchID));
     }
 
     /// @brief Setup the quadrature rule.
-    void setupQuadrature();
+    virtual void setupQuadrature();
     //{ GISMO_NO_IMPLEMENTATION }
 
     /// @brief Evaluate required data for the given basis function.
@@ -208,6 +208,72 @@ public: // *** Member functions ***
     virtual void assemble();
 
 };
+
+// ===================================================================================================================
+
+// TODO
+
+// /// @brief              Base class for incompressible flow boundary visitors.
+// /// @tparam T           real number type
+// /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+// template <class T, int MatOrder>
+// class gsFlowVisitorBnd : public gsFlowVisitor<T, MatOrder> 
+// {
+
+// public:
+//     typedef gsFlowVisitor<T, MatOrder> Base;
+
+// protected: // *** Class members ***
+
+//     boxSide m_side;
+
+// protected: // *** Base class members ***
+
+//     //using Base::;
+
+// protected: // *** Class members ***
+
+    
+
+// public: // *** Constructor/destructor ***
+
+//     gsFlowVisitorBnd() {}
+
+//     gsFlowVisitorBnd(const gsFlowSolverParams<T>& params) : Base(params)
+//     { }
+    
+
+// protected: // *** Member functions ***
+
+//      /// @brief Set pointers to test and shape basis.
+//     virtual void defineTestShapeBases()
+//     { 
+//         m_testBasisPtr = &(m_params.getBases()[m_testUnkID].piece(m_patchID).boundaryBasis(m_side));
+//         m_shapeBasisPtr = &(m_params.getBases()[m_shapeUnkID].piece(m_patchID).boundaryBasis(m_side));
+//     }
+
+//     /// @brief Setup the quadrature rule.
+//     void setupQuadrature();
+
+
+// public: // *** Member functions ***
+
+//     /// @brief Initialize the visitor on the given patch.
+//     /// @param[in] patchID the patch number
+//     void initOnPatchSide(index_t patchID, boxSide side)
+//     {
+//         m_side = side;
+//         Base::initOnPatch(patchID);
+//     }
+
+//     /// @brief Evaluate basis data on the support of a given test function (used for row-by-row assembly).
+//     /// @param[in] testFunID the local test function index on the current patch
+//     void evaluate(index_t testFunID);
+
+//     /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
+//     /// @param[in] domIt domain iterator pointing to the current element
+//     void evaluate(const gsDomainIterator<T>* domIt);
+// };
 
 } // namespace gismo
 

@@ -41,6 +41,9 @@ protected: // *** Class members ***
     gsOptionList                    m_opt;
     gsOptionList                    m_precOpt;
 
+    bool m_isBndSet;
+    std::vector<std::pair<int, boxSide> > m_bndIn, m_bndOut, m_bndWall;
+
 public: // *** Constructor/destructor ***
 
     gsFlowSolverParams() {}
@@ -58,6 +61,8 @@ public: // *** Constructor/destructor ***
 
         m_opt = gsFlowSolverParams<T>::defaultOptions();
         m_precOpt = gsINSPreconditioner<T, RowMajor>::defaultOptions();
+
+        m_isBndSet = false;
     }
 
     ~gsFlowSolverParams()
@@ -77,7 +82,8 @@ public: // *** Static functions ***
         
         // solving linear systems
         opt.addString("lin.solver", "The type of linear system solver (direct / iter / petsc)", "direct");
-        opt.addString("lin.precType", "Preconditioner to be used with iterative linear solver", "PCDmod_FdiagEqual");
+        opt.addString("lin.krylov", "The Krylov subspace method from G+Smo/Eigen (for lin.solver = iter)", "gmres");
+        opt.addString("lin.precType", "Preconditioner to be used with iterative linear solver", "MSIMPLER_FdiagEqual");
         opt.addInt("lin.maxIt", "Maximum number of iterations for linear solver (if iterative)", 200);
         opt.addReal("lin.tol", "Stopping tolerance for linear solver (if iterative)", 1e-6);
 
@@ -117,6 +123,19 @@ public: // *** Member functions ***
     
         m_bases.front().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pde.bc(), mappers.front(), 0);
         m_bases.back().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy,  m_pde.bc(), mappers.back(), 1);
+    }
+
+    /// @brief Set boundary parts (vectors of pairs [patch, side]).
+    /// @param[in] bndIn    inflow boundary part 
+    /// @param[in] bndOut   outlfow boundary part
+    /// @param[in] bndWall  solid wall boundary part
+    void setBndParts(std::vector<std::pair<int, boxSide> > bndIn, std::vector<std::pair<int, boxSide> > bndOut, std::vector<std::pair<int, boxSide> > bndWall)
+    {
+        m_bndIn = bndIn;
+        m_bndOut = bndOut;
+        m_bndWall = bndWall;
+
+        m_isBndSet = true;
     }
 
 
@@ -168,6 +187,27 @@ public: // *** Getters/setters ***
 
     /// @brief Set INS solver options given in \a opt.
     void setOptions(const gsOptionList& opt) { m_opt = opt; }
+
+    /// @brief Get vector of [patch, side] corresponding to the inflow boundary.
+    std::vector<std::pair<int, boxSide> > getBndIn()
+    {
+        GISMO_ASSERT(m_isBndSet, "Boundary parts are not set in gsFlowSolverParams, call setBndParts(...).");
+        return m_bndIn;
+    }
+
+    /// @brief Get vector of [patch, side] corresponding to the outflow boundary.
+    std::vector<std::pair<int, boxSide> > getBndOut()
+    {
+        GISMO_ASSERT(m_isBndSet, "Boundary parts are not set in gsFlowSolverParams, call setBndParts(...).");
+        return m_bndOut;
+    }
+
+    /// @brief Get vector of [patch, side] corresponding to the solid wall boundary.
+    std::vector<std::pair<int, boxSide> > getBndWall()
+    {
+        GISMO_ASSERT(m_isBndSet, "Boundary parts are not set in gsFlowSolverParams, call setBndParts(...).");
+        return m_bndWall;
+    }
 
 
 }; // class gsFlowSolverParams

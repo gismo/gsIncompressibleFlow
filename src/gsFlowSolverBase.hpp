@@ -103,6 +103,8 @@ void gsFlowSolverBase<T, MatOrder>::initialize()
 
         m_initAssembT += time1 - time0;
     }
+
+    m_linSolverPtr = createLinSolver<T, MatOrder>(m_params, getAssembler());
 }
 
 
