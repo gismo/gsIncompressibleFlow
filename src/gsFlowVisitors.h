@@ -17,6 +17,7 @@
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowTerms.h>
 #include <gsIncompressibleFlow/src/gsINSTerms.h>
+#include <gsIncompressibleFlow/src/gsFlowPeriodicHelper.h>
 
 namespace gismo
 {
@@ -61,6 +62,10 @@ protected: // *** Class members ***
     gsVector<T> m_quWeights;
     std::vector< gsMatrix<T> > m_testFunData;
     std::vector< gsMatrix<T> > m_shapeFunData; 
+
+    // for periodicity in radially symmetric domains
+    bool m_hasPeriodicBC;
+    const gsFlowPeriodicHelper<T>::Ptr m_testPeriodicHelperPtr, m_shapePeriodicHelperPtr;
     
 
 public: // *** Constructor/destructor ***
@@ -68,7 +73,9 @@ public: // *** Constructor/destructor ***
     gsFlowVisitor() {}
 
     gsFlowVisitor(const gsFlowSolverParams<T>& params) : m_params(params)
-    { }
+    {
+        m_hasPeriodicBC = false;
+    }
 
     ~gsFlowVisitor()
     {
@@ -166,6 +173,13 @@ public: // *** Member functions ***
     /// @param[out] globalRhs resulting global rhs
     virtual void localToGlobal(gsMatrix<T>& globalRhs)
     { GISMO_NO_IMPLEMENTATION } 
+
+    void setPeriodicHelpers(const gsFlowPeriodicHelper<T>::Ptr testPerHelperPtr, const gsFlowPeriodicHelper<T>::Ptr shapePerHelperPtr)
+    { 
+        m_testPeriodicHelperPtr = testPerHelperPtr;
+        m_shapePeriodicHelperPtr = shapePerHelperPtr;
+        m_hasPeriodicBC = true;
+    }
 
 };
 
