@@ -38,6 +38,9 @@ protected: // *** Base class members ***
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_localMat;
+    using Base::m_hasPeriodicBC;
+    using Base::m_testPeriodicHelperPtr;
+    using Base::m_shapePeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -184,7 +187,6 @@ protected: // *** Base class members ***
     using Base::m_params;
     using Base::m_terms;
 
-
 public: // *** Constructor/destructor ***
 
     gsINSVisitorUUtimeDiscr() {}
@@ -227,6 +229,9 @@ protected: // *** Base class members ***
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_terms;
+    using Base::m_hasPeriodicBC;
+    using Base::m_testPeriodicHelperPtr;
+    using Base::m_shapePeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -275,6 +280,9 @@ protected: // *** Base class members ***
     using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
+    using Base::m_hasPeriodicBC;
+    using Base::m_testPeriodicHelperPtr;
+    using Base::m_shapePeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -313,6 +321,9 @@ protected: // *** Base class members ***
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_terms;
+    using Base::m_hasPeriodicBC;
+    using Base::m_testPeriodicHelperPtr;
+    using Base::m_shapePeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -363,7 +374,9 @@ protected: // *** Base class members ***
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_localMat;
-
+    using Base::m_hasPeriodicBC;
+    using Base::m_testPeriodicHelperPtr;
+    using Base::m_shapePeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 

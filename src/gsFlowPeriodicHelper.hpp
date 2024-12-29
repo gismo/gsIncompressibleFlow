@@ -41,11 +41,11 @@ void gsFlowPeriodicHelper<T>::initialize()
         // append the global indices to vectors of periodic dofs
         for (index_t i = 0; i < globPerDofs1.rows(); i++)
         {
-            if ((m_mapper.is_free_index(globPerDofs1(i))) && (!m_isEliminated(globPerDofs2(i))) && (!m_uIsEliminated(globPerDofs1(i))))
+            if ((m_mapper.is_free_index(globPerDofs1(i))) && (!m_isEliminated(globPerDofs2(i))) && (!m_isEliminated(globPerDofs1(i))))
             {
                 m_globalPerDofsFree.push_back(globPerDofs1(i));
                 m_globalPerDofsElim.push_back(globPerDofs2(i));
-                m_uIsEliminated(globPerDofs2(i)) = true;
+                m_isEliminated(globPerDofs2(i)) = true;
             }
         }
 
