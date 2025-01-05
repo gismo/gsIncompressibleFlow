@@ -253,6 +253,23 @@ gsMultiPatch<T> BSplineCavity2D(int deg, const T a, const T b, const int np = 1,
 }
 
 
+/// @brief Returns a B-spline multipatch domain for 3D problems of flow in a cavity.
+/// @tparam T       real number type
+/// @param deg      polynomial degree of the B-spline parametrization
+/// @param a        width of the cavity
+/// @param b        height of the cavity
+/// @param c        depth of the cavity
+/// @param numSep   number of \f C^0 \f separators in each patch (knots of multiplicity \a deg uniformly distributed in each parametric direction)
+template<class T>
+gsMultiPatch<T> BSplineCavity3D(int deg, const T a, const T b, const T c, int numSep = 0)
+{
+    gsMultiPatch<T> mp;
+    mp.addPatch(BSplineBlock(deg, 0.0, 0.0, 0.0, a, b, c, numSep));
+    mp.computeTopology();
+    return mp;
+}
+
+
 /// @brief Returns a B-spline multipatch domain for 2D problems of flow over a backward facing step.
 /// @tparam T       real number type
 /// @param deg      polynomial degree of the B-spline parametrization
@@ -345,7 +362,7 @@ void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide>
 /// @param[out] bcInfo  reference to the boundary conditions as gsBoundaryConditions 
 /// @param[in]  np      number of patches in each direction
 /// @param[out] bndWall reference to a container of patch sides corresponding to solid walls
-/// @param[in]  lidVel  the lid velocity
+/// @param[in]  lidVel  the \a x component of the lid velocity
 template<class T>
 void defineBCs_cavity2D(gsBoundaryConditions<T>& bcInfo, const int np, std::vector<std::pair<int, boxSide> >& bndWall, std::string lidVel = "1")
 {
@@ -370,6 +387,57 @@ void defineBCs_cavity2D(gsBoundaryConditions<T>& bcInfo, const int np, std::vect
         bcInfo.addCondition((i + 1)*np - 1, boundary::east, condition_type::dirichlet, Uwall, 0);
         bndWall.push_back(std::make_pair(i * np, boundary::west));
         bndWall.push_back(std::make_pair((i + 1)*np - 1, boundary::east));
+    }
+}
+
+
+/// @brief Define boundary conditions for the 3D lid-driven cavity problem.
+/// @tparam T           real number type
+/// @param[out] bcInfo  reference to the boundary conditions as gsBoundaryConditions 
+/// @param[out] bndWall reference to a container of patch sides corresponding to solid walls
+/// @param[in]  lidVel  the \a x component of the lid velocity
+template<class T>
+void defineBCs_cavity3D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndWall, std::string lidVel = "1")
+{
+    gsFunctionExpr<T> Uwall("0", "0", "0", 3);
+    gsFunctionExpr<T> Ulid(lidVel, "0", "0", 3);
+
+    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, Ulid, 0);
+    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, Uwall, 0);
+    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, Uwall, 0);
+    bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, Uwall, 0);
+    bcInfo.addCondition(0, boundary::front, condition_type::dirichlet, Uwall, 0);
+    bcInfo.addCondition(0, boundary::back, condition_type::dirichlet, Uwall, 0);
+    bndWall.push_back(std::make_pair(0, boundary::north));
+    bndWall.push_back(std::make_pair(0, boundary::south));
+    bndWall.push_back(std::make_pair(0, boundary::west));
+    bndWall.push_back(std::make_pair(0, boundary::east));
+    bndWall.push_back(std::make_pair(0, boundary::front));
+    bndWall.push_back(std::make_pair(0, boundary::back));
+}
+
+
+/// @brief Define boundary conditions for the lid-driven cavity problem.
+/// @tparam T            real number type
+/// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions
+/// @param[out] bndWall  reference to a container of patch sides corresponding to solid walls
+/// @param dim           space dimension
+/// @param[in]  np       number of patches in each direction
+/// @param[in]  lidVel   the \a x component of the lid velocity
+template<class T>
+void defineBCs_cavity(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndWall, int dim, const int np = 1, std::string lidVel = "1")
+{
+    switch (dim)
+    {
+    case 2:
+        defineBCs_cavity2D(bcInfo, np, bndWall, lidVel);
+        break;
+    case 3:
+        defineBCs_cavity3D(bcInfo, bndWall, lidVel);
+        break;
+    default:
+        GISMO_ERROR("Wrong dimension!");
+        break;
     }
 }
 
@@ -580,24 +648,49 @@ void refineLastKnotSpan(gsMultiBasis<T>& basis, int numRefine, int patch, int di
 /// @param basis            reference to the basis to be refined
 /// @param numRefine        number of uniform refinements
 /// @param numRefineLocal   number of near-wall refinements
+/// @param dim              space dimension
 /// @param numSep           number of \f C^0 \f separators in each patch (knots of multiplicity \a deg uniformly distributed in each parametric direction)
 template<class T>
-void refineBasis_cavity2D(gsMultiBasis<T>& basis, int numRefine, int numRefineLocal, int numSep = 0)
+void refineBasis_cavity(gsMultiBasis<T>& basis, int numRefine, int numRefineLocal, int dim, int numSep = 0)
 {
-    int npDir = math::sqrt(basis.nPieces());
-    int npRef = std::log2(npDir);
-    int sepRef = std::log2(numSep + 1);
-
-    for (int i = 0; i < numRefine - npRef - sepRef; ++i)
-        basis.uniformRefine();
-
-    if (numRefineLocal && npDir == 1)
+    switch (dim)
     {
-        for (int dir = 0; dir <= 1; dir++)
+        case 2:
         {
-            refineFirstKnotSpan<2, T>(basis, numRefineLocal, 0, dir);
-            refineLastKnotSpan<2, T>(basis, numRefineLocal, 0, dir);
+            int npDir = math::sqrt(basis.nPieces());
+            int npRef = std::log2(npDir);
+            int sepRef = std::log2(numSep + 1);
+
+            for (int i = 0; i < numRefine - npRef - sepRef; ++i)
+                basis.uniformRefine();
+
+            if (numRefineLocal && npDir == 1)
+            {
+                for (int dir = 0; dir < dim; dir++)
+                {
+                    refineFirstKnotSpan<2, T>(basis, numRefineLocal, 0, dir);
+                    refineLastKnotSpan<2, T>(basis, numRefineLocal, 0, dir);
+                }
+            }
+
+            break;
         }
+        case 3:
+        {
+            for (int i = 0; i < numRefine; ++i)
+                basis.uniformRefine();
+
+            for (int dir = 0; dir < dim; dir++)
+            {
+                refineFirstKnotSpan<3, T>(basis, numRefineLocal, 0, dir);
+                refineLastKnotSpan<3, T>(basis, numRefineLocal, 0, dir);
+            }
+
+            break;
+        }
+        default:
+            GISMO_ERROR("Wrong dimension!");
+            break;
     }
 }
 

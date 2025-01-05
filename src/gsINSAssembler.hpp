@@ -379,6 +379,9 @@ void gsINSAssembler<T, MatOrder>::fillStokesSystem(gsSparseMatrix<T, MatOrder>& 
 
     stokesMat = m_baseMatrix;
     stokesRhs = m_baseRhs;
+
+    if (!stokesMat.isCompressed())
+        stokesMat.makeCompressed();
 }
 
 
@@ -605,9 +608,6 @@ void gsINSAssemblerUnsteady<T, MatOrder>::updateSizes()
 
     m_blockTimeDiscr.resize(m_pshift, m_pshift);
     m_rhsTimeDiscr.setZero(m_pshift, 1);
-
-    // memory allocation
-    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.outerSize(), m_nnzPerRowU));
 }
 
 
@@ -649,18 +649,11 @@ void gsINSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
 
 
 template<class T, int MatOrder>
-void gsINSAssemblerUnsteady<T, MatOrder>::fillBaseSystem() 
-{
-    Base::fillBaseSystem();
-    this->fillGlobalMat_UU(m_baseMatrix, m_blockTimeDiscr);
-}
-
-
-template<class T, int MatOrder>
 void gsINSAssemblerUnsteady<T, MatOrder>::fillSystem()
 {
     Base::fillSystem();
 
+    this->fillGlobalMat_UU(m_matrix, m_blockTimeDiscr);
     m_rhs.topRows(m_pshift) += m_rhsTimeDiscr;
 }
 

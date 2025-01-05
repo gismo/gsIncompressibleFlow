@@ -329,6 +329,7 @@ protected: // *** Base class members ***
     using Base::m_dofMappers;
     using Base::m_solution;
     using Base::m_baseMatrix;
+    using Base::m_matrix;
     using Base::m_rhs;
     using Base::m_currentVelField;
 
@@ -363,9 +364,6 @@ protected: // *** Member functions ***
 
     /// @brief Assemble the linear part of the matrix.
     virtual void assembleLinearPart();
-
-    /// @brief Fill the linear part of the global matrix and right-hand side.
-    virtual void fillBaseSystem();
 
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();
