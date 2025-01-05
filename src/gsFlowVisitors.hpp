@@ -195,6 +195,24 @@ void gsFlowVisitor<T, MatOrder>::assemble()
         m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_localMat);
 }
 
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+{
+    if(!m_hasPeriodicBC)
+        localToGlobal_nonper(eliminatedDofs, globalMat, globalRhs);
+    else
+        localToGlobal_per(eliminatedDofs, globalMat, globalRhs);
+}
+
+template<class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::localToGlobal(gsMatrix<T>& globalRhs)
+{
+    if(!m_hasPeriodicBC)
+        localToGlobal_nonper(globalRhs);
+    else
+        localToGlobal_per(globalRhs);
+}
+
 // ===================================================================================================================
 
 template <class T, int MatOrder>
@@ -222,6 +240,7 @@ void gsFlowVisitor<T, MatOrder>::setupQuadrature()
     index_t maxDegShape = m_shapeBasisPtr->maxDegree();
 
     numQuadNodes.setConstant(math::min(maxDegTest, maxDegShape)+1);
+    //numQuadNodes.setConstant(math::max(maxDegTest, maxDegShape)+1);
 
     m_quRule = gsGaussRule<T>(numQuadNodes);
 }

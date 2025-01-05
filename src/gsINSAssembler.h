@@ -47,11 +47,15 @@ protected: // *** Class members ***
     gsINSVisitorRhsP<T, MatOrder> m_visitorG;
     gsSparseMatrix<T, MatOrder> m_blockUUlin_comp, m_blockUUnonlin_comp, m_blockUP;
     gsSparseMatrix<T, MatOrder> m_blockUUlin_whole, m_blockUUnonlin_whole;
-    gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsFG;
+    gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsF, m_rhsG;
     gsField<T>  m_currentVelField, m_currentPresField;
 
     bool m_isMassMatReady;
     std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;
+
+    // periodic BCs
+    bool m_hasPeriodicBC;
+    typename gsFlowPeriodicHelper<T>::Ptr m_velPeriodicHelperPtr, m_presPeriodicHelperPtr;
 
     // PCD members
     // std::vector<index_t> m_presInIDs, m_presOutIDs, m_presWallIDs
@@ -132,6 +136,45 @@ protected: // *** Member functions ***
 
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();
+
+
+    // --- member functions for periodic BC ---
+
+    inline index_t mapPeriodic(int i) const
+    {
+        index_t fullUdofs = m_dofMappers[0].freeSize();
+        index_t fullPshift = m_tarDim * fullUdofs;
+        
+        if (i < fullPshift)
+            return ( m_velPeriodicHelperPtr->map(i % fullUdofs) + (i / fullUdofs) * m_udofs );
+        else
+            return ( m_presPeriodicHelperPtr->map(i % fullPshift) + m_pshift);
+    }
+
+    inline index_t invMapPeriodic(int i) const
+    {
+        index_t fullUdofs = m_dofMappers[0].freeSize();
+        index_t fullPshift = m_tarDim * fullUdofs;
+
+        if (i < m_pshift)
+            return ( m_velPeriodicHelperPtr->invMap(i % m_udofs) + (i / m_udofs) * fullUdofs );
+        else
+            return ( m_presPeriodicHelperPtr->invMap(i % m_pshift) + fullPshift);
+    }
+
+    inline bool isEliminatedPeriodic(int i) const
+    {
+        index_t fullUdofs = m_dofMappers[0].freeSize();
+        index_t fullPshift = m_tarDim * fullUdofs;
+
+        if (i < fullPshift)
+            return ( m_velPeriodicHelperPtr->isEliminated(i % fullUdofs) );
+        else
+            return ( m_presPeriodicHelperPtr->isEliminated(i % fullPshift) );
+    }
+
+    void nonper2per_into(const gsMatrix<T>& fullVector, gsMatrix<T>& perVector) const;
+    void per2nonper_into(const gsMatrix<T>& perVector, gsMatrix<T>& fullVector) const;
 
 
     // --- PCD member functions ---
@@ -331,6 +374,7 @@ protected: // *** Base class members ***
     using Base::m_baseMatrix;
     using Base::m_rhs;
     using Base::m_currentVelField;
+    using Base::m_velPeriodicHelperPtr;
 
 
 public: // *** Constructor/destructor ***

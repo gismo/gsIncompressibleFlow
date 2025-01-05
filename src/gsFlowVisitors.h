@@ -65,7 +65,8 @@ protected: // *** Class members ***
 
     // for periodicity in radially symmetric domains
     bool m_hasPeriodicBC;
-    const gsFlowPeriodicHelper<T>::Ptr m_testPeriodicHelperPtr, m_shapePeriodicHelperPtr;
+    gsMatrix<T> m_periodicTransformMat;
+    typename gsFlowPeriodicHelper<T>::Ptr m_testPeriodicHelperPtr, m_shapePeriodicHelperPtr;
     
 
 public: // *** Constructor/destructor ***
@@ -129,6 +130,29 @@ protected: // *** Member functions ***
     /// @param[out] basisData       resulting data
     void evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, gsMatrix<index_t>& activesUnique, std::vector< gsMatrix<T> >& basisData);
     
+    /// @brief Map local matrix to the global matrix (with no radial periodic conditions).
+    /// @param[in]  eliminatedDofs  coefficients of the eliminated Dirichlet DoFs
+    /// @param[out] globalMat       resulting global matrix
+    /// @param[out] globalRhs       resulting global rhs
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+    { GISMO_NO_IMPLEMENTATION } 
+
+    /// @brief Map local matrix to the global matrix (with radial periodic conditions).
+    /// @param[in]  eliminatedDofs  coefficients of the eliminated Dirichlet DoFs
+    /// @param[out] globalMat       resulting global matrix
+    /// @param[out] globalRhs       resulting global rhs
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+    { GISMO_NO_IMPLEMENTATION } 
+
+    /// @brief Map local rhs vector to the global rhs vector (with no radial periodic conditions).
+    /// @param[out] globalRhs resulting global rhs
+    virtual void localToGlobal_nonper(gsMatrix<T>& globalRhs)
+    { GISMO_NO_IMPLEMENTATION } 
+
+    /// @brief Map local rhs vector to the global rhs vector (with radial periodic conditions).
+    /// @param[out] globalRhs resulting global rhs
+    virtual void localToGlobal_per(gsMatrix<T>& globalRhs)
+    { GISMO_NO_IMPLEMENTATION } 
 
 public: // *** Member functions ***
 
@@ -166,19 +190,18 @@ public: // *** Member functions ***
     /// @param[in]  eliminatedDofs  coefficients of the eliminated Dirichlet DoFs
     /// @param[out] globalMat       resulting global matrix
     /// @param[out] globalRhs       resulting global rhs
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
-    { GISMO_NO_IMPLEMENTATION } 
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs); 
 
     /// @brief Map local rhs vector to the global rhs vector.
     /// @param[out] globalRhs resulting global rhs
-    virtual void localToGlobal(gsMatrix<T>& globalRhs)
-    { GISMO_NO_IMPLEMENTATION } 
+    virtual void localToGlobal(gsMatrix<T>& globalRhs);
 
-    void setPeriodicHelpers(const gsFlowPeriodicHelper<T>::Ptr testPerHelperPtr, const gsFlowPeriodicHelper<T>::Ptr shapePerHelperPtr)
+    void setPeriodicHelpers(typename gsFlowPeriodicHelper<T>::Ptr testPerHelperPtr, typename gsFlowPeriodicHelper<T>::Ptr shapePerHelperPtr)
     { 
         m_testPeriodicHelperPtr = testPerHelperPtr;
         m_shapePeriodicHelperPtr = shapePerHelperPtr;
         m_hasPeriodicBC = true;
+        m_periodicTransformMat = m_params.getPde().bc().getTransformMatrix();
     }
 
 };

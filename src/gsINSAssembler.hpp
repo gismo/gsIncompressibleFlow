@@ -35,8 +35,6 @@ void gsINSAssembler<T, MatOrder>::initMembers()
     for (short_t i = 0; i < m_tarDim; i++)
         m_nnzPerRowP *= 2 * getBases().back().maxDegree(i) + 1;
 
-    updateSizes();
-
     m_visitorUUlin = gsINSVisitorUUlin<T, MatOrder>(m_params);
     m_visitorUUlin.initialize();
 
@@ -55,14 +53,39 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 
     m_isMassMatReady = false;
     m_massMatBlocks.resize(2); // [velocity, pressure]
+
+    m_hasPeriodicBC = false;
+    if (m_params.getPde().bc().numPeriodic() != 0)
+    {
+        m_hasPeriodicBC = true;
+        m_velPeriodicHelperPtr = gsFlowPeriodicHelper<T>::make(getBases().front(), m_dofMappers[0], m_params.getPde().bc());
+        m_presPeriodicHelperPtr = gsFlowPeriodicHelper<T>::make(getBases().back(), m_dofMappers[1], m_params.getPde().bc());
+    
+        m_visitorUUlin.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
+        m_visitorUUnonlin.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
+        m_visitorUP.setPeriodicHelpers(m_velPeriodicHelperPtr, m_presPeriodicHelperPtr);
+        m_visitorF.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
+        m_visitorG.setPeriodicHelpers(m_presPeriodicHelperPtr, m_presPeriodicHelperPtr);
+    }
+
+    updateSizes();
 }
 
 
 template<class T, int MatOrder>
 void gsINSAssembler<T, MatOrder>::updateSizes()
 {
-    m_udofs = m_dofMappers.front().freeSize();
-    m_pdofs = m_dofMappers.back().freeSize();
+    if (!m_hasPeriodicBC)
+    {
+        m_udofs = m_dofMappers.front().freeSize();
+        m_pdofs = m_dofMappers.back().freeSize();
+    }
+    else
+    {
+        m_udofs = m_velPeriodicHelperPtr->numFreeDofs();
+        m_pdofs = m_presPeriodicHelperPtr->numFreeDofs();
+    }
+
     m_pshift = m_tarDim * m_udofs;
     m_dofs = m_pshift + m_pdofs;
 
@@ -76,7 +99,6 @@ void gsINSAssembler<T, MatOrder>::updateSizes()
     }
 
     m_solution.setZero(m_dofs, 1);
-
     m_currentVelField = constructSolution(m_solution, 0);
 
     m_blockUUlin_comp.resize(m_udofs, m_udofs);
@@ -91,7 +113,8 @@ void gsINSAssembler<T, MatOrder>::updateSizes()
     m_rhsUlin.setZero(m_pshift, 1);
     m_rhsUnonlin.setZero(m_pshift, 1);
     m_rhsBtB.setZero(m_dofs, 1);
-    m_rhsFG.setZero(m_dofs, 1);
+    m_rhsF.setZero(m_pshift, 1);
+    m_rhsG.setZero(m_pdofs, 1);
     m_baseRhs.setZero(m_dofs, 1);
     m_rhs.setZero(m_dofs, 1);
 }
@@ -124,10 +147,12 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
 {
     // matrix and rhs cleaning
     m_blockUUlin_comp.resize(m_udofs, m_udofs);
+    m_blockUUlin_whole.resize(m_pshift, m_pshift);
     m_blockUP.resize(m_pshift, m_pdofs);
     m_rhsUlin.setZero();
     m_rhsBtB.setZero();
-    m_rhsFG.setZero();
+    m_rhsF.setZero();
+    m_rhsG.setZero();
 
     int nnzPerOuterUP = 0;
 
@@ -136,16 +161,25 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     else 
         nnzPerOuterUP = m_tarDim * m_nnzPerRowU;
 
-    // memory allocation
-    m_blockUUlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUlin_comp.outerSize(), m_nnzPerRowU));
-    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.outerSize(), nnzPerOuterUP));
 
-    this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_comp, m_rhsUlin);
+    if (!m_hasPeriodicBC)
+    {
+        m_blockUUlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUlin_comp.outerSize(), m_nnzPerRowU));
+        this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_comp, m_rhsUlin);
+    }
+    else
+    {
+        m_blockUUlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUlin_whole.outerSize(), m_nnzPerRowU));
+        this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_whole, m_rhsUlin);
+    }
+
+    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.outerSize(), nnzPerOuterUP));
     this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
-    this->assembleRhs(m_visitorF, 0, m_rhsFG);
+    
+    this->assembleRhs(m_visitorF, 0, m_rhsF);
 
     if(m_params.getPde().source()) // if the continuity eqn rhs is given
-        this->assembleRhs(m_visitorG, 1, m_rhsFG);
+        this->assembleRhs(m_visitorG, 1, m_rhsG);
 
     // mass matrices for velocity and pressure (needed for preconditioners)
     if ( m_params.options().getString("lin.solver") == "iter" )
@@ -159,9 +193,14 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
         visitorUUmass.initialize();
         visitorPPmass.initialize();
 
-        m_massMatBlocks[0].resize(m_udofs, m_udofs);
+        if (!m_hasPeriodicBC)
+            m_massMatBlocks[0].resize(m_udofs, m_udofs);
+        else
+            m_massMatBlocks[0].resize(m_pshift, m_pshift);
+
+        m_massMatBlocks[0].reserve(gsVector<index_t>::Constant(m_massMatBlocks[0].outerSize(), m_nnzPerRowU));
+
         m_massMatBlocks[1].resize(m_pdofs, m_pdofs);
-        m_massMatBlocks[0].reserve(gsVector<index_t>::Constant(m_udofs, m_nnzPerRowU));
         m_massMatBlocks[1].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerRowP));
 
         this->assembleBlock(visitorUUmass, 0, m_massMatBlocks[0], dummyRhsU);
@@ -195,12 +234,19 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
 {
     // matrix and rhs cleaning
     m_blockUUnonlin_comp.resize(m_udofs, m_udofs);
+    m_blockUUnonlin_whole.resize(m_pshift, m_pshift);
     m_rhsUnonlin.setZero();
 
-    // memory allocation
-    m_blockUUnonlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_comp.outerSize(), m_nnzPerRowU));
-
-    this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_comp, m_rhsUnonlin);
+    if (!m_hasPeriodicBC)
+    {
+        m_blockUUnonlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_comp.outerSize(), m_nnzPerRowU));
+        this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_comp, m_rhsUnonlin);
+    }
+    else
+    {
+        m_blockUUnonlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_whole.outerSize(), m_nnzPerRowU));
+        this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_whole, m_rhsUlin);
+    }
 
     // linear operators needed for PCD preconditioner
     // if ( m_params.options().getString("lin.solver") == "iter" &&  m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
@@ -304,8 +350,9 @@ void gsINSAssembler<T, MatOrder>::fillBaseSystem()
     fillGlobalMat_UP(m_baseMatrix, m_blockUP);
     fillGlobalMat_PU(m_baseMatrix, blockPU);
 
-    m_baseRhs.noalias() = m_rhsFG + m_rhsBtB;
-    m_baseRhs.topRows(m_pshift) += m_rhsUlin;
+    m_baseRhs = m_rhsBtB;
+    m_baseRhs.topRows(m_pshift) += m_rhsF + m_rhsUlin;
+    m_baseRhs.bottomRows(m_pdofs) += m_rhsG;
 
     m_isBaseReady = true;
     m_isSystemReady = false;
@@ -385,7 +432,20 @@ void gsINSAssembler<T, MatOrder>::fillStokesSystem(gsSparseMatrix<T, MatOrder>& 
 template<class T, int MatOrder>
 gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& solVector, index_t unk) const
 {
-    GISMO_ASSERT(m_dofs == solVector.rows(), "Something went wrong, is solution vector valid?");
+    index_t fullUdofs = m_dofMappers[0].freeSize();
+    index_t fullPdofs = m_dofMappers[1].freeSize();
+    index_t fullPshift = m_tarDim * fullUdofs;
+    index_t fullDofs = fullPshift + fullPdofs;
+
+    gsMatrix<T> solution;
+
+    if (m_hasPeriodicBC && solVector.rows() == m_dofs) // the passed solVector is periodic
+        per2nonper_into(solVector, solution);
+    else
+    {
+        GISMO_ASSERT(solVector.rows() == fullDofs, "Something went wrong, is solution vector valid?");
+        solution = solVector;
+    }
 
     gsMultiPatch<T>* result = new gsMultiPatch<T>;
 
@@ -396,9 +456,9 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
 
     // Point to the correct entries of the solution vector
     gsAsConstMatrix<T> solV = (unk == 0 ?
-        gsAsConstMatrix<T>(solVector.data(), m_udofs, dim)
+        gsAsConstMatrix<T>(solution.data(), fullUdofs, dim)
         :
-        gsAsConstMatrix<T>(solVector.data() + m_pshift, m_pdofs, 1)
+        gsAsConstMatrix<T>(solution.data() + fullPshift, fullPdofs, 1)
         );
 
     for (size_t p = 0; p < this->getPatches().nPatches(); ++p)
@@ -409,7 +469,7 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
 
         for (index_t i = 0; i < sz; ++i)
         {
-            if (mapper.is_free(i, p)) // DoF value is in the solVector
+            if (mapper.is_free(i, p)) // DoF value is in the solution vector
             {
                 coeffs.row(i) = solV.row(mapper.index(i, p));
             }
@@ -539,7 +599,7 @@ gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU() const
         return m_rhs.topRows(m_pshift);
     else
     {
-        gsMatrix<T> rhsUpart = (m_rhsFG + m_rhsBtB).topRows(m_pshift);
+        gsMatrix<T> rhsUpart = m_rhsF + m_rhsBtB.topRows(m_pshift);
         return (rhsUpart + m_rhsUlin + m_rhsUnonlin);
     }
 }
@@ -551,7 +611,66 @@ gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsP() const
     if (m_isSystemReady)
         return m_rhs.bottomRows(m_pdofs);
     else
-        return (m_rhsFG + m_rhsBtB).bottomRows(m_pdofs);
+        return m_rhsG + m_rhsBtB.bottomRows(m_pdofs);
+}
+
+
+// --- periodic BC functions ---
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::nonper2per_into(const gsMatrix<T>& fullVector, gsMatrix<T>& perVector) const
+{
+    perVector.setZero(m_dofs, 1);
+
+    index_t fullUdofs = m_dofMappers[0].freeSize();
+    index_t fullPshift = m_tarDim * fullUdofs;
+
+    for (index_t row = 0; row < fullVector.rows(); row++)
+    {
+        if (!isEliminatedPeriodic(row))
+            perVector(mapPeriodic(row), 0) += fullVector(row, 0);
+        else
+        {
+            if (row < fullPshift)
+            {
+                for (int d = 0; d < m_tarDim; d++)
+                    perVector( m_velPeriodicHelperPtr->map(row % fullUdofs) + d * m_udofs, 0) += m_params.getPde().bc().getTransformMatrix()(d, row / fullUdofs) * fullVector(row, 0);
+            }
+            else
+                perVector(mapPeriodic(row), 0) += fullVector(row, 0);
+        }
+    }
+}
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::per2nonper_into(const gsMatrix<T>& perVector, gsMatrix<T>& fullVector) const
+{
+    index_t fullUdofs = m_dofMappers[0].freeSize();
+    index_t fullPshift = m_tarDim * fullUdofs;
+    index_t fullDofs = fullPshift + m_dofMappers[1].freeSize();
+    
+    fullVector.setZero(fullDofs, 1);
+
+    for (index_t row = 0; row < m_dofs; row++)
+        fullVector(invMapPeriodic(row), 0) += perVector(row, 0);
+
+    std::vector<index_t> elimDofsU = m_velPeriodicHelperPtr->getElimPeriodicDofs();
+    std::vector<index_t> elimDofsP = m_presPeriodicHelperPtr->getElimPeriodicDofs();
+
+    for (size_t i = 0; i < elimDofsU.size(); i++)
+    {
+        gsMatrix<T> u(m_tarDim, 1);
+        for (int d = 0; d < m_tarDim; d++)
+            u(d, 0) = perVector(m_velPeriodicHelperPtr->map(elimDofsU[i]) + d * m_udofs, 0);
+
+        u = m_params.getPde().bc().getTransformMatrix().transpose() * u; // multiplication by an inverse tranform matrix
+
+        for (int d = 0; d < m_tarDim; d++)
+            fullVector(elimDofsU[i] + d * fullUdofs, 0) = u(d, 0);
+    }
+
+    for (size_t i = 0; i < elimDofsP.size(); i++)
+        fullVector(elimDofsP[i] + fullPshift, 0) = perVector(mapPeriodic(elimDofsP[i] + fullPshift), 0);
 }
 
 
@@ -593,6 +712,9 @@ void gsINSAssemblerUnsteady<T, MatOrder>::initMembers()
 
     m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T, MatOrder>(m_params);
     m_visitorTimeDiscr.initialize();
+
+    if (this->m_hasPeriodicBC)
+        m_visitorTimeDiscr.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
 }
 
 
@@ -607,7 +729,7 @@ void gsINSAssemblerUnsteady<T, MatOrder>::updateSizes()
     m_rhsTimeDiscr.setZero(m_pshift, 1);
 
     // memory allocation
-    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.outerSize(), m_nnzPerRowU));
+    // m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.outerSize(), m_nnzPerRowU));
 }
 
 

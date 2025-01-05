@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include<gismo.h>
+
 namespace gismo
 {
 
@@ -41,9 +43,6 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsFlowPeriodicHelper() {}
-    
-
     gsFlowPeriodicHelper(const gsMultiBasis<T>& basis, const gsDofMapper& mapper, const gsBoundaryConditions<T>& bcInfo):
     m_basis(basis), m_mapper(mapper), m_bcInfo(bcInfo)
     {
@@ -68,21 +67,29 @@ protected: // *** Member functions ***
 
 public: // *** Member functions ***
 
-    inline bool isEliminated(int i) const
+    inline bool isEliminated(index_t i) const
     { return m_isEliminated(i); }
 
-    inline index_t map(int i) const
+    inline index_t map(index_t i) const
     { return m_map(i); }
 
-    inline index_t invMap(int i) const
+    inline index_t invMap(index_t i) const
     { return m_invMap(i); }
 
 
 public: // *** Getters/setters ***
 
     index_t numFreeDofs()
-    { return m_numDofs;}
+    { return m_numDofs; }
 
+    index_t numEliminated()
+    { return (m_numDofsFull - m_numDofs); }
+
+    std::vector<index_t> getFreePeriodicDofs()
+    { return m_globalPerDofsFree; }
+
+    std::vector<index_t> getElimPeriodicDofs()
+    { return m_globalPerDofsElim; }
 
 }; // class gsFlowPeriodicHelper
 

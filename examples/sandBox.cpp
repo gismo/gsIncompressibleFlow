@@ -11,6 +11,136 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 { 
+    real_t viscosity = 0.1;
+    int numRefine = 4;
+    int maxIter = 10;
+    int nParts = 4;
+
+    int plotPts = 10000;
+    bool plotMesh = true;
+    std::string outPath = "";
+
+    gsCmdLine cmd(".");
+    cmd.addInt("", "maxIt", "maximum Picard iterations", maxIter);
+    cmd.addInt("s", "plotSamples", "", plotPts);
+    cmd.addInt("r", "refine", "global uniform refine", numRefine);
+    cmd.addInt("b", "nParts", "number of blades", nParts);
+    cmd.addReal("v", "visc", "viscosity", viscosity);
+    cmd.addSwitch("", "mesh", "plot the computational mesh", plotMesh);
+    cmd.addString("", "outPath", "path to the output directory", outPath);
+    try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
+
+    gsFunctionExpr<> Uin("-y/sqrt(x^2+y^2)", "x/sqrt(x^2+y^2)", 2);
+    gsFunctionExpr<> Uwall("0", "0", 2);
+    gsFunctionExpr<> f("0", "0", 2);
+
+    real_t phi = -(2. / nParts)*EIGEN_PI;
+    real_t cos = math::cos(phi);
+    real_t sin = math::sin(phi);
+    gsMatrix<real_t> transformMatrix(2, 2);
+    transformMatrix(0, 0) = cos;
+    transformMatrix(0, 1) = -sin;
+    transformMatrix(1, 0) = sin;
+    transformMatrix(1, 1) = cos;
+
+    gsBoundaryConditions<> bcInfo;
+    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, Uwall, 0);
+    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, Uin, 0);
+    bcInfo.addPeriodic(0, boundary::west, 0, boundary::east, 2);
+    bcInfo.setTransformMatrix(transformMatrix);
+
+    // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, Uwall, 0);
+    // bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, Uwall, 0);
+
+    gsKnotVector<> kv(0,1,0,3);
+    gsMatrix<> C(9,2);
+    gsMatrix<> W(9,1);
+    real_t w = math::sqrt(2)/2;
+    C <<    3, 0,
+            3, 3,
+            0, 3,
+            2, 0,
+            2, 2,
+            0, 2,
+            1, 0,
+            1, 1,
+            0, 1;
+    W << 1, w, 1, 1, w, 1, 1, w, 1;
+    gsTensorNurbs<2> mp(kv, kv, C, W);
+
+    gsMultiBasis<> tbasis(mp); 
+
+    for (int i = 0; i < numRefine; ++i)
+        tbasis.uniformRefine();
+
+    std::vector< gsMultiBasis<> >  discreteBases;
+    discreteBases.push_back(tbasis);
+    discreteBases.push_back(tbasis);
+    discreteBases[0].degreeElevate(1);
+
+    gsAssemblerOptions opt;
+    opt.dirStrategy = dirichlet::elimination;
+    opt.dirValues = dirichlet::interpolation;
+    opt.intStrategy = iFace::glue;
+
+    gsNavStokesPde<real_t> NSpde(mp, bcInfo, &f, viscosity);
+    gsFlowSolverParams<real_t> params(NSpde, discreteBases);
+    params.options().setString("assemb.loop", "EbE");
+
+    gsINSSolverSteady<real_t> solver(params);
+
+    // std::vector<gsMatrix<index_t> > elimDof(1);
+    // elimDof[0].setZero(1,1);
+    // solver.markDofsAsEliminatedZeros(elimDof, 1);
+
+    gsInfo << "numDofs: " << solver.numDofs() << "\n\n";
+    gsInfo << "initialization...\n";
+
+    solver.initialize();
+    solver.solve(maxIter, 1e-4, 0);
+
+    // gsInfo << "velocity basis size = " << discreteBases[0].size() << "\n";
+    // gsInfo << "velocity free size = " << solver.getAssembler()->getMappers()[0].freeSize() << "\n";
+    // gsInfo << "pressure basis size = " << discreteBases[1].size() << "\n";
+    // gsInfo << "pressure free size = " << solver.getAssembler()->getMappers()[1].freeSize() << "\n";
+
+    // index_t udofs, pdofs;
+    // udofs = 4;
+    // pdofs = 8;
+
+    // gsInfo << "\n========\nx-velocity:\n\n";
+    // gsInfo << "matrix diag =\n" << solver.getAssembler()->matrix().toDense().topLeftCorner(udofs, udofs) << "\n\n";
+    // gsInfo << "matrix off-diag =\n" << solver.getAssembler()->matrix().toDense().block(0, udofs, udofs, udofs) << "\n\n";
+    // gsInfo << "rhs = " << solver.getAssembler()->rhs().topRows(udofs).transpose() << "\n\n";
+    // gsInfo << "solution = " << solver.getSolution().topRows(udofs).transpose() << "\n\n";
+
+    // gsInfo << "========\ny-velocity:\n\n";
+    // gsInfo << "matrix diag =\n" << solver.getAssembler()->matrix().toDense().block(udofs, udofs, udofs, udofs) << "\n\n";
+    // gsInfo << "matrix off-diag =\n" << solver.getAssembler()->matrix().toDense().block(udofs, 0, udofs, udofs) << "\n\n";
+    // gsInfo << "rhs = " << solver.getAssembler()->rhs().middleRows(udofs, udofs).transpose() << "\n\n";
+    // gsInfo << "solution = " << solver.getSolution().middleRows(udofs, udofs).transpose() << "\n\n";
+
+    // gsInfo << "========\npressure:\n\n";
+    // gsInfo << "matrix B1t =\n" << solver.getAssembler()->matrix().toDense().block(0, 2*udofs, udofs, pdofs) << "\n\n";
+    // gsInfo << "matrix B2t =\n" << solver.getAssembler()->matrix().toDense().block(udofs, 2*udofs, udofs, pdofs) << "\n\n";
+    // gsInfo << "matrix B1 =\n" << solver.getAssembler()->matrix().toDense().block(2*udofs, 0, pdofs, udofs) << "\n\n";
+    // gsInfo << "matrix B2 =\n" << solver.getAssembler()->matrix().toDense().block(2*udofs, udofs, pdofs, udofs) << "\n\n";
+    // gsInfo << "diag block =\n" << solver.getAssembler()->matrix().toDense().block(2*udofs, 2*udofs, pdofs, pdofs) << "\n\n";
+    // gsInfo << "rhs = " << solver.getAssembler()->rhs().bottomRows(pdofs).transpose() << "\n\n";
+    // gsInfo << "solution = " << solver.getSolution().bottomRows(pdofs).transpose() << "\n\n";
+
+    // gsInfo << "\nAssembly time:" << solver.getInitAssemblyTime() + solver.getAssemblyTime() << "\n";
+    // gsInfo << "Solve time:" << solver.getSolveTime() << "\n";
+    // gsInfo << "Solver setup time:" << solver.getSolverSetupTime() << "\n";
+
+    gsField<> velocity = solver.constructSolution(0);
+    gsField<> pressure = solver.constructSolution(1);
+    gsWriteParaview<>(velocity, outPath + "velocity", plotPts, plotMesh);
+    gsWriteParaview<>(pressure, outPath + "pressure", plotPts, false);
+
+    // -------------------------------
+    // -------------------------------
+
     // int numRef = 2;
     // int deg = 1;
 

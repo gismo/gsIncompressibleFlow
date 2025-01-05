@@ -39,6 +39,7 @@ protected: // *** Base class members ***
     using Base::m_shapeFunActives;
     using Base::m_localMat;
     using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
     using Base::m_testPeriodicHelperPtr;
     using Base::m_shapePeriodicHelperPtr;
 
@@ -58,10 +59,9 @@ protected: // *** Member functions ***
         m_shapeUnkID = 0;   // velocity
     }
 
-public: // *** Member functions ***
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
-
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 };
 
 // ===================================================================================================================
@@ -230,6 +230,7 @@ protected: // *** Base class members ***
     using Base::m_shapeFunActives;
     using Base::m_terms;
     using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
     using Base::m_testPeriodicHelperPtr;
     using Base::m_shapePeriodicHelperPtr;
 
@@ -254,10 +255,9 @@ protected: // *** Member functions ***
         m_shapeUnkID = 1;   // pressure
     }
 
-public: // *** Member functions ***
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
-
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 };
 
 // ===================================================================================================================
@@ -281,6 +281,7 @@ protected: // *** Base class members ***
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
     using Base::m_testPeriodicHelperPtr;
     using Base::m_shapePeriodicHelperPtr;
 
@@ -292,9 +293,11 @@ public: // *** Constructor/destructor ***
     { }
 
 
-public: // *** Member functions ***
+protected: // *** Member functions ***
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
 };
 
@@ -322,6 +325,7 @@ protected: // *** Base class members ***
     using Base::m_shapeFunActives;
     using Base::m_terms;
     using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
     using Base::m_testPeriodicHelperPtr;
     using Base::m_shapePeriodicHelperPtr;
 
@@ -346,10 +350,9 @@ protected: // *** Member functions ***
         m_shapeUnkID = 0;   // velocity
     }
 
-public: // *** Member functions ***
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
-
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 };
 
 // ===================================================================================================================
@@ -375,6 +378,7 @@ protected: // *** Base class members ***
     using Base::m_shapeFunActives;
     using Base::m_localMat;
     using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
     using Base::m_testPeriodicHelperPtr;
     using Base::m_shapePeriodicHelperPtr;
 
@@ -394,10 +398,11 @@ protected: // *** Member functions ***
         m_shapeUnkID = 1;   // pressure
     }
 
-public: // *** Member functions ***
+protected: // *** Member functions ***
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 };
 
 // ===================================================================================================================
@@ -630,6 +635,8 @@ protected: // *** Base class members ***
     using Base::m_quWeights;
     using Base::m_testFunData;
     using Base::m_shapeFunData;
+    using Base::m_periodicTransformMat;
+    using Base::m_testPeriodicHelperPtr;
 
 
 public: // *** Constructor/destructor ***
@@ -656,11 +663,13 @@ protected: // *** Member functions ***
         m_terms.push_back( new gsFlowTerm_rhs<T>(m_pRhsFun) );
     }
 
+    virtual void localToGlobal_nonper(gsMatrix<T>& globalRhs);
+
+    virtual void localToGlobal_per(gsMatrix<T>& globalRhs);
+
 public: // *** Member functions ***
 
     virtual void assemble();
-
-    virtual void localToGlobal(gsMatrix<T>& globalRhs);
 
 };
 
@@ -693,7 +702,8 @@ protected: // *** Base class members ***
     using Base::m_quWeights;
     using Base::m_testFunData;
     using Base::m_shapeFunData;
-
+    using Base::m_periodicTransformMat;
+    using Base::m_testPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -719,11 +729,13 @@ protected: // *** Member functions ***
         m_terms.push_back( new gsFlowTerm_rhs<T>(m_pRhsFun) );
     }
 
+    virtual void localToGlobal_nonper(gsMatrix<T>& globalRhs);
+
+    virtual void localToGlobal_per(gsMatrix<T>& globalRhs);
+
 public: // *** Member functions ***
 
     virtual void assemble();
-
-    virtual void localToGlobal(gsMatrix<T>& globalRhs);
 
 };
 
