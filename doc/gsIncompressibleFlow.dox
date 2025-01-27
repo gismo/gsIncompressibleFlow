@@ -1,0 +1,38 @@
+namespace gismo
+{
+
+/** \defgroup IncompressibleFlow Incompressible flow module
+\ingroup Modules
+
+This module provides tools for solving the incompressible flow problems.
+
+\subsection gsIF_Equations Governing Equations
+
+The mathematical model of incompressible viscous Newtonian flow is based on the incompressible Navier--Stokes equations. It is a system of \f$ d+1 \f$ differential equations, where \f$ d \f$ is the spatial dimension. The steady-state incompressible Navier--Stokes equations take the form
+
+\f{align*}{
+    - \nu \Delta \boldsymbol{u} + (\boldsymbol{u} \cdot \nabla) \boldsymbol{u}  + \nabla p &= \boldsymbol{f}\\
+    \nabla \cdot \boldsymbol{u} &=& 0,
+\f}
+
+where \f$ \boldsymbol{u} \f$ is the velocity vector, \f$ p \f$ is the kinematic pressure, \f$ \nu \f$ is the kinematic viscosity and \f$ \boldsymbol{f} \f$ represents external forces.
+
+\subsection gsIF_LinDiscr Linearization and discretization
+
+Picard linearization of the nonlinear convective term \f$ (\boldsymbol{u} \cdot \nabla) \boldsymbol{u} \f$ is considered, resulting in an iterative process with the following weak formulation in the \f$ (k+1) \f$-th iteration:
+
+\f{align*}{
+    \integ_{\Omega} (\boldsymbol{u}^k \cdot \nabla \boldsymbol{u}^{k+1}) \cdot \boldsymbol{v} + \nu \integ_{\Omega} \nabla \boldsymbol{u}^{k+1} : \nabla \boldsymbol{v} - \integ_{\Omega} p^{k+1} \nabla \cdot \boldsymbol{v} &= \integ_{\Omega} \boldsymbol{f} \cdot \boldsymbol{v},\\
+    \integ_{\Omega} q \nabla \cdot \boldsymbol{u}^{k+1} &= 0,
+\f}
+
+where \f$ \boldsymbol{v}, q \f$ are the velocity and pressure test functions, respectively.
+
+...
+
+\subsection gsIF_Contact Contact
+Author: Hana Honnerová -- hhornik@kma.zcu.cz
+
+*/
+
+}
