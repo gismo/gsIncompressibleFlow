@@ -8,9 +8,11 @@ An optional sumbodule of G+Smo providing tools for solving incompressible flow p
 |OS support|Linux, Windows, macOS|
 |Developers/maintainers| [![Static Badge](https://img.shields.io/badge/@hhornik-008A00)](https://github.com/hhornik) [![Static Badge](https://img.shields.io/badge/@turnerov-008A00)](https://github.com/turnerov)
 
-<video width="500" controls>
-  <source src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/video/profile_vel_unst.mp4" type="video/mp4">
-</video>
+<p align="center">
+<img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/testProb_profile.png" width="35%">
+&nbsp &nbsp &nbsp &nbsp
+<img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/francis_flow.png" width="40%">
+</p>
 
 ## Installation
 
