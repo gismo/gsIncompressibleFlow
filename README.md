@@ -9,7 +9,7 @@ An optional sumbodule of G+Smo providing tools for solving incompressible flow p
 |Developers/maintainers| [![Static Badge](https://img.shields.io/badge/@hhornik-008A00)](https://github.com/hhornik) [![Static Badge](https://img.shields.io/badge/@turnerov-008A00)](https://github.com/turnerov)
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/testProb_profile.png" width="35%">
+<img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/testProb_profile.png" width="40%">
 &nbsp &nbsp &nbsp &nbsp
 <img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/francis_flow.png" width="40%">
 </p>
