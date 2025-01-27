@@ -8,12 +8,6 @@ An optional sumbodule of G+Smo providing tools for solving incompressible flow p
 |OS support|Linux, Windows, macOS|
 |Developers/maintainers| [![Static Badge](https://img.shields.io/badge/@hhornik-008A00)](https://github.com/hhornik) [![Static Badge](https://img.shields.io/badge/@turnerov-008A00)](https://github.com/turnerov)
 
-<p align="center">
-<img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/testProb_profile.png" width="36%">
-&nbsp &nbsp &nbsp &nbsp
-<img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/francis_flow.png" width="40%">
-</p>
-
 ## Installation
 
 #### 1. Download G+smo
@@ -57,3 +51,9 @@ The usage and capabilities of the submodule are demonstrated by examples in `/pa
 cd /path/to/gismo/build/bin
 ./gsINSSolversExample -h
 ```
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/testProb_profile.png" width="36%">
+&nbsp &nbsp &nbsp &nbsp
+<img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/francis_flow.png" width="40%">
+</p>
