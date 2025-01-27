@@ -57,3 +57,7 @@ cd /path/to/gismo/build/bin
 &nbsp &nbsp &nbsp &nbsp
 <img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/francis_flow.png" width="40%">
 </p>
+
+<p align="center">
+Laminar flow around a 2D blade profile (left), in a Francis turbine runner wheel (right).
+</p>
