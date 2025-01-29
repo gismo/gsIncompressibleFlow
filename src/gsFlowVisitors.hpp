@@ -137,7 +137,7 @@ template<class T, int MatOrder>
 void gsFlowVisitor<T, MatOrder>::initialize()
 {
     defineTestShapeUnknowns();  
-    m_params.createDofMappers(m_dofMappers);  
+    m_paramsPtr->createDofMappers(m_dofMappers);  
 
     deleteTerms();
     defineTerms();
@@ -200,7 +200,7 @@ void gsFlowVisitor<T, MatOrder>::assemble()
 template <class T, int MatOrder>
 void gsFlowVisitorVectorValued<T, MatOrder>::assemble()
 {
-    m_locMatVec.resize(m_params.getPde().dim());
+    m_locMatVec.resize(m_paramsPtr->getPde().dim());
 
     for (size_t i = 0; i < m_locMatVec.size(); i++)
         m_locMatVec[i].setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
@@ -216,7 +216,7 @@ void gsFlowVisitorVectorValued<T, MatOrder>::assemble()
 template<class T, int MatOrder>
 void gsFlowVisitor<T, MatOrder>::setupQuadrature()
 {
-    gsVector<index_t> numQuadNodes(m_params.getPde().dim()); 
+    gsVector<index_t> numQuadNodes(m_paramsPtr->getPde().dim()); 
 
     index_t maxDegTest = m_testBasisPtr->maxDegree();
     index_t maxDegShape = m_shapeBasisPtr->maxDegree();
@@ -279,7 +279,7 @@ void gsFlowVisitor<T, MatOrder>::evaluate(index_t testFunID)
     }
 
     m_mapData.points = m_quNodes;
-    m_params.getPde().patches().patch(m_patchID).computeMap(m_mapData);
+    m_paramsPtr->getPde().patches().patch(m_patchID).computeMap(m_mapData);
 
     evalBasisData(m_shapeFunFlags, m_shapeBasisPtr, m_shapeFunActives, m_shapeFunData);
 
@@ -295,7 +295,7 @@ void gsFlowVisitor<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     m_quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), m_quNodes, m_quWeights);
     m_mapData.points = m_quNodes;
-    m_params.getPde().patches().patch(m_patchID).computeMap(m_mapData);
+    m_paramsPtr->getPde().patches().patch(m_patchID).computeMap(m_mapData);
 
     evalBasisData(m_testFunFlags, m_testBasisPtr, m_testFunActives, m_testFunData);
 

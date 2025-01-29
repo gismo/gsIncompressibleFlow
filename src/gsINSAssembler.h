@@ -60,7 +60,7 @@ protected: // *** Class members ***
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_dofs;
     using Base::m_tarDim;
     using Base::m_dofMappers;
@@ -78,8 +78,8 @@ public: // *** Base class member functions ***
 
 public: // *** Constructor/destructor ***
 
-    gsINSAssembler(const gsFlowSolverParams<T>& params):
-    Base(params)
+    gsINSAssembler(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
     virtual ~gsINSAssembler()
@@ -288,8 +288,8 @@ public:
 
 public: // *** Constructor/destructor ***
 
-    gsINSAssemblerSteady(const gsFlowSolverParams<T>& params): 
-    Base(params)
+    gsINSAssemblerSteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
+    Base(paramsPtr)
     {
         Base::initMembers();
     }
@@ -323,7 +323,7 @@ protected: // *** Class members ***
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_pshift;
     using Base::m_nnzPerRowU;
     using Base::m_dofMappers;
@@ -336,8 +336,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsINSAssemblerUnsteady(const gsFlowSolverParams<T>& params): 
-    Base(params)
+    gsINSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
+    Base(paramsPtr)
     {
         initMembers();
     }

@@ -26,7 +26,7 @@ class gsFlowAssemblerBase
 
 protected: // *** Class members ***
 
-    gsFlowSolverParams<T> m_params;
+    typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
     index_t m_dofs;
     short_t m_tarDim;
     bool m_isInitialized;
@@ -39,8 +39,8 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsFlowAssemblerBase(const gsFlowSolverParams<T>& params):
-    m_params(params)
+    gsFlowAssemblerBase(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    m_paramsPtr(paramsPtr)
     { }
 
     virtual ~gsFlowAssemblerBase()
@@ -169,7 +169,7 @@ public: // *** Getters/setters ***
     const gsMatrix<T>& getSolution() const { return m_solution; }
 
     /// @brief Returns a const reference to the multipatch representing the computational domain.
-    const gsMultiPatch<T>& getPatches() const { return m_params.getPde().patches(); }
+    const gsMultiPatch<T>& getPatches() const { return m_paramsPtr->getPde().patches(); }
 
     /**
      * @brief Returns a reference to the discretization bases.
@@ -178,20 +178,20 @@ public: // *** Getters/setters ***
      * 
      * There is also a const version returning a const reference.
      */
-    std::vector< gsMultiBasis<T> >& getBases() { return m_params.getBases(); }
-    const std::vector< gsMultiBasis<T> >& getBases() const { return m_params.getBases(); }
+    std::vector< gsMultiBasis<T> >& getBases() { return m_paramsPtr->getBases(); }
+    const std::vector< gsMultiBasis<T> >& getBases() const { return m_paramsPtr->getBases(); }
 
     /// @brief Returns a const reference to the boundary conditions.
-    const gsBoundaryConditions<T>& getBCs() const { return m_params.getBCs(); }
+    const gsBoundaryConditions<T>& getBCs() const { return m_paramsPtr->getBCs(); }
 
     /// @brief Returns a pointer to the right-hand-side function.
-    const gsFunction<T>* getRhsFcn() const { return m_params.getPde().rhs(); }
+    const gsFunction<T>* getRhsFcn() const { return m_paramsPtr->getPde().rhs(); }
 
     /// @brief Returns the assembler options.
-    gsAssemblerOptions getAssemblerOptions() const { return m_params.assemblerOptions(); }
+    gsAssemblerOptions getAssemblerOptions() const { return m_paramsPtr->assemblerOptions(); }
     
     /// @brief Returns the flow solver option list.
-    gsOptionList options() const { return m_params.options(); }
+    gsOptionList options() const { return m_paramsPtr->options(); }
 
     /// @brief Returns the assembled matrix.
     virtual const gsSparseMatrix<T, MatOrder>& matrix() const

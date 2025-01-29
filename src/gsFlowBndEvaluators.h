@@ -29,7 +29,7 @@ class gsFlowBndEvaluator
 
 protected: // *** Class members ***
     
-    const gsFlowSolverParams<T>& m_params;
+    typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
     std::vector< std::pair<int, boxSide> > m_bndPart;
     gsField<T> m_velocityField;
     gsField<T> m_pressureField;
@@ -43,7 +43,13 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     /// @param[in] params the parameters of the given problem
     gsFlowBndEvaluator(const gsFlowSolverParams<T>& params):
-    m_params(params)
+    gsFlowBndEvaluator(memory::make_shared_not_owned(&params))
+    { }
+
+    /// @brief Constructor.
+    /// @param[in] paramsPtr smart poiter to the parameters of the given problem
+    gsFlowBndEvaluator(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    m_paramsPtr(paramsPtr)
     {
         initMembers();
     }
@@ -52,7 +58,14 @@ public: // *** Constructor/destructor ***
     /// @param[in] params  the parameters of the given problem
     /// @param[in] bndPart container of pairs (patch, side) defining the boundary part, over which the quantity will be integrated
     gsFlowBndEvaluator(const gsFlowSolverParams<T>& params, const std::vector< std::pair<int, boxSide> >& bndPart):
-    m_params(params), m_bndPart(bndPart)
+    gsFlowBndEvaluator(memory::make_shared_not_owned(&params), bndPart)
+    { }
+
+    /// @brief Constructor.
+    /// @param[in] paramsPtr smart poiter to the parameters of the given problem
+    /// @param[in] bndPart   container of pairs (patch, side) defining the boundary part, over which the quantity will be integrated
+    gsFlowBndEvaluator(typename gsFlowSolverParams<T>::Ptr paramsPtr, const std::vector< std::pair<int, boxSide> >& bndPart):
+    m_paramsPtr(paramsPtr), m_bndPart(bndPart)
     {
         initMembers();
     }
@@ -152,13 +165,21 @@ protected: // *** Base class members ***
 public: // *** Constructor/destructor ***
 
     gsFlowBndEvaluator_flowRate(const gsFlowSolverParams<T>& params):
-    Base(params)
+    gsFlowBndEvaluator_flowRate(memory::make_shared_not_owned(&params))
+    { }
+
+    gsFlowBndEvaluator_flowRate(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     {
         initMembers();
     }
 
     gsFlowBndEvaluator_flowRate(const gsFlowSolverParams<T>& params, const std::vector< std::pair<int, boxSide> >& bndPart):
-    Base(params, bndPart)
+    gsFlowBndEvaluator_flowRate(memory::make_shared_not_owned(&params), bndPart)
+    { }
+
+    gsFlowBndEvaluator_flowRate(typename gsFlowSolverParams<T>::Ptr paramsPtr, const std::vector< std::pair<int, boxSide> >& bndPart):
+    Base(paramsPtr, bndPart)
     {
         initMembers();
     }

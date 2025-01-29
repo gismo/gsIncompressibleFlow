@@ -28,7 +28,7 @@ class gsFlowSolverBase
 
 protected: // *** Class members ***
 
-    gsFlowSolverParams<T> m_params;
+    typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
     gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr;
     gsFlowLinSystSolver<T, MatOrder>* m_linSolverPtr;
 
@@ -45,7 +45,11 @@ protected: // *** Class members ***
 public: // *** Constructor/destructor ***
 
     gsFlowSolverBase(const gsFlowSolverParams<T>& params):
-    m_params(params)
+    gsFlowSolverBase(memory::make_shared_not_owned(&params))
+    { }
+
+    gsFlowSolverBase(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    m_paramsPtr(paramsPtr)
     {
         m_assemblerPtr = NULL;
     }
@@ -173,7 +177,7 @@ public: // *** Getters/setters ***
     virtual std::string getName() { return "gsFlowSolverBase"; }
 
     /// @brief Retrurns the solver parameters.
-    virtual gsFlowSolverParams<T> getParams() { return m_params; }
+    virtual typename gsFlowSolverParams<T>::Ptr getParams() { return m_paramsPtr; }
 
     /// @brief Returns a pointer to the assembler.
     virtual gsFlowAssemblerBase<T, MatOrder>* getAssembler() const { return m_assemblerPtr; }

@@ -30,7 +30,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
@@ -43,7 +43,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUU() {}
 
-    gsINSVisitorUU(const gsFlowSolverParams<T>& params) : Base(params)
+    gsINSVisitorUU(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
         
 
@@ -73,7 +74,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_terms;
 
 
@@ -81,8 +82,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUUlin() {}
 
-    gsINSVisitorUUlin(const gsFlowSolverParams<T>& params) :
-    Base(params)
+    gsINSVisitorUUlin(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
     { }
 
 
@@ -90,10 +91,10 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTerm_Diffusion<T>(m_params.getPde().viscosity()) );
+        m_terms.push_back( new gsFlowTerm_Diffusion<T>(m_paramsPtr->getPde().viscosity()) );
 
-        // if(m_params.options().getSwitch("unsteady"))
-        //     m_terms.push_back( new gsFlowTermTimeDiscr<T>(m_params.options().getReal("timeStep")) );
+        // if(m_paramsPtr->options().getSwitch("unsteady"))
+        //     m_terms.push_back( new gsFlowTermTimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
 
         // ... other terms, e.g. from stabilizations
     }
@@ -112,7 +113,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_terms;
 
 
@@ -120,7 +121,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUUnonlin() {}
 
-    gsINSVisitorUUnonlin(const gsFlowSolverParams<T>& params) : Base(params)
+    gsINSVisitorUUnonlin(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -147,7 +149,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_terms;
 
 
@@ -155,8 +157,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUUmass() {}
 
-    gsINSVisitorUUmass(const gsFlowSolverParams<T>& params) :
-    Base(params)
+    gsINSVisitorUUmass(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
     { }
 
 
@@ -181,7 +183,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_terms;
 
 
@@ -189,8 +191,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUUtimeDiscr() {}
 
-    gsINSVisitorUUtimeDiscr(const gsFlowSolverParams<T>& params) :
-    Base(params)
+    gsINSVisitorUUtimeDiscr(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
     { }
 
 
@@ -198,7 +200,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_params.options().getReal("timeStep")) );
+        m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
     }
 
 };
@@ -219,7 +221,7 @@ public:
 protected: // *** Base class members ***
 
     using Base::m_locMatVec;
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
@@ -232,7 +234,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPU() {}
 
-    gsINSVisitorPU(const gsFlowSolverParams<T>& params) : Base(params)
+    gsINSVisitorPU(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -268,7 +271,7 @@ public:
 protected: // *** Base class members ***
 
     using Base::m_locMatVec;
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
@@ -280,7 +283,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPU_withUPrhs() {}
 
-    gsINSVisitorPU_withUPrhs(const gsFlowSolverParams<T>& params) : Base(params)
+    gsINSVisitorPU_withUPrhs(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -305,7 +309,7 @@ public:
 protected: // *** Base class members ***
 
     using Base::m_locMatVec;
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
@@ -318,7 +322,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorUP() {}
 
-    gsINSVisitorUP(const gsFlowSolverParams<T>& params) : Base(params)
+    gsINSVisitorUP(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -355,7 +360,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_shapeUnkID;
@@ -369,7 +374,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPP() {}
 
-    gsINSVisitorPP(const gsFlowSolverParams<T>& params) : Base(params)
+    gsINSVisitorPP(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -399,7 +405,7 @@ public: // *** Member functions ***
 
 // protected: // *** Base class members ***
 
-//     using Base::m_params;
+//     using Base::m_paramsPtr;
 //     using Base::m_terms;
 
 
@@ -407,7 +413,8 @@ public: // *** Member functions ***
 
 //     gsINSVisitorPPlin() {}
 
-//     gsINSVisitorPPlin(const gsFlowSolverParams<T>& params) : Base(params)
+//     gsINSVisitorPPlin(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+//     Base(paramsPtr)
 //     { }
 
 
@@ -433,7 +440,7 @@ public: // *** Member functions ***
 
 // protected: // *** Base class members ***
 
-//     using Base::m_params;
+//     using Base::m_paramsPtr;
 //     using Base::m_terms;
 
 
@@ -441,7 +448,8 @@ public: // *** Member functions ***
 
 //     gsINSVisitorPPnonlin() {}
 
-//     gsINSVisitorPPnonlin(const gsFlowSolverParams<T>& params) : Base(params)
+//     gsINSVisitorPPnonlin(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+//     Base(paramsPtr)
 //     { }
 
 
@@ -467,7 +475,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_terms;
 
 
@@ -475,7 +483,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPPmass() {}
 
-    gsINSVisitorPPmass(const gsFlowSolverParams<T>& params) : Base(params)
+    gsINSVisitorPPmass(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -500,7 +509,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_terms;
 
 
@@ -508,7 +517,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPPlaplace() {}
 
-    gsINSVisitorPPlaplace(const gsFlowSolverParams<T>& params) : Base(params)
+    gsINSVisitorPPlaplace(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -532,7 +542,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_terms;
 
 
@@ -540,7 +550,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorPPconvection() {}
 
-    gsINSVisitorPPconvection(const gsFlowSolverParams<T>& params) : Base(params)
+    gsINSVisitorPPconvection(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -564,7 +575,7 @@ protected: // *** Member functions ***
 
 // protected: // *** Base class members ***
 
-//     using Base::m_params;
+//     using Base::m_paramsPtr;
 //     using Base::m_terms;
 
 
@@ -572,7 +583,8 @@ protected: // *** Member functions ***
 
 //     gsINSVisitorPP_PCDrobinBC() {}
 
-//     gsINSVisitorPP_PCDrobinBC(const gsFlowSolverParams<T>& params) : Base(params)
+//     gsINSVisitorPP_PCDrobinBC(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+//     Base(paramsPtr)
 //     { }
 
 
@@ -605,7 +617,7 @@ protected: // *** Class members ***
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_terms;
     using Base::m_patchID;
     using Base::m_testUnkID;
@@ -623,10 +635,10 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorRhsU() {}
 
-    gsINSVisitorRhsU(const gsFlowSolverParams<T>& params):
-    Base(params), m_pRhsFun(params.getPde().force())
+    gsINSVisitorRhsU(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr), m_pRhsFun(paramsPtr->getPde().force())
     {
-        GISMO_ASSERT(m_pRhsFun->targetDim() == m_params.getPde().dim(), "Wrong RHS function passed into gsINSRhsU.");
+        GISMO_ASSERT(m_pRhsFun->targetDim() == m_paramsPtr->getPde().dim(), "Wrong RHS function passed into gsINSRhsU.");
     }
         
 
@@ -668,7 +680,7 @@ protected: // *** Class members ***
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_terms;
     using Base::m_patchID;
     using Base::m_testUnkID;
@@ -686,8 +698,8 @@ public: // *** Constructor/destructor ***
 
     gsINSVisitorRhsP() {}
     
-    gsINSVisitorRhsP(const gsFlowSolverParams<T>& params):
-    Base(params), m_pRhsFun(params.getPde().source())
+    gsINSVisitorRhsP(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr), m_pRhsFun(paramsPtr->getPde().source())
     {
         GISMO_ASSERT(m_pRhsFun == NULL || m_pRhsFun->targetDim() == 1, "Wrong RHS function passed into gsINSRhsP.");
     }

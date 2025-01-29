@@ -39,8 +39,8 @@ protected: // *** Class members ***
 
     // constant and same for all visitors
     index_t m_patchID;
-    gsFlowSolverParams<T> m_params; // pde, bases, assemblerOptions, options, precOptions
-                                    // pde members: dim, viscosity, rhs (f,g), gsBoundaryConditions, patches, unknownDim
+    typename gsFlowSolverParams<T>::Ptr m_paramsPtr; // pde, bases, assemblerOptions, options, precOptions
+                                                     // pde members: dim, viscosity, rhs (f,g), gsBoundaryConditions, patches, unknownDim
  
     // constant for individual visitors
     index_t m_testUnkID, m_shapeUnkID; // used, e.g., to reference the corresponding mapper
@@ -67,7 +67,8 @@ public: // *** Constructor/destructor ***
 
     gsFlowVisitor() {}
 
-    gsFlowVisitor(const gsFlowSolverParams<T>& params) : m_params(params)
+    gsFlowVisitor(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    m_paramsPtr(paramsPtr)
     { }
 
     ~gsFlowVisitor()
@@ -100,8 +101,8 @@ protected: // *** Member functions ***
     /// @brief Set pointers to test and shape basis.
     virtual void defineTestShapeBases()
     { 
-        m_testBasisPtr = &(m_params.getBases()[m_testUnkID].piece(m_patchID));
-        m_shapeBasisPtr = &(m_params.getBases()[m_shapeUnkID].piece(m_patchID));
+        m_testBasisPtr = &(m_paramsPtr->getBases()[m_testUnkID].piece(m_patchID));
+        m_shapeBasisPtr = &(m_paramsPtr->getBases()[m_shapeUnkID].piece(m_patchID));
     }
 
     /// @brief Setup the quadrature rule.
@@ -186,7 +187,7 @@ protected: // *** Class members ***
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_mapData;
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
@@ -199,7 +200,8 @@ public: // *** Constructor/destructor ***
 
     gsFlowVisitorVectorValued() {}
 
-    gsFlowVisitorVectorValued(const gsFlowSolverParams<T>& params) : Base(params)
+    gsFlowVisitorVectorValued(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -239,7 +241,8 @@ public: // *** Member functions ***
 
 //     gsFlowVisitorBnd() {}
 
-//     gsFlowVisitorBnd(const gsFlowSolverParams<T>& params) : Base(params)
+//     gsFlowVisitorBnd(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+//     Base(paramsPtr)
 //     { }
     
 
@@ -248,8 +251,8 @@ public: // *** Member functions ***
 //      /// @brief Set pointers to test and shape basis.
 //     virtual void defineTestShapeBases()
 //     { 
-//         m_testBasisPtr = &(m_params.getBases()[m_testUnkID].piece(m_patchID).boundaryBasis(m_side));
-//         m_shapeBasisPtr = &(m_params.getBases()[m_shapeUnkID].piece(m_patchID).boundaryBasis(m_side));
+//         m_testBasisPtr = &(m_paramsPtr->getBases()[m_testUnkID].piece(m_patchID).boundaryBasis(m_side));
+//         m_shapeBasisPtr = &(m_paramsPtr->getBases()[m_shapeUnkID].piece(m_patchID).boundaryBasis(m_side));
 //     }
 
 //     /// @brief Setup the quadrature rule.

@@ -32,6 +32,11 @@ template<class T>
 class gsNavStokesPde : public gsStokesPde<T>
 {
 
+public: // *** Smart pointers ***
+
+    typedef memory::shared_ptr<gsNavStokesPde> Ptr;
+    typedef memory::unique_ptr<gsNavStokesPde> uPtr;
+
 protected:
 
     typedef gsStokesPde<T> Base;
@@ -47,10 +52,14 @@ public: // *** Constructor/destructor ***
 
     gsNavStokesPde() { }
 
+    gsNavStokesPde(const gsNavStokesPde & other) :
+    gsNavStokesPde(other.m_domain, other.m_boundary_conditions, other.m_force, other.m_source, other.m_viscosity)
+    { }
+
     gsNavStokesPde(
         const gsMultiPatch<T>&         domain,
         const gsBoundaryConditions<T>& bc,
-        gsFunction<T>*                 force,
+        const gsFunction<T>*           force,
         const T                        viscosity)
         : gsStokesPde<T>(domain, bc, force, NULL, viscosity)
     { }
@@ -58,8 +67,8 @@ public: // *** Constructor/destructor ***
     gsNavStokesPde(
         const gsMultiPatch<T>&         domain,
         const gsBoundaryConditions<T>& bc,
-        gsFunction<T>*                 force,
-        gsFunction<T>*                 source,
+        const gsFunction<T>*           force,
+        const gsFunction<T>*           source,
         const T                        viscosity)
         : gsStokesPde<T>(domain, bc, force, source, viscosity)
     { }

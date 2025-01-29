@@ -20,7 +20,7 @@ T gsFlowLinSystSolver<T, MatOrder>::stopwatchStart()
 {
 
 #ifdef GISMO_WITH_PETSC
-    if (m_paramsRef.options().getSwitch("parallel"))
+    if (m_paramsPtr->options().getSwitch("parallel"))
     {
         MPI_Barrier(PETSC_COMM_WORLD);
         return MPI_Wtime();
@@ -38,7 +38,7 @@ T gsFlowLinSystSolver<T, MatOrder>::stopwatchStop()
 {
 
 #ifdef GISMO_WITH_PETSC
-    if (m_paramsRef.options().getSwitch("parallel"))
+    if (m_paramsPtr->options().getSwitch("parallel"))
     {
         MPI_Barrier(PETSC_COMM_WORLD);
         return MPI_Wtime();
@@ -117,8 +117,8 @@ void gsFlowLinSystSolver_iter<T, MatOrder, SolverType>::applySolver(const gsSpar
     this->setupPreconditioner(mat);
     
     SolverType solver(mat, m_precPtr);
-    solver.setMaxIterations(m_paramsRef.options().getInt("lin.maxIt"));
-    solver.setTolerance(m_paramsRef.options().getReal("lin.tol"));
+    solver.setMaxIterations(m_paramsPtr->options().getInt("lin.maxIt"));
+    solver.setTolerance(m_paramsPtr->options().getReal("lin.tol"));
 
     real_t time1 = stopwatchStop();
     

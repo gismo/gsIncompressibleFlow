@@ -23,8 +23,8 @@ void gsFlowSolverBase<T, MatOrder>::initMembers()
     m_iterationNumber = 0;
     m_relNorm = std::numeric_limits<T>::infinity();
 
-    m_fileOutput = m_params.options().getSwitch("fileOutput");
-    m_dispOutput = !m_params.options().getSwitch("quiet");
+    m_fileOutput = m_paramsPtr->options().getSwitch("fileOutput");
+    m_dispOutput = !m_paramsPtr->options().getSwitch("quiet");
 
     if(m_fileOutput)
         createOutputFile();
@@ -44,7 +44,7 @@ void gsFlowSolverBase<T, MatOrder>::updateSizes()
 template<class T, int MatOrder>
 void gsFlowSolverBase<T, MatOrder>::createOutputFile()
 {
-    std::string fileName = m_params.options().getString("outFile");
+    std::string fileName = m_paramsPtr->options().getString("outFile");
 
     if (fileName == "")
         fileName = this->getName() + "_output.txt";
@@ -52,7 +52,7 @@ void gsFlowSolverBase<T, MatOrder>::createOutputFile()
     m_outFile.open(fileName);
 
     std::stringstream output;
-    output << "\n" << m_params.options() << "\n";
+    output << "\n" << m_paramsPtr->options() << "\n";
     gsWriteOutput(m_outFile, output.str(), m_fileOutput, false);
 }
 
@@ -62,7 +62,7 @@ real_t gsFlowSolverBase<T, MatOrder>::stopwatchStart()
 {
 
 #ifdef GISMO_WITH_PETSC
-    if (m_params.options().getSwitch("parallel"))
+    if (m_paramsPtr->options().getSwitch("parallel"))
     {
         MPI_Barrier(PETSC_COMM_WORLD);
         return MPI_Wtime();
@@ -80,7 +80,7 @@ real_t gsFlowSolverBase<T, MatOrder>::stopwatchStop()
 {
 
 #ifdef GISMO_WITH_PETSC
-    if (m_params.options().getSwitch("parallel"))
+    if (m_paramsPtr->options().getSwitch("parallel"))
     {
         MPI_Barrier(PETSC_COMM_WORLD);
         return MPI_Wtime();
@@ -104,7 +104,7 @@ void gsFlowSolverBase<T, MatOrder>::initialize()
         m_initAssembT += time1 - time0;
     }
 
-    m_linSolverPtr = createLinSolver<T, MatOrder>(m_params, getAssembler());
+    m_linSolverPtr = createLinSolver<T, MatOrder>(m_paramsPtr, getAssembler());
 }
 
 
@@ -205,16 +205,16 @@ int gsFlowSolverBase<T, MatOrder>::checkGeoJacobian(int npts, T dist, T tol)
     // default values
 
     if (npts == -1)
-        npts = m_params.options().getInt("jac.npts");
+        npts = m_paramsPtr->options().getInt("jac.npts");
 
     if (dist == -1)
-        dist = m_params.options().getReal("jac.dist");
+        dist = m_paramsPtr->options().getReal("jac.dist");
 
     if (tol == -1)
-        tol = m_params.options().getReal("jac.tol");
+        tol = m_paramsPtr->options().getReal("jac.tol");
 
-    short_t dim = m_params.getPde().patches().domainDim();
-    size_t np = m_params.getPde().patches().nPatches();
+    short_t dim = m_paramsPtr->getPde().patches().domainDim();
+    size_t np = m_paramsPtr->getPde().patches().nPatches();
 
     npts = math::pow(math::abs(npts), dim-1); // number of pts on one patch side
     dist = math::abs(dist);
@@ -222,7 +222,7 @@ int gsFlowSolverBase<T, MatOrder>::checkGeoJacobian(int npts, T dist, T tol)
 
     for (size_t p = 0; p < np; p++)
     {
-        const gsGeometry<T>* patch = &m_params.getPde().patches().patch(p);
+        const gsGeometry<T>* patch = &m_paramsPtr->getPde().patches().patch(p);
 
         gsMatrix<T> parRange = patch->support();
         GISMO_ASSERT(parRange.rows() == dim, "checkGeoJacobian: something went wrong, parRange.rows() != dim.");

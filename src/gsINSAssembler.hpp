@@ -20,7 +20,7 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 { 
     Base::initMembers();
 
-    m_viscosity = m_params.getPde().viscosity();
+    m_viscosity = m_paramsPtr->getPde().viscosity();
 
     m_dofMappers.resize(2);
     m_ddof.resize(2);
@@ -37,20 +37,20 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 
     updateSizes();
 
-    m_visitorUUlin = gsINSVisitorUUlin<T, MatOrder>(m_params);
+    m_visitorUUlin = gsINSVisitorUUlin<T, MatOrder>(m_paramsPtr);
     m_visitorUUlin.initialize();
 
-    m_visitorUUnonlin = gsINSVisitorUUnonlin<T, MatOrder>(m_params);
+    m_visitorUUnonlin = gsINSVisitorUUnonlin<T, MatOrder>(m_paramsPtr);
     m_visitorUUnonlin.initialize();
     m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
 
-    m_visitorUP = gsINSVisitorPU_withUPrhs<T, MatOrder>(m_params);
+    m_visitorUP = gsINSVisitorPU_withUPrhs<T, MatOrder>(m_paramsPtr);
     m_visitorUP.initialize();
 
-    m_visitorF = gsINSVisitorRhsU<T, MatOrder>(m_params);
+    m_visitorF = gsINSVisitorRhsU<T, MatOrder>(m_paramsPtr);
     m_visitorF.initialize();
 
-    m_visitorG = gsINSVisitorRhsP<T, MatOrder>(m_params);
+    m_visitorG = gsINSVisitorRhsP<T, MatOrder>(m_paramsPtr);
     m_visitorG.initialize();
 
     m_isMassMatReady = false;
@@ -144,17 +144,17 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
     this->assembleRhs(m_visitorF, 0, m_rhsFG);
 
-    if(m_params.getPde().source()) // if the continuity eqn rhs is given
+    if(m_paramsPtr->getPde().source()) // if the continuity eqn rhs is given
         this->assembleRhs(m_visitorG, 1, m_rhsFG);
 
     // mass matrices for velocity and pressure (needed for preconditioners)
-    if ( m_params.options().getString("lin.solver") == "iter" )
+    if ( m_paramsPtr->options().getString("lin.solver") == "iter" )
     {
         gsMatrix<T> dummyRhsU(m_pshift, 1);
         gsMatrix<T> dummyRhsP(m_pdofs, 1);
 
-        gsINSVisitorUUmass<T, MatOrder> visitorUUmass(m_params);
-        gsINSVisitorPPmass<T, MatOrder> visitorPPmass(m_params);
+        gsINSVisitorUUmass<T, MatOrder> visitorUUmass(m_paramsPtr);
+        gsINSVisitorPPmass<T, MatOrder> visitorPPmass(m_paramsPtr);
         
         visitorUUmass.initialize();
         visitorPPmass.initialize();
@@ -175,7 +175,7 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
         // {
         //     // pressure Laplace operator
 
-        //     gsINSVisitorPPlaplace<T, MatOrder> visitorPPlaplace(m_params);
+        //     gsINSVisitorPPlaplace<T, MatOrder> visitorPPlaplace(m_paramsPtr);
         //     visitorPPlaplace.initialize();
 
         //     m_pcdBlocks[0].resize(m_pdofs, m_pdofs);
@@ -203,7 +203,7 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
     this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_comp, m_rhsUnonlin);
 
     // linear operators needed for PCD preconditioner
-    // if ( m_params.options().getString("lin.solver") == "iter" &&  m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
+    // if ( m_paramsPtr->options().getString("lin.solver") == "iter" &&  m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
     // {
     //     gsMatrix<T> dummyRhsP(m_pdofs, 1);
 
@@ -213,7 +213,7 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
 
     //     // pressure convection operator
 
-    //     gsINSVisitorPPconvection<T, MatOrder> visitorPPconv(m_params);
+    //     gsINSVisitorPPconvection<T, MatOrder> visitorPPconv(m_paramsPtr);
     //     visitorPPconv.initialize();
     //     visitorPPconv.setCurrentSolution(m_currentVelField);
 
@@ -335,7 +335,7 @@ void gsINSAssembler<T, MatOrder>::initialize()
 {
     Base::initialize();
 
-    if (m_params.options().getSwitch("fillGlobalSyst"))
+    if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillBaseSystem();
 }
 
@@ -345,7 +345,7 @@ void gsINSAssembler<T, MatOrder>::update(const gsMatrix<T> & solVector, bool upd
 {
     Base::update(solVector, updateSol);
 
-    if (m_params.options().getSwitch("fillGlobalSyst"))
+    if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillSystem();
 }
 
@@ -563,9 +563,9 @@ gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsP() const
 // template<class T, int MatOrder>
 // void gsINSAssembler<T, MatOrder>::findPressureBoundaryIDs()
 // {
-//     findPressureBoundaryPartIDs(m_params.getBndIn(), m_presInIDs);
-//     findPressureBoundaryPartIDs(m_params.getBndOut(), m_presOutIDs);
-//     findPressureBoundaryPartIDs(m_params.getBndWall(), m_presWallIDs);
+//     findPressureBoundaryPartIDs(m_paramsPtr->getBndIn(), m_presInIDs);
+//     findPressureBoundaryPartIDs(m_paramsPtr->getBndOut(), m_presOutIDs);
+//     findPressureBoundaryPartIDs(m_paramsPtr->getBndWall(), m_presWallIDs);
 // }
 
 // template<class T, int MatOrder>
@@ -594,7 +594,7 @@ void gsINSAssemblerUnsteady<T, MatOrder>::initMembers()
     Base::initMembers();
     updateSizes();
 
-    m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T, MatOrder>(m_params);
+    m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T, MatOrder>(m_paramsPtr);
     m_visitorTimeDiscr.initialize();
 }
 
@@ -666,7 +666,7 @@ void gsINSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector, 
     if(updateSol)
         m_rhsTimeDiscr = m_blockTimeDiscr * m_solution.topRows(m_pshift);
 
-    if (m_params.options().getSwitch("fillGlobalSyst"))
+    if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillSystem();
 }
 
