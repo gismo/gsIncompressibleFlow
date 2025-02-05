@@ -34,50 +34,50 @@ gsVector<T> gsFlowTerm<T>::getCoeffGeoMapProduct(const gsMapData<T>& mapData)
 
 
 template<class T>
-void gsFlowTerm_ValVal<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
+void gsFlowTerm_ValVal<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat)
 { 
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
 
     const gsMatrix<T>& testFunVals = testFunData[0];
-    const gsMatrix<T>& shapeFunVals = shapeFunData[0];
+    const gsMatrix<T>& trialFunVals = trialFunData[0];
 
     const index_t nQuPoints = quWeights.rows();
 
     for (index_t k = 0; k < nQuPoints; k++)
     {
         const T weight = quWeights(k) * coeffMeasure(k);
-        localMat.noalias() += weight * (testFunVals.col(k) * shapeFunVals.col(k).transpose());
+        localMat.noalias() += weight * (testFunVals.col(k) * trialFunVals.col(k).transpose());
     }
 }
 
 // ===================================================================================================================
 
 template<class T>
-void gsFlowTerm_GradGrad<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
+void gsFlowTerm_GradGrad<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat)
 { 
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
 
     const gsMatrix<T>& testFunGrads = testFunData[1];
-    const gsMatrix<T>& shapeFunGrads = shapeFunData[1];
+    const gsMatrix<T>& trialFunGrads = trialFunData[1];
 
     const index_t nQuPoints = quWeights.rows();
-    gsMatrix<T> testFunPhysGrad, shapeFunPhysGrad;
+    gsMatrix<T> testFunPhysGrad, trialFunPhysGrad;
 
     for (index_t k = 0; k < nQuPoints; k++)
     {
         const T weight = quWeights(k) * coeffMeasure(k);
 
         transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
-        transformGradients(mapData, k, shapeFunGrads, shapeFunPhysGrad);
+        transformGradients(mapData, k, trialFunGrads, trialFunPhysGrad);
 
-        localMat.noalias() += weight * (testFunPhysGrad.transpose() * shapeFunPhysGrad);
+        localMat.noalias() += weight * (testFunPhysGrad.transpose() * trialFunPhysGrad);
     }
 }
 
 // ===================================================================================================================
 
 template<class T>
-void gsFlowTerm_rhs<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
+void gsFlowTerm_rhs<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat)
 { 
     m_pRhsFun->eval_into(mapData.values[0], m_rhsVals);
 

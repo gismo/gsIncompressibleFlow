@@ -20,10 +20,10 @@ void gsFlowVisitor<T, MatOrder>::gatherEvalFlags()
 {
     m_geoFlags = 0;
     m_testFunFlags = 0;
-    m_shapeFunFlags = 0;
+    m_trialFunFlags = 0;
 
     for (size_t i = 0; i < m_terms.size(); i++)
-        m_terms[i]->updateEvalFlags(m_geoFlags, m_testFunFlags, m_shapeFunFlags);
+        m_terms[i]->updateEvalFlags(m_geoFlags, m_testFunFlags, m_trialFunFlags);
 }    
 
 
@@ -136,7 +136,7 @@ void gsFlowVisitor<T, MatOrder>::evalBasisData(const unsigned& basisFlags, const
 template<class T, int MatOrder>
 void gsFlowVisitor<T, MatOrder>::initialize()
 {
-    defineTestShapeUnknowns();  
+    defineTestTrialUnknowns();  
     m_paramsPtr->createDofMappers(m_dofMappers);  
 
     deleteTerms();
@@ -151,12 +151,12 @@ void gsFlowVisitor<T, MatOrder>::initOnPatch(index_t patchID)
 {
     m_patchID = patchID;
     m_mapData.patchId = m_patchID;
-    defineTestShapeBases();
+    defineTestTrialBases();
     setupQuadrature();          
 
-    m_testFunData.clear(); m_shapeFunData.clear();
+    m_testFunData.clear(); m_trialFunData.clear();
     m_testFunData.resize(2); // 0 - value, 1 - deriv (2nd derivative not needed at the moment)
-    m_shapeFunData.resize(2); // 0 - value, 1 - deriv
+    m_trialFunData.resize(2); // 0 - value, 1 - deriv
 }
 
 
@@ -189,10 +189,10 @@ void gsFlowVisitor<T, MatOrder>::setCurrentSolution(gsField<T>& solution)
 template<class T, int MatOrder>
 void gsFlowVisitor<T, MatOrder>::assemble()
 {
-    m_localMat.setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
+    m_localMat.setZero(m_testFunActives.rows(), m_trialFunActives.rows());
 
     for (size_t i = 0; i < m_terms.size(); i++)
-        m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_localMat);
+        m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_trialFunData, m_localMat);
 }
 
 // ===================================================================================================================
@@ -203,10 +203,10 @@ void gsFlowVisitorVectorValued<T, MatOrder>::assemble()
     m_locMatVec.resize(m_paramsPtr->getPde().dim());
 
     for (size_t i = 0; i < m_locMatVec.size(); i++)
-        m_locMatVec[i].setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
+        m_locMatVec[i].setZero(m_testFunActives.rows(), m_trialFunActives.rows());
 
     for (size_t i = 0; i < m_terms.size(); i++)
-        m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_locMatVec);
+        m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_trialFunData, m_locMatVec);
 }
 
 // ===================================================================================================================
@@ -219,9 +219,9 @@ void gsFlowVisitor<T, MatOrder>::setupQuadrature()
     gsVector<index_t> numQuadNodes(m_paramsPtr->getPde().dim()); 
 
     index_t maxDegTest = m_testBasisPtr->maxDegree();
-    index_t maxDegShape = m_shapeBasisPtr->maxDegree();
+    index_t maxDegTrial = m_trialBasisPtr->maxDegree();
 
-    numQuadNodes.setConstant(math::min(maxDegTest, maxDegShape)+1);
+    numQuadNodes.setConstant(math::min(maxDegTest, maxDegTrial)+1);
 
     m_quRule = gsGaussRule<T>(numQuadNodes);
 }
@@ -229,7 +229,7 @@ void gsFlowVisitor<T, MatOrder>::setupQuadrature()
 template<class T, int MatOrder>
 void gsFlowVisitor<T, MatOrder>::evaluate(index_t testFunID)
 {
-    // shape basis (on the whole support of testFunID)
+    // trial basis (on the whole support of testFunID)
 
     index_t dim = m_testBasisPtr->domainDim();
     gsMatrix<T> support = m_testBasisPtr->support(testFunID);
@@ -281,7 +281,7 @@ void gsFlowVisitor<T, MatOrder>::evaluate(index_t testFunID)
     m_mapData.points = m_quNodes;
     m_paramsPtr->getPde().patches().patch(m_patchID).computeMap(m_mapData);
 
-    evalBasisData(m_shapeFunFlags, m_shapeBasisPtr, m_shapeFunActives, m_shapeFunData);
+    evalBasisData(m_trialFunFlags, m_trialBasisPtr, m_trialFunActives, m_trialFunData);
 
     // test basis
     m_testFunActives.resize(1,1);
@@ -299,15 +299,15 @@ void gsFlowVisitor<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 
     evalBasisData(m_testFunFlags, m_testBasisPtr, m_testFunActives, m_testFunData);
 
-    if (m_shapeUnkID == m_testUnkID)
-        m_shapeFunActives = m_testFunActives;
+    if (m_trialUnkID == m_testUnkID)
+        m_trialFunActives = m_testFunActives;
     else
-        m_shapeBasisPtr->active_into(m_quNodes.col(0), m_shapeFunActives);
+        m_trialBasisPtr->active_into(m_quNodes.col(0), m_trialFunActives);
 
-    if ( (m_shapeUnkID == m_testUnkID) && (m_testFunFlags == m_shapeFunFlags) )
-        m_shapeFunData = m_testFunData;
+    if ( (m_trialUnkID == m_testUnkID) && (m_testFunFlags == m_trialFunFlags) )
+        m_trialFunData = m_testFunData;
     else
-        evalBasisData(m_shapeFunFlags, m_shapeBasisPtr, m_shapeFunActives, m_shapeFunData);
+        evalBasisData(m_trialFunFlags, m_trialBasisPtr, m_trialFunActives, m_trialFunData);
 }
 
 } // namespace gismo

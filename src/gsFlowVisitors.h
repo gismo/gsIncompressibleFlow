@@ -1,5 +1,7 @@
 /** @file gsFlowVisitors.h
     
+    @brief Base visitors for incompressible flow problems.
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -21,7 +23,7 @@
 namespace gismo
 {
 
-/// @brief              Base class for incompressible flow visitors.
+/// @brief Base class for incompressible flow visitors.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
 template <class T, int MatOrder>
@@ -43,16 +45,16 @@ protected: // *** Class members ***
                                                      // pde members: dim, viscosity, rhs (f,g), gsBoundaryConditions, patches, unknownDim
  
     // constant for individual visitors
-    index_t m_testUnkID, m_shapeUnkID; // used, e.g., to reference the corresponding mapper
-    unsigned m_geoFlags, m_testFunFlags, m_shapeFunFlags;
+    index_t m_testUnkID, m_trialUnkID; // used, e.g., to reference the corresponding mapper
+    unsigned m_geoFlags, m_testFunFlags, m_trialFunFlags;
     const gsBasis<T>* m_testBasisPtr;
-    const gsBasis<T>* m_shapeBasisPtr;
+    const gsBasis<T>* m_trialBasisPtr;
     std::vector< gsDofMapper > m_dofMappers;
     std::vector< gsFlowTerm<T>* > m_terms;
 
     // updated repeatedly
     gsMatrix<T> m_localMat;
-    gsMatrix<index_t> m_testFunActives, m_shapeFunActives;
+    gsMatrix<index_t> m_testFunActives, m_trialFunActives;
     gsMapData<T> m_mapData; // members: points, dim, patchID
 
     // will be changed:
@@ -60,13 +62,15 @@ protected: // *** Class members ***
     gsMatrix<T> m_quNodes;
     gsVector<T> m_quWeights;
     std::vector< gsMatrix<T> > m_testFunData;
-    std::vector< gsMatrix<T> > m_shapeFunData; 
+    std::vector< gsMatrix<T> > m_trialFunData; 
     
 
 public: // *** Constructor/destructor ***
 
     gsFlowVisitor() {}
 
+    /// @brief Constructor.
+    /// @param[in] paramsPtr a shared pointer to the container of input parameters
     gsFlowVisitor(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     m_paramsPtr(paramsPtr)
     { }
@@ -79,6 +83,7 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
+    /// Free the vector of terms created in this class.
     void deleteTerms()
     {
         for(size_t i = 0; i < m_terms.size(); i++)
@@ -87,25 +92,25 @@ protected: // *** Member functions ***
         m_terms.clear();
     }
 
-    /// @brief Define terms to be evaluated according to visitor type and given parameters.
+    /// Define terms to be evaluated according to visitor type and given parameters.
     virtual void defineTerms()
     { GISMO_NO_IMPLEMENTATION }
 
-    /// @brief Set test and shape basis unknown IDs according to visitor type.
-    virtual void defineTestShapeUnknowns()
+    /// Set test and trial basis unknown IDs according to visitor type.
+    virtual void defineTestTrialUnknowns()
     { GISMO_NO_IMPLEMENTATION }
 
-    /// @brief Gather evaluation flags from all terms.
+    /// Gather evaluation flags from all terms.
     void gatherEvalFlags();
 
-    /// @brief Set pointers to test and shape basis.
-    virtual void defineTestShapeBases()
+    /// Set pointers to test and trial basis.
+    virtual void defineTestTrialBases()
     { 
         m_testBasisPtr = &(m_paramsPtr->getBases()[m_testUnkID].piece(m_patchID));
-        m_shapeBasisPtr = &(m_paramsPtr->getBases()[m_shapeUnkID].piece(m_patchID));
+        m_trialBasisPtr = &(m_paramsPtr->getBases()[m_trialUnkID].piece(m_patchID));
     }
 
-    /// @brief Setup the quadrature rule.
+    /// Setup the quadrature rule.
     virtual void setupQuadrature();
     //{ GISMO_NO_IMPLEMENTATION }
 
@@ -126,7 +131,7 @@ protected: // *** Member functions ***
 
 public: // *** Member functions ***
 
-    /// @brief Initialize the visitor.
+    /// Initialize the visitor.
     void initialize();
 
     /// @brief Update DoF mappers.
@@ -153,18 +158,18 @@ public: // *** Member functions ***
     /// @param[in] domIt domain iterator pointing to the current element
     void evaluate(const gsDomainIterator<T>* domIt);
 
-    /// @brief Assemble the local matrix.
+    /// Assemble the local matrix.
     virtual void assemble();
 
-    /// @brief Map local matrix to the global matrix.
+    /// @brief Add local contributions to the global sparse system.
     /// @param[in]  eliminatedDofs  coefficients of the eliminated Dirichlet DoFs
-    /// @param[out] globalMat       resulting global matrix
-    /// @param[out] globalRhs       resulting global rhs
+    /// @param[out] globalMat       reference to the global matrix block
+    /// @param[out] globalRhs       reference to the global right-hand side
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
     { GISMO_NO_IMPLEMENTATION } 
 
-    /// @brief Map local rhs vector to the global rhs vector.
-    /// @param[out] globalRhs resulting global rhs
+    /// @brief Add local contributions to the global right-hand side vector.
+    /// @param[out] globalRhs reference to the global right-hand side
     virtual void localToGlobal(gsMatrix<T>& globalRhs)
     { GISMO_NO_IMPLEMENTATION } 
 
@@ -172,6 +177,14 @@ public: // *** Member functions ***
 
 // ===================================================================================================================
 
+/**
+ * @brief Base class for incompressible flow visitors with vector-valued functions.
+ * 
+ * Visitors giving several different matrix blocks depending on component of the vector-valued function.
+ * 
+ * @tparam T        real number type
+ * @tparam MatOrder sparse matrix storage order (ColMajor/RowMajor)
+ */
 template <class T, int MatOrder>
 class gsFlowVisitorVectorValued : public gsFlowVisitor<T, MatOrder> 
 {
@@ -190,16 +203,18 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_mapData;
     using Base::m_testFunActives;
-    using Base::m_shapeFunActives;
+    using Base::m_trialFunActives;
     using Base::m_quWeights;
     using Base::m_testFunData;
-    using Base::m_shapeFunData;
+    using Base::m_trialFunData;
     using Base::m_terms;
 
 public: // *** Constructor/destructor ***
 
     gsFlowVisitorVectorValued() {}
 
+    /// @brief Constructor.
+    /// @param[in] paramsPtr a shared pointer to the container of input parameters
     gsFlowVisitorVectorValued(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr)
     { }
@@ -248,11 +263,11 @@ public: // *** Member functions ***
 
 // protected: // *** Member functions ***
 
-//      /// @brief Set pointers to test and shape basis.
-//     virtual void defineTestShapeBases()
+//      /// @brief Set pointers to test and trial basis.
+//     virtual void defineTestTrialBases()
 //     { 
 //         m_testBasisPtr = &(m_paramsPtr->getBases()[m_testUnkID].piece(m_patchID).boundaryBasis(m_side));
-//         m_shapeBasisPtr = &(m_paramsPtr->getBases()[m_shapeUnkID].piece(m_patchID).boundaryBasis(m_side));
+//         m_trialBasisPtr = &(m_paramsPtr->getBases()[m_trialUnkID].piece(m_patchID).boundaryBasis(m_side));
 //     }
 
 //     /// @brief Setup the quadrature rule.

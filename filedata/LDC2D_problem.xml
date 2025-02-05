@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xml>
+
+ <!-- Computational domain -->
+ <MultiPatch parDim="2" id="0">
+  <patches type="id_range">500 500</patches>
+  <boundary>
+   500 1
+   500 2
+   500 3
+   500 4
+  </boundary>
+ </MultiPatch>
+
+ <!-- Right-hand side function --> 
+ <Function dim="2" type="FunctionExpr" id="1">
+  <c>0</c>
+  <c>0</c>
+ </Function>
+
+ <!-- Boundary conditions (patch,side) -->
+ <boundaryConditions multipatch="0" id="2">
+  <Function type="FunctionExpr" dim="2" index="0">
+   <c>1</c>
+   <c>0</c>
+  </Function>
+  <Function type="FunctionExpr" dim="2" index="1">
+   <c>0</c>
+   <c>0</c>
+  </Function>
+  <bc type="Dirichlet" function="0" component="-1" unknown="0">
+   0 4
+  </bc>
+  <bc type="Dirichlet" function="1" component="-1" unknown="0">
+   0 3 0 1 0 2
+  </bc>
+ </boundaryConditions>
+
+ <!-- Patches -->
+ <Geometry type="TensorBSpline2" id="500">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="2">
+   0 0 
+   1 0 
+   0 1 
+   1 1 
+  </coefs>
+ </Geometry>
+</xml>
+

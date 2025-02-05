@@ -17,12 +17,12 @@ namespace gismo
 
 
 template<class T>
-void gsINSTerm_PvalUdiv<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
+void gsINSTerm_PvalUdiv<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat)
 { 
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
 
     const gsMatrix<T>& testFunGrads = testFunData[1];
-    const gsMatrix<T>& shapeFunVals = shapeFunData[0];
+    const gsMatrix<T>& trialFunVals = trialFunData[0];
 
     gsMatrix<T> testFunPhysGrad;
 
@@ -35,21 +35,21 @@ void gsINSTerm_PvalUdiv<T>::assemble(const gsMapData<T>& mapData, const gsVector
         transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
 
         for (size_t i = 0; i != localMat.size(); ++i)
-            localMat[i].noalias() += weight * (shapeFunVals.col(k) * testFunPhysGrad.row(i)).transpose();
+            localMat[i].noalias() += weight * (trialFunVals.col(k) * testFunPhysGrad.row(i)).transpose();
     }
 }
 
 // ===================================================================================================================
 
 template<class T>
-void gsINSTerm_UdivPval<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
+void gsINSTerm_UdivPval<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat)
 { 
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
 
     const gsMatrix<T>& testFunVals = testFunData[0];
-    const gsMatrix<T>& shapeFunGrads = shapeFunData[1];
+    const gsMatrix<T>& trialFunGrads = trialFunData[1];
 
-    gsMatrix<T> shapeFunPhysGrad;
+    gsMatrix<T> trialFunPhysGrad;
 
     const index_t nQuPoints = quWeights.rows();
 
@@ -57,25 +57,25 @@ void gsINSTerm_UdivPval<T>::assemble(const gsMapData<T>& mapData, const gsVector
     {
         const T weight = quWeights(k) * coeffMeasure(k);
 
-        transformGradients(mapData, k, shapeFunGrads, shapeFunPhysGrad);
+        transformGradients(mapData, k, trialFunGrads, trialFunPhysGrad);
 
         for (size_t i = 0; i != localMat.size(); ++i)
-            localMat[i].noalias() += weight * (shapeFunPhysGrad.row(i) * testFunVals(k) );
+            localMat[i].noalias() += weight * (trialFunPhysGrad.row(i) * testFunVals(k) );
     }
 }
 
 // ===================================================================================================================
 
 template<class T>
-void gsINSTerm_UsolGradVal<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
+void gsINSTerm_UsolGradVal<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat)
 { 
     this->computeCoeffSolU(mapData);
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
 
     const gsMatrix<T>& testFunVals = testFunData[0];
-    const gsMatrix<T>& shapeFunGrads = shapeFunData[1];
+    const gsMatrix<T>& trialFunGrads = trialFunData[1];
 
-    gsMatrix<T> shapeFunPhysGrad;
+    gsMatrix<T> trialFunPhysGrad;
 
     const index_t nQuPoints = quWeights.rows();
 
@@ -83,9 +83,9 @@ void gsINSTerm_UsolGradVal<T>::assemble(const gsMapData<T>& mapData, const gsVec
     {
         const T weight = quWeights(k) * coeffMeasure(k);
 
-        transformGradients(mapData, k, shapeFunGrads, shapeFunPhysGrad);
+        transformGradients(mapData, k, trialFunGrads, trialFunPhysGrad);
 
-        localMat.noalias() += weight * (testFunVals.col(k) * (this->m_solUVals.col(k).transpose() * shapeFunPhysGrad));
+        localMat.noalias() += weight * (testFunVals.col(k) * (this->m_solUVals.col(k).transpose() * trialFunPhysGrad));
     }
 }
 

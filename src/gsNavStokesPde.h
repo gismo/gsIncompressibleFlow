@@ -1,12 +1,14 @@
 /** @file gsNavStokesPde.h
 
+    @brief Describes the incompressible Navier-Stokes equations.
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): H. Hornikova
+    Author(s): H. Honnerova
 */
 
 #pragma once
@@ -17,9 +19,9 @@ namespace gismo
 {
 
 /** @brief
-    An incompressible Navier-Stokes PDE.
+    The incompressible Navier-Stokes PDE.
 
-    This class describes a Navier-Stokes PDE, with an arbitrary right-hand side
+    This class describes the Navier-Stokes PDE, with an arbitrary right-hand side
     function.
 
     @tparam T coefficient type
@@ -52,10 +54,16 @@ public: // *** Constructor/destructor ***
 
     gsNavStokesPde() { }
 
+    /// Copy constructor.
     gsNavStokesPde(const gsNavStokesPde & other) :
     gsNavStokesPde(other.m_domain, other.m_boundary_conditions, other.m_force, other.m_source, other.m_viscosity)
     { }
 
+    /// @brief Constructor.
+    /// @param[in] domain       multipatch computational domain
+    /// @param[in] bc           boundary conditions
+    /// @param[in] force        right-hand side function for momentum equations
+    /// @param[in] viscosity    viscosity
     gsNavStokesPde(
         const gsMultiPatch<T>&         domain,
         const gsBoundaryConditions<T>& bc,
@@ -64,6 +72,12 @@ public: // *** Constructor/destructor ***
         : gsStokesPde<T>(domain, bc, force, NULL, viscosity)
     { }
 
+    /// @brief Constructor.
+    /// @param[in] domain       multipatch computational domain
+    /// @param[in] bc           boundary conditions
+    /// @param[in] force        right-hand side function for momentum equations
+    /// @param[in] source       right-hand side function for continuity equation
+    /// @param[in] viscosity    viscosity
     gsNavStokesPde(
         const gsMultiPatch<T>&         domain,
         const gsBoundaryConditions<T>& bc,
@@ -79,7 +93,7 @@ public: // *** Constructor/destructor ***
 
 public: // *** Member functions ***
 
-    /// @brief Print a short description of the PDE.
+    /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
         os << "Incompressible Navier-Stokes equation:\n"
@@ -93,7 +107,6 @@ public: // *** Member functions ***
         os<<"Source function g = "<< *m_source <<".\n";
         return os;
     }
-
 
 }; // class gsNavStokesPde
 
