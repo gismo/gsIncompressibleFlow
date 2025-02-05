@@ -126,7 +126,7 @@ void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofsIntpl(const index_t u
         {
             fpts = it->function()->eval(pts);
         }
-//            else if (it->parametric() && m_params.settings().isIgaDirichletGeometry())
+//            else if (it->parametric() && m_paramsPtr->settings().isIgaDirichletGeometry())
 //            {
 //                gsMatrix<T> parPts;
 //                getIgaBCGeom().invertPoints(pts, parPts);
@@ -273,9 +273,9 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
     {
         visitor.initOnPatch(p);
 
-        if (m_params.options().getString("assemb.loop") == "RbR")
+        if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
         {
-            index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
+            index_t nBases = m_paramsPtr->getBases()[testBasisID].piece(p).size();
 
             for(index_t i = 0; i < nBases; i++)
             {
@@ -286,10 +286,10 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
         }
         else
         {
-            if (m_params.options().getString("assemb.loop") != "EbE")
+            if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
                 gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
 
-            typename gsBasis<T>::domainIter domIt = m_params.getBases().front().piece(p).makeDomainIterator(boundary::none);
+            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).makeDomainIterator(boundary::none);
 
             while (domIt->good())
             {
@@ -313,9 +313,9 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(gsFlowVisitor<T, MatOrder>& v
     {
         visitor.initOnPatch(p);
 
-        if (m_params.options().getString("assemb.loop") == "RbR")
+        if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
         {
-            index_t nBases = m_params.getBases()[testBasisID].piece(p).size();
+            index_t nBases = m_paramsPtr->getBases()[testBasisID].piece(p).size();
 
             for(index_t i = 0; i < nBases; i++)
             {
@@ -326,7 +326,7 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(gsFlowVisitor<T, MatOrder>& v
         }
         else
         {
-            typename gsBasis<T>::domainIter domIt = m_params.getBases().front().piece(p).makeDomainIterator(boundary::none);
+            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).makeDomainIterator(boundary::none);
 
             while (domIt->good())
             {

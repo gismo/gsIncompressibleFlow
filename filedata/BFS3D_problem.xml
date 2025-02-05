@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xml>
+ 
+ <!-- Computational domain -->
+ <MultiPatch parDim="3" id="0">
+  <patches type="id_range">500 502</patches>
+  <interfaces>
+   500 4 501 3 0 1 2 1 0 1
+   502 2 501 1 0 1 2 0 1 1
+  </interfaces>
+  <boundary>
+   500 1
+   500 2
+   500 3
+   500 5
+   500 6
+   501 2
+   501 4
+   501 5
+   501 6
+   502 1
+   502 3
+   502 4
+   502 5
+   502 6
+  </boundary>
+ </MultiPatch>
+
+ <!-- Right-hand side function --> 
+ <Function dim="3" type="FunctionExpr" id="1">
+  <c>0</c>
+  <c>0</c>
+  <c>0</c>
+ </Function>
+
+ <!-- Boundary conditions (patch,side) -->
+ <boundaryConditions multipatch="0" id="2">
+  <Function type="FunctionExpr" dim="3" index="0">
+   <c>(-4*(y-1.5)^2+1)*(-(z-1)^2+1)</c>
+   <c>0</c>
+   <c>0</c>
+  </Function>
+  <Function type="FunctionExpr" dim="3" index="1">
+   <c>0</c>
+   <c>0</c>
+   <c>0</c>
+  </Function>
+  <bc type="Dirichlet" function="0" component="-1" unknown="0">
+   2 1
+  </bc>
+  <bc type="Dirichlet" function="1" component="-1" unknown="0">
+   0 1 0 3 0 5 0 6 1 4 1 5 1 6 2 3 2 4 2 5 2 6
+  </bc>
+ </boundaryConditions>
+
+ <!-- Patches -->
+ <Geometry type="TensorBSpline3" id="500">
+  <Basis type="TensorBSplineBasis3">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="2">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3">
+   0 0 0 
+   8 0 0 
+   0 1 0 
+   8 1 0 
+   0 0 2 
+   8 0 2 
+   0 1 2 
+   8 1 2 
+  </coefs>
+ </Geometry>
+ <Geometry type="TensorBSpline3" id="501">
+  <Basis type="TensorBSplineBasis3">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="2">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3">
+   0 1 0 
+   8 1 0 
+   0 2 0 
+   8 2 0 
+   0 1 2 
+   8 1 2 
+   0 2 2 
+   8 2 2 
+  </coefs>
+ </Geometry>
+ <Geometry type="TensorBSpline3" id="502">
+  <Basis type="TensorBSplineBasis3">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="2">
+    <KnotVector degree="1">0 0 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3">
+   -1 1 0 
+   0 1 0 
+   -1 2 0 
+   0 2 0 
+   -1 1 2 
+   0 1 2 
+   -1 2 2 
+   0 2 2 
+  </coefs>
+ </Geometry>
+
+</xml>
+

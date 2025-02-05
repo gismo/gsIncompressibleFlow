@@ -28,7 +28,7 @@ class gsFlowLinSystSolver
 
 protected: // *** Class members ***
 
-    const gsFlowSolverParams<T>& m_paramsRef;
+    typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
     gsStopwatch m_clock;
     T m_setupT, m_solveT;
 
@@ -36,8 +36,8 @@ protected: // *** Class members ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsFlowLinSystSolver(const gsFlowSolverParams<T>& params):
-    m_paramsRef(params)
+    gsFlowLinSystSolver(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    m_paramsPtr(paramsPtr)
     {
         m_setupT = 0;
         m_solveT = 0;
@@ -116,7 +116,7 @@ protected: // *** Class members ***
 
 protected: // *** Base class members ***
 
-    using Base::m_paramsRef;
+    using Base::m_paramsPtr;
     using Base::m_setupT;
     using Base::m_solveT;
     using Base::stopwatchStart;
@@ -126,8 +126,8 @@ protected: // *** Base class members ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsFlowLinSystSolver_direct(const gsFlowSolverParams<T>& params):
-    Base(params)
+    gsFlowLinSystSolver_direct(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     {
         #ifdef GISMO_WITH_PARDISO
         pardisoSetup<T>(m_solver);
@@ -169,7 +169,7 @@ protected: // *** Class members ***
 
 protected: // *** Base class members ***
 
-    using Base::m_paramsRef;
+    using Base::m_paramsPtr;
     using Base::m_setupT;
     using Base::m_solveT;
     using Base::stopwatchStart;
@@ -179,8 +179,8 @@ protected: // *** Base class members ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsFlowLinSystSolver_iter(const gsFlowSolverParams<T>& params):
-    Base(params)
+    gsFlowLinSystSolver_iter(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
 
@@ -242,7 +242,7 @@ protected: // *** Class members ***
 protected: // *** Base class members ***
 
     using Base::m_precPtr;
-    using Base::m_paramsRef;
+    using Base::m_paramsPtr;
     using Base::m_setupT;
     using Base::m_solveT;
     using Base::stopwatchStart;
@@ -252,13 +252,13 @@ protected: // *** Base class members ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsFlowLinSystSolver_iterSP(const gsFlowSolverParams<T>& params, const gsINSAssembler<T, MatOrder>* assemblerPtr):
-    Base(params), m_assemblerPtr(assemblerPtr)
+    gsFlowLinSystSolver_iterSP(typename gsFlowSolverParams<T>::Ptr paramsPtr, const gsINSAssembler<T, MatOrder>* assemblerPtr):
+    Base(paramsPtr), m_assemblerPtr(assemblerPtr)
     {
-        m_precType = m_paramsRef.options().getString("lin.precType");
-        m_precOpt = m_paramsRef.precOptions();
+        m_precType = m_paramsPtr->options().getString("lin.precType");
+        m_precOpt = m_paramsPtr->precOptions();
         m_precOpt.addInt("dim", "Problem dimension", m_assemblerPtr->getTarDim());
-        m_precOpt.addReal("visc", "Viscosity", m_paramsRef.getPde().viscosity());
+        m_precOpt.addReal("visc", "Viscosity", m_paramsPtr->getPde().viscosity());
         m_precOpt.addInt("udofs", "Number of velocity dofs", m_assemblerPtr->getUdofs());
         m_precOpt.addInt("pdofs", "Number of pressure dofs", m_assemblerPtr->getPdofs());
     }
@@ -275,24 +275,24 @@ public: // *** Member functions ***
 // ===================================================================================================================
 
 template<class T, int MatOrder, class SolverType = gsGMRes<T> >
-gsFlowLinSystSolver<T, MatOrder>* createLinSolver(const gsFlowSolverParams<T>& params, const gsFlowAssemblerBase<T, MatOrder>* assemblerPtr = NULL)
+gsFlowLinSystSolver<T, MatOrder>* createLinSolver(typename gsFlowSolverParams<T>::Ptr paramsPtr, const gsFlowAssemblerBase<T, MatOrder>* assemblerPtr = NULL)
 {
     const gsINSAssembler<T, MatOrder>* INSassembPtr = dynamic_cast< const gsINSAssembler<T, MatOrder>* >(assemblerPtr);
 
-    std::string type = params.options().getString("lin.solver");
+    std::string type = paramsPtr->options().getString("lin.solver");
 
     if (type == "direct")
-        return new gsFlowLinSystSolver_direct<T, MatOrder>(params);
+        return new gsFlowLinSystSolver_direct<T, MatOrder>(paramsPtr);
     else if (type == "iter" && INSassembPtr == NULL) // assembler is not an INS assembler
-        return new gsFlowLinSystSolver_iter<T, MatOrder, SolverType>(params);
+        return new gsFlowLinSystSolver_iter<T, MatOrder, SolverType>(paramsPtr);
     else if (type == "iter" && INSassembPtr != NULL) // assembler is an INS assembler
-        return new gsFlowLinSystSolver_iterSP<T, MatOrder, SolverType>(params, INSassembPtr);
+        return new gsFlowLinSystSolver_iterSP<T, MatOrder, SolverType>(paramsPtr, INSassembPtr);
     // else if (type == _"petsc")
-    //     return new gsFlowLinSystSolver_PETSc<T, MatOrder>(params);
+    //     return new gsFlowLinSystSolver_PETSc<T, MatOrder>(paramsPtr);
     else
     {
         gsInfo << "Invalid linear system solver type, using direct.\n";
-        return new gsFlowLinSystSolver_direct<T, MatOrder>(params);
+        return new gsFlowLinSystSolver_direct<T, MatOrder>(paramsPtr);
     }
 
 }

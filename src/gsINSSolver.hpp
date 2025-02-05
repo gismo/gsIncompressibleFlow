@@ -56,9 +56,9 @@ void gsINSSolverUnsteady<T, MatOrder>::initMembers()
 {
     Base::initMembers();
     m_time = 0;
-    m_timeStepSize = m_params.options().getReal("timeStep");
-    m_innerIter = m_params.options().getInt("nonlin.maxIt");
-    m_innerTol = m_params.options().getReal("nonlin.tol");
+    m_timeStepSize = m_paramsPtr->options().getReal("timeStep");
+    m_innerIter = m_paramsPtr->options().getInt("nonlin.maxIt");
+    m_innerTol = m_paramsPtr->options().getReal("nonlin.tol");
     m_avgPicardIter = 0;
 }
 
@@ -66,7 +66,7 @@ void gsINSSolverUnsteady<T, MatOrder>::initMembers()
 template<class T, int MatOrder>
 void gsINSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNameSuffix, unsigned plotPts)
 {
-    int numPatches = m_params.getPde().patches().nPatches();
+    int numPatches = m_paramsPtr->getPde().patches().nPatches();
 
     gsField<T> uSol = this->constructSolution(0);
     std::stringstream filenameU;

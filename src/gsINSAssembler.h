@@ -64,7 +64,7 @@ protected: // *** Class members ***
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_dofs;
     using Base::m_tarDim;
     using Base::m_dofMappers;
@@ -82,8 +82,8 @@ public: // *** Base class member functions ***
 
 public: // *** Constructor/destructor ***
 
-    gsINSAssembler(const gsFlowSolverParams<T>& params):
-    Base(params)
+    gsINSAssembler(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { }
 
     virtual ~gsINSAssembler()
@@ -331,8 +331,8 @@ public:
 
 public: // *** Constructor/destructor ***
 
-    gsINSAssemblerSteady(const gsFlowSolverParams<T>& params): 
-    Base(params)
+    gsINSAssemblerSteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
+    Base(paramsPtr)
     {
         Base::initMembers();
     }
@@ -366,12 +366,13 @@ protected: // *** Class members ***
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_pshift;
     using Base::m_nnzPerRowU;
     using Base::m_dofMappers;
     using Base::m_solution;
     using Base::m_baseMatrix;
+    using Base::m_matrix;
     using Base::m_rhs;
     using Base::m_currentVelField;
     using Base::m_velPeriodicHelperPtr;
@@ -379,8 +380,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsINSAssemblerUnsteady(const gsFlowSolverParams<T>& params): 
-    Base(params)
+    gsINSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
+    Base(paramsPtr)
     {
         initMembers();
     }
@@ -407,9 +408,6 @@ protected: // *** Member functions ***
 
     /// @brief Assemble the linear part of the matrix.
     virtual void assembleLinearPart();
-
-    /// @brief Fill the linear part of the global matrix and right-hand side.
-    virtual void fillBaseSystem();
 
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();

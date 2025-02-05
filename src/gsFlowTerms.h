@@ -1,5 +1,7 @@
 /** @file gsFlowTerms.h
-    
+
+    @brief Base classes for individual terms in incompressible flow problems.
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -29,17 +31,18 @@ public: // *** Smart pointers ***
 
 protected: // *** Class members ***
 
-    unsigned m_geoFlags, m_testFunFlags, m_shapeFunFlags; // evaluation flags
+    unsigned m_geoFlags, m_testFunFlags, m_trialFunFlags; // evaluation flags
     gsVector<T> m_coeff;
 
 
 public: // *** Constructor/destructor ***
 
+    /// Constructor.
     gsFlowTerm()
     {
         m_geoFlags = 0;
         m_testFunFlags = 0;
-        m_shapeFunFlags = 0;
+        m_trialFunFlags = 0;
     }
 
     virtual ~gsFlowTerm()
@@ -52,30 +55,36 @@ public: // *** Member functions ***
     /// @param[in]  mapData         geometry mapping information
     /// @param[in]  quWeights       quadrature weights
     /// @param[in]  testFunData     test basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
-    /// @param[in]  shapeFunData    shape basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
+    /// @param[in]  trialFunData    trial basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
     /// @param[out] localMat        resulting local matrix
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat)
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Assemble the current local matrices.
     /// @param[in]  mapData         geometry mapping information
     /// @param[in]  quWeights       quadrature weights
     /// @param[in]  testFunData     test basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
-    /// @param[in]  shapeFunData    shape basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
+    /// @param[in]  trialFunData    trial basis data (0 - values, 1 - derivatives, 2 - 2nd derivatives)
     /// @param[out] localMat        vector of resulting local matrices (e.g. one for each velocity component)
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat)
     { GISMO_NO_IMPLEMENTATION }
 
-    void updateEvalFlags(unsigned& geoFlags, unsigned& testFunFlags, unsigned& shapeFunFlags)
+    /// @brief Add evaluation flags of this term to the given evaluation flags.
+    /// @param[out] geoFlags        flags for geometry evaluation
+    /// @param[out] testFunFlags    flags for test basis evaluation
+    /// @param[out] trialFunFlags   flags for trial basis evaluation
+    void updateEvalFlags(unsigned& geoFlags, unsigned& testFunFlags, unsigned& trialFunFlags)
     { 
         geoFlags |= m_geoFlags;
         testFunFlags |= m_testFunFlags;
-        shapeFunFlags |= m_shapeFunFlags;
+        trialFunFlags |= m_trialFunFlags;
     }
 
 
 protected: // *** Member functions ***
 
+    /// @brief Set the term coefficient to a constant value.
+    /// @param[in] value the constant coefficient value
     void setConstCoeff(T value)
     {
         m_coeff.resize(1);
@@ -125,6 +134,7 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
+    /// Constructor.
     gsFlowTermNonlin()
     { }
 
@@ -159,7 +169,7 @@ protected: // *** Member functions ***
 // ===================================================================================================================
 // ===================================================================================================================
 
-/// @brief      A class for integrals of the form: test function value * shape function value.
+/// @brief      A class for integrals of the form: test function value * trial function value.
 /// @tparam T   real number type
 template <class T>
 class gsFlowTerm_ValVal : public gsFlowTerm<T>
@@ -171,19 +181,19 @@ public: // *** Constructor/destructor ***
     {
         this->m_geoFlags = NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
-        this->m_shapeFunFlags = NEED_VALUE;
+        this->m_trialFunFlags = NEED_VALUE;
     }
 
 
 public: // *** Member functions ***
 
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat);
 
 };
 
 // ===================================================================================================================
 
-/// @brief      A class for integrals of the form: (1 / time step) * test function value * shape function value.
+/// @brief      A class for integrals of the form: (1 / time step) * test function value * trial function value.
 /// @tparam T   real number type
 template <class T>
 class gsFlowTerm_TimeDiscr : public gsFlowTerm_ValVal<T>
@@ -210,7 +220,7 @@ protected: // *** Member functions ***
 
 // ===================================================================================================================
 
-/// @brief      A class for integrals of the form: test function gradient * shape function gradient.
+/// @brief      A class for integrals of the form: test function gradient * trial function gradient.
 /// @tparam T   real number type
 template <class T>
 class gsFlowTerm_GradGrad : public gsFlowTerm<T>
@@ -222,19 +232,19 @@ public: // *** Constructor/destructor ***
     {
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
         this->m_testFunFlags = NEED_DERIV;
-        this->m_shapeFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
     }
 
 
 public: // *** Member functions ***
 
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat);
 
 };
 
 // ===================================================================================================================
 
-/// @brief      A class for integrals of the form: viscosity * test function gradient * shape function gradient.
+/// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
 /// @tparam T   real number type
 template <class T>
 class gsFlowTerm_Diffusion : public gsFlowTerm_GradGrad<T>
@@ -284,7 +294,7 @@ public: // *** Constructor/destructor ***
 
 public: // *** Member functions ***
 
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat);
 
 };
 

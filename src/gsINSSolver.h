@@ -51,6 +51,10 @@ public: // *** Constructor/destructor ***
     Base(params)
     { }
 
+    gsINSSolver(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
+    { }
+
     virtual ~gsINSSolver()
     { }
 
@@ -87,7 +91,7 @@ public:
 
 protected: // *** Base class members ***
 
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_assemblerPtr;
     using Base::m_solution;
     using Base::m_iterationNumber;
@@ -98,13 +102,18 @@ protected: // *** Base class members ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsINSSolverSteady(gsFlowSolverParams<T>& params):
-    Base(params)
+    gsINSSolverSteady(const gsFlowSolverParams<T>& params):
+    gsINSSolverSteady(memory::make_shared_not_owned(&params))
+    { }
+
+    /// @brief Constructor.
+    gsINSSolverSteady(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { 
-        m_assemblerPtr = new gsINSAssemblerSteady<T, MatOrder>(m_params);
+        m_assemblerPtr = new gsINSAssemblerSteady<T, MatOrder>(m_paramsPtr);
 
         Base::initMembers();
-        m_params.options().setSwitch("unsteady", false);
+        m_paramsPtr->options().setSwitch("unsteady", false);
     }
 
 
@@ -152,7 +161,7 @@ protected: // *** Base class members ***
     using Base::m_solution;
     using Base::m_iterationNumber;
     using Base::m_assemblerPtr;
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_outFile;
     using Base::m_fileOutput;
     using Base::m_dispOutput;
@@ -161,12 +170,18 @@ protected: // *** Base class members ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsINSSolverUnsteady(gsFlowSolverParams<T>& params): Base(params)
+    gsINSSolverUnsteady(gsFlowSolverParams<T>& params):
+    gsINSSolverUnsteady(memory::make_shared_not_owned(&params))
+    { }
+
+    /// @brief Constructor.
+    gsINSSolverUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
     { 
-        m_assemblerPtr = new gsINSAssemblerUnsteady<T, MatOrder>(m_params);
+        m_assemblerPtr = new gsINSAssemblerUnsteady<T, MatOrder>(m_paramsPtr);
 
         initMembers();
-        m_params.options().setSwitch("unsteady", true);
+        m_paramsPtr->options().setSwitch("unsteady", true);
     }
 
 

@@ -19,8 +19,8 @@ namespace gismo
 template<class T>
 void gsFlowBndEvaluator<T>::evalOnPatchSide(index_t patchID, boxSide side)
 {
-    const gsBasis<T>* basis = &m_params.getBases().at(m_unkID).basis(patchID);
-    short_t dim = m_params.getPde().domain().targetDim();
+    const gsBasis<T>* basis = &m_paramsPtr->getBases().at(m_unkID).basis(patchID);
+    short_t dim = m_paramsPtr->getPde().domain().targetDim();
     m_mapData.patchId = patchID;
 
     gsVector<int> numQuadNodes(dim);
@@ -41,7 +41,7 @@ void gsFlowBndEvaluator<T>::evalOnPatchSide(index_t patchID, boxSide side)
     
         m_mapData.points = quNodes;
         m_mapData.side = side;
-        m_params.getPde().patches().patch(patchID).computeMap(m_mapData);
+        m_paramsPtr->getPde().patches().patch(patchID).computeMap(m_mapData);
 
         this->evalOnElement(patchID, side, quNodes, quWeights);
     }

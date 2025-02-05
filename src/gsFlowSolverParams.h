@@ -33,9 +33,14 @@ template<class T>
 class gsFlowSolverParams
 {
 
+public: // *** Smart pointers ***
+
+    typedef memory::shared_ptr<gsFlowSolverParams> Ptr;
+    typedef memory::unique_ptr<gsFlowSolverParams> uPtr;
+
 protected: // *** Class members ***
 
-    gsNavStokesPde<T>               m_pde;
+    typename gsNavStokesPde<T>::Ptr m_pdePtr;
     std::vector<gsMultiBasis<T> >   m_bases;
     gsAssemblerOptions              m_assembOpt;
     gsOptionList                    m_opt;
@@ -48,12 +53,11 @@ public: // *** Constructor/destructor ***
 
     gsFlowSolverParams() {}
     
-
     /// @brief Constructor of the object.
     /// @param pde an incompressible Navier-Stokes problem
     /// @param bases vector of discretization bases (velocity, pressure)
     gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases)
-        : m_pde(pde), m_bases(bases)
+        : m_pdePtr(memory::make_shared_not_owned(&pde)), m_bases(bases)
     {
         m_assembOpt.dirStrategy = dirichlet::elimination;
         m_assembOpt.dirValues = dirichlet::interpolation;
@@ -121,8 +125,8 @@ public: // *** Member functions ***
     {
         mappers.resize(2);
     
-        m_bases.front().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pde.bc(), mappers.front(), 0);
-        m_bases.back().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy,  m_pde.bc(), mappers.back(), 1);
+        m_bases.front().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pdePtr->bc(), mappers.front(), 0);
+        m_bases.back().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy,  m_pdePtr->bc(), mappers.back(), 1);
     }
 
     /// @brief Set boundary parts (vectors of pairs [patch, side]).
@@ -142,10 +146,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns a const reference to the PDE.
-    const gsNavStokesPde<T>& getPde() const { return m_pde; }
+    const gsNavStokesPde<T>& getPde() const { return *m_pdePtr; }
 
     /// @brief Returns a const reference to the boundary conditions.
-    const gsBoundaryConditions<T>& getBCs() const { return m_pde.bc(); }
+    const gsBoundaryConditions<T>& getBCs() const { return m_pdePtr->bc(); }
 
     /**
      * @brief Returns a reference to the discretization bases.
