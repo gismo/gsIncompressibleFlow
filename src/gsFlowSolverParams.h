@@ -114,6 +114,13 @@ public: // *** Static functions ***
         opt.addReal("jac.dist", "Distance from boundary (in the parametric space) for geometry jacobian check", 1e-2);
         opt.addReal("jac.tol", "Critical value of geometry jacobian to throw warning", 1e-4);
 
+        // Turbulent model
+        opt.addInt("TM.maxIt", "Maximum number of Picard iterations in turbulent model in one time step", 10);
+        opt.addInt("TM.maxItFirst", "Maximum number of Picard iterations in turbulent model in the first time step", 10);
+        opt.addReal("TM.tol", "Stopping tolerance for Picard iteration in turbulent model", 1e-5);
+        opt.addString("TM.evaluator", "Chosen tubulence model identifier", "koSSTMenter2009");
+        opt.addSwitch("TM.limitproduction","Using limiter for production term in turbulence model", false); 
+
         return opt;
     }
 

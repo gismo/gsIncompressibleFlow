@@ -30,6 +30,10 @@ class gsTMSolverSST: public gsTMSolverBase<T, MatOrder>
 public:
     typedef gsTMSolverBase<T, MatOrder> Base;
 
+public: // *** Class members ***
+
+    gsVector<T> m_TurbulentViscosityVals;
+
 protected: // *** Base class members ***
 
     using Base::m_solution;
@@ -56,7 +60,7 @@ public: // *** Constructor/destructor ***
 public: // *** Member functions ***
 
     /// @brief Compute the Stokes problem and save the solution into m_solution.
-    virtual void evalTurbulentViscosity(std::vector<gsMatrix<T> >& solUGrads, gsMatrix<T>& quNodes, gsGeometryEvaluator<T> & geoEval);
+    virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/);
 
     //virtual void plotTurbulentViscosity();
 

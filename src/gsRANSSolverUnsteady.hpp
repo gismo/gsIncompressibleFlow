@@ -24,6 +24,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::initMembers()
     m_turbT = 0;
 
     // inicializace turbulentniho solveru
+    m_TMsolver = new gsTMSolverSST<T>();
 
     // initialize turbulence solver
     /*if (!(m_pTurbulenceSolver->isInitialized()))
@@ -88,7 +89,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
 template<class T, int MatOrder>
 void gsRANSSolverUnsteady<T, MatOrder>::nextIteration()
 {
-    GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
+    //GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
 
     this->updateAssembler();
 

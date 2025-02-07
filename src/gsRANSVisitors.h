@@ -20,7 +20,7 @@ namespace gismo
 {
 
 template <class T, int MatOrder>
-class gsRANSVisitorUUlin : public gsFlowVisitorVectorValued<T, MatOrder>
+class gsRANSVisitorUUSymmetricGradientDiag : public gsFlowVisitorVectorValued<T, MatOrder>
 {
 
 public:
@@ -40,9 +40,9 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsRANSVisitorUUlin() {}
+    gsRANSVisitorUUSymmetricGradientDiag() {}
 
-    gsRANSVisitorUUlin(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    gsRANSVisitorUUSymmetricGradientDiag(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
     Base(paramsPtr)
     { }
 
@@ -54,7 +54,58 @@ protected: // *** Member functions ***
     {
         // evaluate turbulent viscosity
 
-        m_terms.push_back( new gsRANSTerm_Diffusion<T>(m_paramsPtr->getPde().viscosity()) );
+        m_terms.push_back( new gsRANSTerm_SymmetricGradientDiag<T>(m_paramsPtr->getPde().viscosity()) );
+        
+        //if(m_paramsPtr->options().getSwitch("unsteady"))
+        //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
+
+        // ... other terms, e.g. from stabilizations
+    }
+
+public: // *** Member functions ***    
+
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+};
+
+// ==========================================================================================================
+
+template <class T, int MatOrder>
+class gsRANSVisitorUUSymmetricGradientOffdiag : public gsFlowVisitorVectorValued<T, MatOrder>
+{
+
+public:
+    typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
+
+protected: // *** Base class members ***
+
+    using Base::m_locMatVec;
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_shapeUnkID;
+    using Base::m_dofMappers;
+    using Base::m_testFunActives;
+    using Base::m_shapeFunActives;
+    using Base::m_terms;
+
+public: // *** Constructor/destructor ***
+
+    gsRANSVisitorUUSymmetricGradientOffdiag() {}
+
+    gsRANSVisitorUUSymmetricGradientOffdiag(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { }
+
+
+protected: // *** Member functions ***
+
+    // upravit pro RANS
+    virtual void defineTerms()
+    {
+        // evaluate turbulent viscosity
+
+        m_terms.push_back( new gsRANSTerm_SymmetricGradientOffdiag<T>(m_paramsPtr->getPde().viscosity()) );
 
         //if(m_paramsPtr->options().getSwitch("unsteady"))
         //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );

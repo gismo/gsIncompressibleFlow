@@ -29,9 +29,12 @@ public:
 
 protected: // *** Class members ***
 
-    gsINSVisitorUUtimeDiscr<T, MatOrder> m_visitorRANS;
-    gsSparseMatrix<T, MatOrder> m_blockRANS;
+    gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder> m_visitorRANSsymgraddiag;
+    gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder> m_visitorRANSsymgradoffdiag;
+    gsSparseMatrix<T, MatOrder> m_matRANSsymdragdiag;
+    gsSparseMatrix<T, MatOrder> m_matRANSsymdragoffdiag;
     gsMatrix<T> m_rhsRANS;
+    gsMatrix<T> m_rhsRANSsymgradoffdiag;
 
 
 protected: // *** Base class members ***

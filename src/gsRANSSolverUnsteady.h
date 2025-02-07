@@ -11,12 +11,12 @@
 
 #pragma once
 
-#include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
+//#include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
 #include <gsIncompressibleFlow/src/gsINSSolver.h>
-#include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsRANSAssemblerUnsteady.h>
-#include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsTMSolverSST.h>
+#include <gsIncompressibleFlow/src/gsFlowUtils.h>
+#include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsLinearAlgebra.h>
@@ -43,7 +43,10 @@ public: // *** Class members ***
     //T m_innerTol;
 
     // nove definovane zde
-    gsTMSolverSST<T>* m_TMsolver;
+    gsRANSAssemblerUnsteady<T, MatOrder> m_assemblerPtr;
+    gsTMSolverSST<T> m_TMsolver;
+    bool m_bComputeTMfirst;
+    real_t m_turbT;
 
 protected: // *** Base class members ***
 
@@ -80,7 +83,7 @@ public: // *** Constructor/destructor ***
         
         initMembers();
 
-        m_params.options().setSwitch("unsteady", true);
+        paramsPtr->options().setSwitch("unsteady", true);
     }
 
     virtual ~gsRANSSolverUnsteady()
