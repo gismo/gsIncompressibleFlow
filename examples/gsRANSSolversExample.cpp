@@ -1,4 +1,4 @@
-/** @file gsINSSolversExample.cpp
+/** @file gsRANSSolversExample.cpp
  
     This file is part of the G+Smo library.
 
@@ -6,21 +6,21 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): H. Honnerova
+    Author(s): H. Honnerova, B. Bastl
 */
 
 
 #include <gismo.h>
 
-#include <gsIncompressibleFlow/src/gsINSSolver.h>
+#include <gsIncompressibleFlow/src/gsRANSSolverUnsteady.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsFlowBndEvaluators.h>
 
 using namespace gismo;
 
-template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
+template<class T, int MatOrder> void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
 template<class T, int MatOrder, class LinSolver> void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr);
-template<class T, int MatOrder> void markElimDof(gsINSSolver<T, MatOrder>& NSsolver);
+template<class T, int MatOrder> void markElimDof(gsRANSSolverUnsteady<T, MatOrder>& NSsolver);
 
 int main(int argc, char *argv[])
 {
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     // solvers
     bool steady = false;
     bool steadyIt = false;
-    bool unsteady = false;
+    bool unsteady = true;
     bool unsteadyIt = false;
 
     // domain definition
@@ -172,14 +172,14 @@ int main(int argc, char *argv[])
             if (dim == 3)
                 gsWarn << "Geometry 3 is only 2D!\n";
 
-            gsReadFile<>(FLOW_DATA_DIR "geo_profile2D.xml", patches);
+            //gsReadFile<>(FLOW_DATA_DIR "geo_profile2D.xml", patches);
             break;
         }
         default:
             GISMO_ERROR("Unknown domain.");
     }
 
-    gsInfo << "Solving Navier-Stokes problem in " << geoStr << " domain.\n";
+    gsInfo << "Solving RANS problem with k-omega SST model in " << geoStr << " domain.\n";
     gsInfo << "viscosity = " << viscosity << "\n";
     gsInfo << patches;
 
@@ -254,6 +254,7 @@ int main(int argc, char *argv[])
     solveOpt.addSwitch("stokesInit", "", stokesInit);
     solveOpt.addString("id", "", "");
 
+    /*
     if (steady)
     {
         solveOpt.setString("id", "steady");
@@ -294,6 +295,7 @@ int main(int argc, char *argv[])
         gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver());
         reportLinIterations(linSolverPtr);
     }
+    */
 
     if (unsteady)
     {
@@ -303,14 +305,15 @@ int main(int argc, char *argv[])
         params.options().setReal("nonlin.tol", picardTol);
         params.options().setString("lin.solver", "direct");
 
-        gsINSSolverUnsteady<real_t, RowMajor> NSsolver(params);
+        gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
 
         gsInfo << "\n----------\n";
-        gsInfo << "Solving the unsteady problem with direct linear solver.\n";
+        gsInfo << "Solving the unsteady RANS problem with direct linear solver.\n";
 
         solveProblem(NSsolver, solveOpt, geo);
     }
 
+    /*
     if (unsteadyIt)
     {
         solveOpt.setString("id", "unsteadyIt");
@@ -334,13 +337,14 @@ int main(int argc, char *argv[])
         gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver());
         reportLinIterations(linSolverPtr);
     }
+    */
 
     return 0; 
 }
 
 
 template<class T, int MatOrder>
-void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
+void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 {
     gsStopwatch clock;
 
@@ -388,15 +392,15 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 
     gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
-    gsINSSolverUnsteady<real_t>* pSolver = dynamic_cast<gsINSSolverUnsteady<real_t>* >(&NSsolver);
+    gsRANSSolverUnsteady<real_t>* pSolver = dynamic_cast<gsRANSSolverUnsteady<real_t>* >(&NSsolver);
 
     if (pSolver)
         if (opt.getSwitch("stokesInit"))
             pSolver->solveStokes();
 
-    if (pSolver && opt.getSwitch("animation"))
-        pSolver->solveWithAnimation(opt.getInt("maxIt"), opt.getInt("animStep"), geoStr + "_" + id, opt.getReal("tol"), opt.getInt("plotPts"));
-    else
+    //if (pSolver && opt.getSwitch("animation"))
+    //    pSolver->solveWithAnimation(opt.getInt("maxIt"), opt.getInt("animStep"), geoStr + "_" + id, opt.getReal("tol"), opt.getInt("plotPts"), false, 1);
+    //else
         NSsolver.solve(opt.getInt("maxIt"), opt.getReal("tol"), 0);    
 
     real_t totalT = clock.stop();
@@ -438,7 +442,7 @@ void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSo
 
 // mark one pressure DoF in the domain corner as fixed zero (for the lid driven cavity problem)
 template<class T, int MatOrder>
-void markElimDof(gsINSSolver<T, MatOrder>& NSsolver)
+void markElimDof(gsRANSSolverUnsteady<T, MatOrder>& NSsolver)
 {
     std::vector<gsMatrix<index_t> > elimDof(1);
     elimDof[0].setZero(1,1);

@@ -11,10 +11,11 @@
 
 #pragma once
 
-//#include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
+#include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
 #include <gsIncompressibleFlow/src/gsINSSolver.h>
 #include <gsIncompressibleFlow/src/gsRANSAssemblerUnsteady.h>
 #include <gsIncompressibleFlow/src/gsTMSolverSST.h>
+
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 
@@ -43,8 +44,7 @@ public: // *** Class members ***
     //T m_innerTol;
 
     // nove definovane zde
-    gsRANSAssemblerUnsteady<T, MatOrder> m_assemblerPtr;
-    gsTMSolverSST<T> m_TMsolver;
+    //gsTMSolverSST<T, MatOrder>* m_TMsolver = NULL;
     bool m_bComputeTMfirst;
     real_t m_turbT;
 
@@ -53,7 +53,7 @@ protected: // *** Base class members ***
     using Base::m_solution;
     using Base::m_iterationNumber;
     using Base::m_assemblerPtr;
-    using Base::m_params;
+    using Base::m_paramsPtr;
     using Base::m_outFile;
     using Base::m_fileOutput;
     using Base::m_dispOutput;
@@ -79,11 +79,11 @@ public: // *** Constructor/destructor ***
         //gsTMSolverSST<T> m_TMsolver;
         
         // create assembler
-        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(m_params);
-        
+        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(m_paramsPtr);
+                
         initMembers();
 
-        paramsPtr->options().setSwitch("unsteady", true);
+        m_paramsPtr->options().setSwitch("unsteady", true);
     }
 
     virtual ~gsRANSSolverUnsteady()
@@ -127,7 +127,7 @@ public: // *** Getters/setters ***
     virtual std::string getName() { return "gsRANSSolverUnsteady"; }
 
 
-}; // gsINSSolverUnsteady
+}; // gsRANSSolverUnsteady
 
 }
 

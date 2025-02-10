@@ -73,8 +73,8 @@ void gsRANSTerm_SymmetricGradientOffdiag<T>::assemble(const gsMapData<T>& mapDat
 
         if (dim == 3)
         {
-            localMat[1].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad[k].row(0));
-            localMat[2].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad[k].row(1));
+            localMat[1].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad.row(0));
+            localMat[2].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad.row(1));
         }
     }
 }

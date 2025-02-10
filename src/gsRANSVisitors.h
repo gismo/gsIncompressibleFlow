@@ -15,6 +15,7 @@
 #include <gsIncompressibleFlow/src/gsINSVisitors.h>
 #include <gsIncompressibleFlow/src/gsINSTerms.h>
 #include <gsIncompressibleFlow/src/gsRANSTerms.h>
+#include <gsIncompressibleFlow/src/gsTMSolverSST.h>
 
 namespace gismo
 {
@@ -25,6 +26,11 @@ class gsRANSVisitorUUSymmetricGradientDiag : public gsFlowVisitorVectorValued<T,
 
 public:
     typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
+
+public:
+    real_t m_viscosity;
+    gsTMSolverSST<T, MatOrder>* m_TMsolver = NULL;
+    gsVector<T> m_TurbulentViscosityVals;
 
 protected: // *** Base class members ***
 
@@ -37,6 +43,7 @@ protected: // *** Base class members ***
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_terms;
+    using Base::m_quNodes;
 
 public: // *** Constructor/destructor ***
 
@@ -44,17 +51,22 @@ public: // *** Constructor/destructor ***
 
     gsRANSVisitorUUSymmetricGradientDiag(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
     Base(paramsPtr)
-    { }
+    { 
+        initMembers();
+    }
 
 
 protected: // *** Member functions ***
+
+    /// @brief Initialize all members.
+    void initMembers();
 
     // upravit pro RANS
     virtual void defineTerms()
     {
         // evaluate turbulent viscosity
 
-        m_terms.push_back( new gsRANSTerm_SymmetricGradientDiag<T>(m_paramsPtr->getPde().viscosity()) );
+        m_terms.push_back( new gsRANSTerm_SymmetricGradientDiag<T>(m_viscosity, m_TurbulentViscosityVals) );
         
         //if(m_paramsPtr->options().getSwitch("unsteady"))
         //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
@@ -77,6 +89,11 @@ class gsRANSVisitorUUSymmetricGradientOffdiag : public gsFlowVisitorVectorValued
 public:
     typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
+public:
+    real_t m_viscosity;
+    gsTMSolverSST<T, MatOrder>* m_TMsolver = NULL;
+    gsVector<T> m_TurbulentViscosityVals;    
+
 protected: // *** Base class members ***
 
     using Base::m_locMatVec;
@@ -88,6 +105,7 @@ protected: // *** Base class members ***
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
     using Base::m_terms;
+    using Base::m_quNodes;
 
 public: // *** Constructor/destructor ***
 
@@ -95,17 +113,22 @@ public: // *** Constructor/destructor ***
 
     gsRANSVisitorUUSymmetricGradientOffdiag(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
     Base(paramsPtr)
-    { }
+    { 
+        initMembers();
+    }
 
 
 protected: // *** Member functions ***
+
+    /// @brief Initialize all members.
+    void initMembers();
 
     // upravit pro RANS
     virtual void defineTerms()
     {
         // evaluate turbulent viscosity
 
-        m_terms.push_back( new gsRANSTerm_SymmetricGradientOffdiag<T>(m_paramsPtr->getPde().viscosity()) );
+        m_terms.push_back( new gsRANSTerm_SymmetricGradientOffdiag<T>(m_viscosity, m_TurbulentViscosityVals) );
 
         //if(m_paramsPtr->options().getSwitch("unsteady"))
         //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );

@@ -24,7 +24,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::initMembers()
     m_turbT = 0;
 
     // inicializace turbulentniho solveru
-    m_TMsolver = new gsTMSolverSST<T>();
+    //m_TMsolver = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
 
     // initialize turbulence solver
     /*if (!(m_pTurbulenceSolver->isInitialized()))
@@ -44,7 +44,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::initMembers()
 template<class T, int MatOrder>
 void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileN, std::ofstream& fileTM, std::string fileNameSuffix, unsigned plotPts)
 {
-    int numPatches = m_params.getPde().patches().nPatches();
+    int numPatches = m_paramsPtr->getPde().patches().nPatches();
 
     gsField<T> uSol = this->constructSolution(0);
     std::stringstream filenameU;
@@ -56,6 +56,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
     filenameP << "pressure" + fileNameSuffix + "_" << m_iterationNumber << "it";
     gsWriteParaview<T>(pSol, filenameP.str(), plotPts);
 
+    /*
     gsField<T> turbSol = m_pTurbulenceSolver->constructSolution();
     std::stringstream filenameTM;
     filenameTM << "TMsol" + fileNameSuffix + "_" << m_iterationNumber << "it";
@@ -64,6 +65,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
     std::stringstream filenameN;
     filenameN << "nuT_" + fileNameSuffix + "_" << m_iterationNumber << "it";
     plotTurbulentViscosity(filenameN.str(), plotPts);
+    */
 
     for (int p = 0; p < numPatches; p++)
     {
@@ -75,6 +77,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
         fnP << filenameP.str() << p << ".vts";
         fileP << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnP.str() << "\"/>\n";
 
+        /*
         std::stringstream fnTM;
         fnTM << filenameTM.str() << p << ".vts";
         fileTM << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnTM.str() << "\"/>\n";
@@ -82,6 +85,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
         std::stringstream fnN;
         fnN << filenameN.str() << p << ".vts";
         fileN << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnN.str() << "\"/>\n";
+        */
     }
 }
 
@@ -152,7 +156,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::nextIteration()
         if (m_bComputeTMfirst)
             Base::nextIteration();
 
-        /*if ((this->m_iterationNumber % 250) == 0)
+        if ((this->m_iterationNumber % 250) == 0)
         {
             gsFileData<> fd;
             fd << m_solution;
@@ -170,7 +174,7 @@ template<class T, int MatOrder>
 void gsRANSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix, const T epsilon, unsigned plotPts, bool plotTurb, const int minIterations)
 {
     if (!plotTurb)
-            Base::solveWithAnimation(totalIter, iterStep, epsilon, plotPts);
+            Base::solveWithAnimation(totalIter, iterStep, "", epsilon, plotPts);
     else
     {
         // prepare plotting
@@ -195,19 +199,20 @@ void gsRANSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, 
         startAnimationFile(fileN);
         startAnimationFile(fileTM);
 
-        plotCurrentTimeStep(fileU, fileP, fileNameSuffix, plotPts);
+        plotCurrentTimeStep(fileU, fileP, fileN, fileTM, fileNameSuffix, plotPts);
 
         for (int i = 0; i < totalIter; i += iterStep)
         {
             this->solve(math::min(iterStep, totalIter), epsilon, minIterations);
 
-            plotCurrentTimeStep(fileU, fileP, fileNameSuffix, plotPts);
+            plotCurrentTimeStep(fileU, fileP, fileN, fileTM, fileNameSuffix, plotPts);
         }
 
         endAnimationFile(fileU);
         endAnimationFile(fileP);
         endAnimationFile(fileN);
         endAnimationFile(fileTM);
+    }
 }
 
 } //namespace gismo

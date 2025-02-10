@@ -119,7 +119,7 @@ public: // *** Static functions ***
         opt.addInt("TM.maxItFirst", "Maximum number of Picard iterations in turbulent model in the first time step", 10);
         opt.addReal("TM.tol", "Stopping tolerance for Picard iteration in turbulent model", 1e-5);
         opt.addString("TM.evaluator", "Chosen tubulence model identifier", "koSSTMenter2009");
-        opt.addSwitch("TM.limitproduction","Using limiter for production term in turbulence model", false); 
+        opt.addSwitch("TM.limitproduction","Using limiter for production term in turbulence model", false);
 
         return opt;
     }

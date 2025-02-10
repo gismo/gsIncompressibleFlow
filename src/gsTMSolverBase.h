@@ -31,6 +31,8 @@ public:
 
 protected: // *** Base class members ***
 
+    using Base::m_assemblerPtr;
+    using Base::m_paramsPtr;
     using Base::m_solution;
     using Base::m_iterationNumber;
     using Base::m_outFile;
@@ -55,7 +57,7 @@ public: // *** Constructor/destructor ***
 public: // *** Member functions ***
 
     /// @brief Compute the Stokes problem and save the solution into m_solution.
-    virtual void evalTurbulentViscosity()
+    virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/)
     { GISMO_NO_IMPLEMENTATION }
 
     //virtual void plotTurbulentViscosity();

@@ -13,9 +13,10 @@
 
 #include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
 #include <gsIncompressibleFlow/src/gsFlowLinSystSolver.h>
+#include <gsIncompressibleFlow/src/gsTMSolverBase.h>
+
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
-#include <gsIncompressibleFlow/src/gsTMSolverBase.h>
 
 namespace gismo
 {
@@ -36,6 +37,8 @@ public: // *** Class members ***
 
 protected: // *** Base class members ***
 
+    using Base::m_assemblerPtr;
+    using Base::m_paramsPtr;
     using Base::m_solution;
     using Base::m_iterationNumber;
     using Base::m_outFile;
@@ -46,7 +49,7 @@ public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
     gsTMSolverSST(gsFlowSolverParams<T>& params):
-    Base(params)
+    gsTMSolverSST(memory::make_shared_not_owned(&params))
     { }
 
     gsTMSolverSST(typename gsFlowSolverParams<T>::Ptr paramsPtr):
@@ -68,6 +71,8 @@ public: // *** Getters/setters ***
 
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsTMSolverSST"; }
+
+    gsVector<T> getTurbulentViscosity() { return m_TurbulentViscosityVals; }
 
     /// @brief Returns a pointer to the assembler.
     //virtual gsINSAssembler<T, MatOrder>* getAssembler() const

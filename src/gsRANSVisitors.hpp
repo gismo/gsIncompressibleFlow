@@ -16,6 +16,17 @@ namespace gismo
 {
 
 template <class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::initMembers()
+{
+    m_viscosity = m_paramsPtr->getPde().viscosity();
+    
+    m_TMsolver = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
+
+    m_TMsolver->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+}
+
+template <class T, int MatOrder>
 void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
@@ -66,6 +77,17 @@ void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::localToGlobal(const std:
 }
 
 // ===========================================================================================================
+
+template <class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::initMembers()
+{
+    m_viscosity = m_paramsPtr->getPde().viscosity();
+
+    m_TMsolver = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
+
+    m_TMsolver->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+}
 
 template <class T, int MatOrder>
 void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)

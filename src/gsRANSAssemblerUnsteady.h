@@ -11,11 +11,14 @@
 
 #pragma once
 
-#include <gsCore/gsField.h>
+#include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsINSAssembler.h>
 #include <gsIncompressibleFlow/src/gsINSVisitors.h>
 #include <gsIncompressibleFlow/src/gsRANSVisitors.h>
+
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
+
+#include <gsCore/gsField.h>
 
 namespace gismo
 {
@@ -31,8 +34,8 @@ protected: // *** Class members ***
 
     gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder> m_visitorRANSsymgraddiag;
     gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder> m_visitorRANSsymgradoffdiag;
-    gsSparseMatrix<T, MatOrder> m_matRANSsymdragdiag;
-    gsSparseMatrix<T, MatOrder> m_matRANSsymdragoffdiag;
+    gsSparseMatrix<T, MatOrder> m_matRANSsymgraddiag;
+    gsSparseMatrix<T, MatOrder> m_matRANSsymgradoffdiag;
     gsMatrix<T> m_rhsRANS;
     gsMatrix<T> m_rhsRANSsymgradoffdiag;
 
@@ -55,9 +58,7 @@ public: // *** Constructor/destructor ***
 
     gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
     Base(paramsPtr)
-    {
-        initMembers();
-    }
+    { }
 
     virtual ~gsRANSAssemblerUnsteady()
     { }
