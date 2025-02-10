@@ -22,10 +22,8 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 
     m_viscosity = m_paramsPtr->getPde().viscosity();
 
-    m_dofMappers.resize(2);
     m_ddof.resize(2);
-    getBases().front().getMapper(getAssemblerOptions().dirStrategy, getAssemblerOptions().intStrategy, getBCs(), m_dofMappers.front(), 0);
-    getBases().back().getMapper(getAssemblerOptions().dirStrategy, getAssemblerOptions().intStrategy, getBCs(), m_dofMappers.back(), 1);
+    m_paramsPtr->createDofMappers(m_dofMappers);  
 
     m_nnzPerRowU = 1;
     for (short_t i = 0; i < m_tarDim; i++)
@@ -55,18 +53,6 @@ void gsINSAssembler<T, MatOrder>::initMembers()
     m_massMatBlocks.resize(2); // [velocity, pressure]
 
     m_hasPeriodicBC = false;
-    if (m_params.getPde().bc().numPeriodic() != 0)
-    {
-        m_hasPeriodicBC = true;
-        m_velPeriodicHelperPtr = gsFlowPeriodicHelper<T>::make(getBases().front(), m_dofMappers[0], m_params.getPde().bc());
-        m_presPeriodicHelperPtr = gsFlowPeriodicHelper<T>::make(getBases().back(), m_dofMappers[1], m_params.getPde().bc());
-    
-        m_visitorUUlin.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
-        m_visitorUUnonlin.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
-        m_visitorUP.setPeriodicHelpers(m_velPeriodicHelperPtr, m_presPeriodicHelperPtr);
-        m_visitorF.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
-        m_visitorG.setPeriodicHelpers(m_presPeriodicHelperPtr, m_presPeriodicHelperPtr);
-    }
 
     updateSizes();
 }
@@ -75,15 +61,25 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 template<class T, int MatOrder>
 void gsINSAssembler<T, MatOrder>::updateSizes()
 {
-    if (!m_hasPeriodicBC)
+    if (m_paramsPtr->getPde().bc().numPeriodic() != 0)
     {
-        m_udofs = m_dofMappers.front().freeSize();
-        m_pdofs = m_dofMappers.back().freeSize();
+        m_hasPeriodicBC = true;
+        m_velPeriodicHelperPtr = gsFlowPeriodicHelper<T>::make(getBases().front(), m_dofMappers[0], m_paramsPtr->getPde().bc());
+        m_presPeriodicHelperPtr = gsFlowPeriodicHelper<T>::make(getBases().back(), m_dofMappers[1], m_paramsPtr->getPde().bc());
+    
+        m_visitorUUlin.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
+        m_visitorUUnonlin.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
+        m_visitorUP.setPeriodicHelpers(m_velPeriodicHelperPtr, m_presPeriodicHelperPtr);
+        m_visitorF.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
+        m_visitorG.setPeriodicHelpers(m_presPeriodicHelperPtr, m_presPeriodicHelperPtr);
+
+        m_udofs = m_velPeriodicHelperPtr->numFreeDofs();
+        m_pdofs = m_presPeriodicHelperPtr->numFreeDofs();
     }
     else
     {
-        m_udofs = m_velPeriodicHelperPtr->numFreeDofs();
-        m_pdofs = m_presPeriodicHelperPtr->numFreeDofs();
+        m_udofs = m_dofMappers.front().freeSize();
+        m_pdofs = m_dofMappers.back().freeSize();
     }
 
     m_pshift = m_tarDim * m_udofs;
@@ -179,7 +175,7 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     this->assembleRhs(m_visitorF, 0, m_rhsF);
 
     if(m_paramsPtr->getPde().source()) // if the continuity eqn rhs is given
-        this->assembleRhs(m_visitorG, 1, m_rhsFG);
+        this->assembleRhs(m_visitorG, 1, m_rhsG);
 
     // mass matrices for velocity and pressure (needed for preconditioners)
     if ( m_paramsPtr->options().getString("lin.solver") == "iter" )
@@ -400,18 +396,21 @@ void gsINSAssembler<T, MatOrder>::update(const gsMatrix<T> & solVector, bool upd
 template<class T, int MatOrder>
 void gsINSAssembler<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
 {
-    m_dofMappers[unk] = gsDofMapper(getBases().at(unk), getBCs(), unk);
+    m_paramsPtr->createDofMappers(m_dofMappers, false);
 
-    if (getAssemblerOptions().intStrategy == iFace::conforming)
-        for (gsBoxTopology::const_iiterator it = getPatches().iBegin(); it != getPatches().iEnd(); ++it)
-        {
-            getBases().at(unk).matchInterface(*it, m_dofMappers[unk]);
-        }
+    //m_dofMappers[unk] = gsDofMapper(getBases().at(unk), getBCs(), unk);
+
+    // if (getAssemblerOptions().intStrategy == iFace::conforming)
+    //     for (gsBoxTopology::const_iiterator it = getPatches().iBegin(); it != getPatches().iEnd(); ++it)
+    //     {
+    //         getBases().at(unk).matchInterface(*it, m_dofMappers[unk]);
+    //     }
 
     for (size_t i = 0; i < boundaryDofs.size(); i++)
         m_dofMappers[unk].markBoundary(i, boundaryDofs[i]);
 
-    m_dofMappers[unk].finalize();
+    m_dofMappers[0].finalize();
+    m_dofMappers[1].finalize();
 
     this->updateDofMappers();
     this->updateSizes();
@@ -637,7 +636,7 @@ void gsINSAssembler<T, MatOrder>::nonper2per_into(const gsMatrix<T>& fullVector,
             if (row < fullPshift)
             {
                 for (int d = 0; d < m_tarDim; d++)
-                    perVector( m_velPeriodicHelperPtr->map(row % fullUdofs) + d * m_udofs, 0) += m_params.getPde().bc().getTransformMatrix()(d, row / fullUdofs) * fullVector(row, 0);
+                    perVector( m_velPeriodicHelperPtr->map(row % fullUdofs) + d * m_udofs, 0) += m_paramsPtr->getPde().bc().getTransformMatrix()(d, row / fullUdofs) * fullVector(row, 0);
             }
             else
                 perVector(mapPeriodic(row), 0) += fullVector(row, 0);
@@ -666,7 +665,7 @@ void gsINSAssembler<T, MatOrder>::per2nonper_into(const gsMatrix<T>& perVector, 
         for (int d = 0; d < m_tarDim; d++)
             u(d, 0) = perVector(m_velPeriodicHelperPtr->map(elimDofsU[i]) + d * m_udofs, 0);
 
-        u = m_params.getPde().bc().getTransformMatrix().transpose() * u; // multiplication by an inverse tranform matrix
+        u = m_paramsPtr->getPde().bc().getTransformMatrix().transpose() * u; // multiplication by an inverse tranform matrix
 
         for (int d = 0; d < m_tarDim; d++)
             fullVector(elimDofsU[i] + d * fullUdofs, 0) = u(d, 0);

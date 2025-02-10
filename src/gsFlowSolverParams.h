@@ -121,12 +121,12 @@ public: // *** Static functions ***
 public: // *** Member functions ***
 
     /// @brief Creates DOF mappers for velocity and pressure.
-    void createDofMappers(std::vector<gsDofMapper>& mappers)
+    void createDofMappers(std::vector<gsDofMapper>& mappers, bool finalize = true)
     {
         mappers.resize(2);
     
-        m_bases.front().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pdePtr->bc(), mappers.front(), 0);
-        m_bases.back().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy,  m_pdePtr->bc(), mappers.back(), 1);
+        m_bases.front().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pdePtr->bc(), mappers.front(), 0, finalize);
+        m_bases.back().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy,  m_pdePtr->bc(), mappers.back(), 1, finalize);
     }
 
     /// @brief Set boundary parts (vectors of pairs [patch, side]).

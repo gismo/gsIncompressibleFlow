@@ -46,7 +46,7 @@ protected: // *** Base class members ***
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
     using Base::m_testPeriodicHelperPtr;
-    using Base::m_shapePeriodicHelperPtr;
+    using Base::m_trialPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -270,7 +270,7 @@ protected: // *** Base class members ***
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
     using Base::m_testPeriodicHelperPtr;
-    using Base::m_shapePeriodicHelperPtr;
+    using Base::m_trialPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -390,7 +390,7 @@ protected: // *** Base class members ***
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
     using Base::m_testPeriodicHelperPtr;
-    using Base::m_shapePeriodicHelperPtr;
+    using Base::m_trialPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -450,7 +450,7 @@ protected: // *** Base class members ***
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
     using Base::m_testPeriodicHelperPtr;
-    using Base::m_shapePeriodicHelperPtr;
+    using Base::m_trialPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 

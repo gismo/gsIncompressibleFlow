@@ -196,20 +196,18 @@ public: // *** Member functions ***
     /// @param[in]  eliminatedDofs  coefficients of the eliminated Dirichlet DoFs
     /// @param[out] globalMat       reference to the global matrix block
     /// @param[out] globalRhs       reference to the global right-hand side
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
-    { GISMO_NO_IMPLEMENTATION } 
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
     /// @brief Add local contributions to the global right-hand side vector.
     /// @param[out] globalRhs reference to the global right-hand side
-    virtual void localToGlobal(gsMatrix<T>& globalRhs)
-    { GISMO_NO_IMPLEMENTATION } 
+    virtual void localToGlobal(gsMatrix<T>& globalRhs);
 
     void setPeriodicHelpers(typename gsFlowPeriodicHelper<T>::Ptr testPerHelperPtr, typename gsFlowPeriodicHelper<T>::Ptr trialPerHelperPtr)
     { 
         m_testPeriodicHelperPtr = testPerHelperPtr;
         m_trialPeriodicHelperPtr = trialPerHelperPtr;
         m_hasPeriodicBC = true;
-        m_periodicTransformMat = m_params.getPde().bc().getTransformMatrix();
+        m_periodicTransformMat = m_paramsPtr->getPde().bc().getTransformMatrix();
     }
 
 };
