@@ -21,8 +21,9 @@ namespace gismo
  * Useful for definition of boundary conditions for flow problems, e.g. in the form pressure * normal.
  * 
  * @tparam T real number type
+ * @ingroup IncompressibleFlow
  */
-template<class T>
+template <class T>
 class gsScaledOuterNormalField : public gsFunction<T> 
 {
 
@@ -97,8 +98,9 @@ protected: // *** Member functions ***
  * Useful for definition of boundary conditions for flow problems, e.g. in the form (targetPressure - pressure) * normal.
  * 
  * @tparam T real number type
+ * @ingroup IncompressibleFlow
  */
-template<class T>
+template <class T>
 class gsDiffScaledOuterNormalField : public gsScaledOuterNormalField<T> 
 {
 

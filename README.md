@@ -54,10 +54,14 @@ cd /path/to/gismo/build/bin
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/testProb_profile.png" width="36%">
-&nbsp &nbsp &nbsp &nbsp
+      
 <img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/francis_flow.png" width="40%">
 </p>
 
 <p align="center">
 Laminar flow around a 2D blade profile (left), in a Francis turbine runner wheel (right).
 </p>
+
+## Documentation
+
+For more information about individual classes, see the [Doxygen pages](https://gismo.github.io/group__IncompressibleFlow.html).

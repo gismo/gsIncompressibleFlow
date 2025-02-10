@@ -20,7 +20,8 @@ namespace gismo
 /// @brief  A           base class for all assemblers in gsIncompressibleFlow.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-template<class T, int MatOrder>
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
 class gsFlowAssemblerBase
 {
 

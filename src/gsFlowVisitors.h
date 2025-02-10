@@ -27,6 +27,7 @@ namespace gismo
 /// @brief Base class for incompressible flow visitors.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsFlowVisitor
 {
@@ -221,6 +222,7 @@ public: // *** Member functions ***
  * 
  * @tparam T        real number type
  * @tparam MatOrder sparse matrix storage order (ColMajor/RowMajor)
+ * @ingroup IncompressibleFlow
  */
 template <class T, int MatOrder>
 class gsFlowVisitorVectorValued : public gsFlowVisitor<T, MatOrder> 
@@ -270,6 +272,7 @@ public: // *** Member functions ***
 // /// @brief              Base class for incompressible flow boundary visitors.
 // /// @tparam T           real number type
 // /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+// /// @ingroup IncompressibleFlow
 // template <class T, int MatOrder>
 // class gsFlowVisitorBnd : public gsFlowVisitor<T, MatOrder> 
 // {

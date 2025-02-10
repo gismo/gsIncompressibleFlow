@@ -22,7 +22,8 @@ namespace gismo
 /// @brief              A base class for incompressible Navier-Stokes assemblers.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-template<class T, int MatOrder>
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
 class gsINSAssembler: public gsFlowAssemblerBase<T, MatOrder>
 {
 
@@ -320,8 +321,10 @@ public: // *** Getters/setters ***
 
 
 /// @brief  The steady incompressible Navier--Stokes assembler.
-/// @tparam T real number type
-template<class T, int MatOrder>
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
 class gsINSAssemblerSteady: public gsINSAssembler<T, MatOrder>
 {
 
@@ -347,8 +350,10 @@ public: // *** Constructor/destructor ***
 
 
 /// @brief  The unsteady incompressible Navier--Stokes assembler.
-/// @tparam T real number type
-template<class T, int MatOrder>
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
 class gsINSAssemblerUnsteady: public gsINSAssembler<T, MatOrder>
 {
 

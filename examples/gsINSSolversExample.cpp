@@ -20,7 +20,6 @@ using namespace gismo;
 
 template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
 template<class T, int MatOrder, class LinSolver> void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr);
-template<class T, int MatOrder> void markElimDof(gsINSSolver<T, MatOrder>& NSsolver);
 
 int main(int argc, char *argv[])
 {
@@ -113,6 +112,12 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
+    if (!inputFile.empty())
+        geo = 0;
+
+    if ( !(steady || steadyIt || unsteady || unsteadyIt) )
+        gsWarn << "All computation flags set to false - nothing will be computed.\nPlease select at least one of the flags: --steady, --steadyIt, --unsteady, --unsteadyIt\n\n";
+
     // ========================================= Define problem (geometry, BCs, rhs) ========================================= 
     
     gsMultiPatch<> patches;
@@ -133,13 +138,13 @@ int main(int argc, char *argv[])
         case 1:
             geoStr = "BFS" + util::to_string(dim) + "D";
             fn = geoStr + "_problem.xml";
-            inputFile = FLOW_DATA_DIR + fn;
+            inputFile = fn;
             break;
 
         case 2:
             geoStr = "LDC" + util::to_string(dim) + "D";
             fn = geoStr + "_problem.xml";
-            inputFile = FLOW_DATA_DIR + fn;
+            inputFile = fn;
             break;
 
         case 3:
@@ -147,11 +152,18 @@ int main(int argc, char *argv[])
                 gsWarn << "Geometry 3 is only 2D!\n";
 
             geoStr = "profile2D";
-            inputFile = FLOW_DATA_DIR + geoStr + "_problem.xml";
+            inputFile = geoStr + "_problem.xml";
             break;
     }
 
     gsInfo << "Reading problem definition from file:\n" << inputFile << "\n\n";
+
+    std::string path = gsFileManager::find(inputFile);
+    if ( path.empty() )
+    {
+        gsWarn<<"Input file not found, quitting.\n";
+        return 1;
+    }
 
     gsFileData<> fd(inputFile);
     fd.getId(0, patches);   // id=0: multipatch domain
@@ -324,6 +336,7 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
         {
             case 0:
                 geoStr = "customGeo";
+                break;
             case 1:
             default:
                 geoStr = "BFS" + dimStr;
@@ -341,9 +354,6 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 
     // ------------------------------------
     // solve problem
-
-    if(geo == 2)
-        markElimDof(NSsolver);
 
     gsInfo << "\ninitialization...\n";
     NSsolver.initialize();
@@ -396,14 +406,4 @@ void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSo
         gsInfo << itVector[i] << ", ";
 
     gsInfo << "\nAverage number of linear solver iterations per Picard iteration: " << linSolverPtr->getAvgLinIterations() << "\n";
-}
-
-// mark one pressure DoF in the domain corner as fixed zero (for the lid driven cavity problem)
-template<class T, int MatOrder>
-void markElimDof(gsINSSolver<T, MatOrder>& NSsolver)
-{
-    std::vector<gsMatrix<index_t> > elimDof(1);
-    elimDof[0].setZero(1,1);
-
-    NSsolver.markDofsAsEliminatedZeros(elimDof, 1);
 }

@@ -26,8 +26,9 @@ namespace gismo
 
     @tparam T coefficient type
 
-    \ingroup Pde
-    \ingroup pdeclass
+    @ingroup Pde
+    @ingroup pdeclass
+    @ingroup IncompressibleFlow
  */
 
 template<class T>

@@ -22,7 +22,8 @@ namespace gismo
 /// @brief              Interface for classes solving linear systems inside the incompressible flow solvers (classes derived from gsFlowSolverBase).
 /// @tparam T           real number type type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-template<class T, int MatOrder>
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
 class gsFlowLinSystSolver
 {
 
@@ -97,7 +98,8 @@ public: // *** Getters ***
 /// @brief Direct solver for linear systems inside the incompressible flow solvers (classes derived from gsFlowSolverBase).
 /// @tparam T           coefficient type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-template<class T, int MatOrder>
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
 class gsFlowLinSystSolver_direct: public gsFlowLinSystSolver<T, MatOrder>
 {
 
@@ -153,7 +155,8 @@ public: // *** Member functions ***
 /// @tparam T           coefficient type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
 /// @tparam SolverType  the G+Smp/Eigen iterative solver type
-template<class T, int MatOrder, class SolverType>
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder, class SolverType>
 class gsFlowLinSystSolver_iter: public gsFlowLinSystSolver<T, MatOrder>
 {
 
@@ -222,7 +225,8 @@ public: // *** Getters/setters ***
 /// @tparam T           coefficient type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
 /// @tparam SolverType  the G+Smp/Eigen iterative solver type
-template<class T, int MatOrder, class SolverType>
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder, class SolverType>
 class gsFlowLinSystSolver_iterSP: public gsFlowLinSystSolver_iter<T, MatOrder, SolverType>
 {
 
@@ -274,7 +278,7 @@ public: // *** Member functions ***
 // ===================================================================================================================
 // ===================================================================================================================
 
-template<class T, int MatOrder, class SolverType = gsGMRes<T> >
+template <class T, int MatOrder, class SolverType = gsGMRes<T> >
 gsFlowLinSystSolver<T, MatOrder>* createLinSolver(typename gsFlowSolverParams<T>::Ptr paramsPtr, const gsFlowAssemblerBase<T, MatOrder>* assemblerPtr = NULL)
 {
     const gsINSAssembler<T, MatOrder>* INSassembPtr = dynamic_cast< const gsINSAssembler<T, MatOrder>* >(assemblerPtr);

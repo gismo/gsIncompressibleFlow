@@ -22,7 +22,8 @@ namespace gismo
 // === BASE BLOCKS ==== //
 
 /// @brief A base class for individual blocks of block preconditioners.
-/// @tparam T coefficient type
+/// @tparam T real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsINSPrecondBlock : public gsLinearOperator<T>
 {
@@ -82,19 +83,11 @@ public: // *** Member functions ***
 }; // class gsINSPrecondBlock
 
 
-/** @brief
-    Base class for block F of (modified) block preconditioner of the form
-    \f[
-    \left[ \begin{array}{cc}
-    F & B^T \\
-    0 & S
-    \end{array}
-    \right],
-    \f]
-
-    where several systems have to be solved.
-*/
-template <class T>
+ /// @brief Base class for block F of (modified) block preconditioner.
+ /// @tparam T          real number type
+ /// @tparam MatOrder   sparse matrix storage order (ColMajor/RowMajor)
+ /// @ingroup IncompressibleFlow
+ template <class T>
 class gsINSPrecondBlockMod : public gsINSPrecondBlock<T>
 {
 
@@ -150,17 +143,14 @@ public: // *** Constructor/destructor ***
 
 // === BLOCK F ==== //
 
-/** @brief
-    Class for block F of block preconditioner of the form
-    \f[
-    \left[ \begin{array}{cc}
-    F & B^T \\
-    0 & S
-    \end{array}
-    \right],
-    \f].
-
-    Implements action of \fF^{-1}\f. Asssumes that F is block-diagonal with identical diagonal subblocks, solves several linear systems with the diagonal subblock.
+/** 
+ * @brief Class for block F of block preconditioners.
+ * 
+ * Implements the action of \fF^{-1}\f. Asssumes that F is block-diagonal with identical diagonal subblocks, solves several linear systems with the diagonal subblock.
+ * 
+ * @tparam T        real number type
+ * @tparam MatOrder sparse matrix storage order (ColMajor/RowMajor)
+ * @ingroup IncompressibleFlow
 */
 template <class T, int MatOrder>
 class gsINSPrecondBlockF : public gsINSPrecondBlock<T>
@@ -235,18 +225,15 @@ public: // *** Getters/setters ***
 
 // === BLOCK Fwhole ==== //
 
-/** @brief
-Class for block F of block preconditioner of the form
-\f[
-\left[ \begin{array}{cc}
-F & B^T \\
-0 & S
-\end{array}
-\right],
-\f].
-
-Implements action of \fF^{-1}\f, solves linear system with the whole block F.
-*/
+/** 
+ * @brief Class for block F of block preconditioners.
+ * 
+ * Implements the action of \fF^{-1}\f, solves linear system with the whole block F.
+ * 
+ * @tparam T        real number type
+ * @tparam MatOrder sparse matrix storage order (ColMajor/RowMajor)
+ * @ingroup IncompressibleFlow
+ */
 template <class T, int MatOrder>
 class gsINSPrecondBlockFwhole : public gsINSPrecondBlock<T>
 {
@@ -318,18 +305,15 @@ public: // *** Getters/setters ***
 
 // === BLOCK Fdiag ==== //
 
-/** @brief
-Base class for block F of block preconditioner of the form
-\f[
-\left[ \begin{array}{cc}
-F & B^T \\
-0 & S
-\end{array}
-\right],
-\f].
-
-Implements action of \fF^{-1}\f. Neglects the off-diagonal blocks, solves subsystems with the diagonal blocks and assumes that they are not equal.
-*/
+/** 
+ * @brief Class for block F of block preconditioners.
+ * 
+ * Implements action of \fF^{-1}\f. Neglects the off-diagonal blocks, solves subsystems with the diagonal blocks and assumes that they are not equal.
+ * 
+ * @tparam T        real number type
+ * @tparam MatOrder sparse matrix storage order (ColMajor/RowMajor)
+ * @ingroup IncompressibleFlow
+ */
 template <class T, int MatOrder>
 class gsINSPrecondBlockFdiag : public gsINSPrecondBlockMod<T>
 {
@@ -409,18 +393,15 @@ public: // *** Getters/setters ***
 
 // === BLOCK Fmod ==== //
 
-/** @brief
-    Base class for block F of (modified) block preconditioner of the form
-    \f[
-    \left[ \begin{array}{cc}
-    F & B^T \\
-    0 & S
-    \end{array}
-    \right],
-    \f].
-
-    Implements action of \fF^{-1}\f. Assumes that the block F is not block-diagonal, solves a system with lower block-triangular submatrix of F (neglects the upper triangle).
-*/
+/** 
+ * @brief Class for block F of (modified) block preconditioners.
+ * 
+ * Implements action of \fF^{-1}\f. Assumes that the block F is not block-diagonal, solves a system with lower block-triangular submatrix of F (neglects the upper triangle).
+ * 
+ * @tparam T        real number type
+ * @tparam MatOrder sparse matrix storage order (ColMajor/RowMajor)
+ * @ingroup IncompressibleFlow
+ */
 template <class T, int MatOrder>
 class gsINSPrecondBlockFmod : public gsINSPrecondBlockMod<T>
 {
@@ -502,6 +483,10 @@ public: // *** Getters/setters ***
 
 // === BLOCK Bt ==== //
 
+/// @brief Class for B transpose block of block preconditioners.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSPrecondBlockBt : public gsLinearOperator<T>
 {
@@ -561,6 +546,10 @@ public: // *** Getters/setters ***
 
 // === Schur LSC ==== //
 
+/// @brief Class for Schur complement block of LSC preconditioner.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSPrecondSchurLSC : public gsINSPrecondBlock<T>
 {
@@ -646,6 +635,10 @@ public: // *** Getters/setters ***
 
 // === Schur PCD ==== //
 
+/// @brief Class for Schur complement block of PCD preconditioner.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSPrecondSchurPCD : public gsINSPrecondBlock<T>
 {
@@ -728,6 +721,10 @@ public: // *** Getters/setters ***
 
 // === Schur PCDmod ==== // 
 
+/// @brief Class for Schur complement block of modified PCD preconditioner.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSPrecondSchurPCDmod : public gsINSPrecondSchurPCD<T, MatOrder>
 {
@@ -782,6 +779,10 @@ public: // *** Member functions ***
 
 // === Schur AL ==== // 
 
+/// @brief Class for Schur complement block of AL preconditioner.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSPrecondSchurAL : public gsINSPrecondBlock<T>
 {
@@ -852,6 +853,10 @@ public: // *** Getters/setters ***
 
 // === Schur SIMPLE ==== // 
 
+/// @brief Class for Schur complement block of SIMPLE preconditioner.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSPrecondSchurSIMPLE : public gsINSPrecondBlock<T>
 {
@@ -935,6 +940,10 @@ public: // *** Getters/setters ***
 
 // === Schur MSIMPLER ==== // 
 
+/// @brief Class for Schur complement block of MSIMPLER preconditioner.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSPrecondSchurMSIMPLER : public gsINSPrecondBlock<T>
 {
@@ -1017,6 +1026,10 @@ public: // *** Getters/setters ***
 
 // === Schur Stokes ==== // 
 
+/// @brief Class for Schur complement block of Stokes preconditioner.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSPrecondSchurStokes : public gsINSPrecondBlock<T>
 {
