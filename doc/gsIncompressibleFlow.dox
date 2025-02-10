@@ -30,8 +30,8 @@ where \f$L\f$ is a characteristic length scale of the computational domain and \
 Picard linearization of the nonlinear convective term \f$ \boldsymbol{u} \cdot \nabla \boldsymbol{u} \f$ is considered in gsIncompressibleFlow module, resulting in an iterative process even in the stationary case. The weak formulation of the steady-state equations in the \f$(k+1)\f$-th iteration is
 
 \f{align*}{
-    \integ_{\Omega} (\boldsymbol{u}^k \cdot \nabla \boldsymbol{u}^{k+1}) \cdot \boldsymbol{v} + \nu \integ_{\Omega} \nabla \boldsymbol{u}^{k+1} : \nabla \boldsymbol{v} - \integ_{\Omega} p^{k+1} \nabla \cdot \boldsymbol{v} &= \integ_{\Omega} \boldsymbol{f} \cdot \boldsymbol{v},\\
-    \integ_{\Omega} q \nabla \cdot \boldsymbol{u}^{k+1} &= 0,
+    \int_{\Omega} (\boldsymbol{u}^k \cdot \nabla \boldsymbol{u}^{k+1}) \cdot \boldsymbol{v} + \nu \int_{\Omega} \nabla \boldsymbol{u}^{k+1} : \nabla \boldsymbol{v} - \int_{\Omega} p^{k+1} \nabla \cdot \boldsymbol{v} &= \int_{\Omega} \boldsymbol{f} \cdot \boldsymbol{v},\\
+    \int_{\Omega} q \nabla \cdot \boldsymbol{u}^{k+1} &= 0,
 \f}
 
 where \f$ \boldsymbol{v}, q \f$ are the velocity and pressure test functions, respectively.
@@ -52,6 +52,10 @@ Galerkin discretization of this problem leads to a saddle-point linear system in
     \mathbf{g}
     \end{bmatrix}
 \f}
+
+
+See also \ref gsIncompressibleFlow
+[optional/gsIncompressibleFlow/README.md](optional/gsIncompressibleFlow/README.md)
 
 \subsection gsIF_Contact Contact
 Author: Hana Honnerová -- hhornik@kma.zcu.cz
