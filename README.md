@@ -54,7 +54,7 @@ cd /path/to/gismo/build/bin
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/testProb_profile.png" width="36%">
-&nbsp &nbsp &nbsp &nbsp
+      
 <img src="https://raw.githubusercontent.com/gismo/gsIncompressibleFlow/media/image/francis_flow.png" width="40%">
 </p>
 
