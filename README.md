@@ -61,3 +61,7 @@ cd /path/to/gismo/build/bin
 <p align="center">
 Laminar flow around a 2D blade profile (left), in a Francis turbine runner wheel (right).
 </p>
+
+## Documentation
+
+For more information about individual classes, see the [Doxygen pages](https://gismo.github.io/group__IncompressibleFlow.html).

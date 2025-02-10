@@ -21,6 +21,10 @@ namespace gismo
 
 // === Base class for INS preconditioners === //
 
+/// @brief A base class for incompressible flow preconditioners.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSPreconditioner : public gsLinearOperator<T>
 {
@@ -84,26 +88,18 @@ public: // *** Getters/setters ***
 
 // === Block preconditioner === //
 
-/** @brief
-Base class for block preconditioners for linear systems arising from linearized Navier-Stokes of form
-\f[
-\left[ \begin{array}{cc}
-F & B^T \\
-B & 0
-\end{array}
-\right]
-\left[ \begin{array}{c}
-u \\
-p
-\end{array}
-\right] =
-\left[ \begin{array}{c}
-f \\
-g
-\end{array}
-\right],
-\f].
-*/
+/**
+ * @brief A base class for block preconditioners for linear systems arising in incompressible flow problems.
+ * 
+ * Preconditioners for linear systems of the form:
+ * \f[ \left[ \begin{array}{cc} F & B^T \\ B & 0 \end{array} \right]
+   \left[ \begin{array}{c} u \\ p \end{array} \right] =
+   \left[ \begin{array}{c} f \\ g \end{array} \right] \f]
+ * 
+ *  @tparam T           real number type
+ *  @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+ *  @ingroup IncompressibleFlow
+ */
 template <class T, int MatOrder>
 class gsINSBlockPrecondBase : public gsINSPreconditioner<T, MatOrder>
 {
@@ -186,6 +182,7 @@ public: // *** Getters/setters ***
 /// @brief Least-squares commutator preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
 class gsINSBlockPrecondLSC : public gsINSBlockPrecondBase<T, MatOrder>
 {
@@ -248,6 +245,7 @@ public: // *** Member functions ***
 /// @brief Pressure convection-diffusion preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
 class gsINSBlockPrecondPCD : public gsINSBlockPrecondBase<T, MatOrder>
 {
@@ -310,6 +308,7 @@ public: // *** Member functions ***
 /// @brief Modified pressure convection-diffusion preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
 class gsINSBlockPrecondPCDmod : public gsINSBlockPrecondBase<T, MatOrder>
 {
@@ -372,6 +371,7 @@ public: // *** Member functions ***
 /// @brief Augmented Lagrangian preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockFwhole<T, MatOrder> >
 class gsINSBlockPrecondAL : public gsINSBlockPrecondBase<T, MatOrder>
 {
@@ -452,6 +452,7 @@ public: // *** Member functions ***
 /// @brief SIMPLE preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
 class gsINSBlockPrecondSIMPLE : public gsINSBlockPrecondBase<T, MatOrder>
 {
@@ -539,6 +540,7 @@ public: // *** Member functions ***
 /// @brief SIMPLER preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
 class gsINSBlockPrecondSIMPLER : public gsINSBlockPrecondSIMPLE<T, MatOrder, BlockFType>
 {
@@ -608,6 +610,7 @@ public: // *** Member functions ***
 /// @brief MSIMPLER preconditioner.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
 class gsINSBlockPrecondMSIMPLER : public gsINSBlockPrecondBase<T, MatOrder>
 {
@@ -699,6 +702,7 @@ public: // *** Member functions ***
 /// @brief Block diagonal preconditioner for the Stokes problem.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
 class gsBlockPrecondStokes : public gsINSPreconditioner<T, MatOrder>
 {
@@ -777,6 +781,7 @@ public: // *** Getters/setters ***
 /// @brief Block triangular preconditioner for the Stokes problem.
 /// @tparam T           coefficient type
 /// @tparam BlockFType  type of block \fF\f
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder, class BlockFType = gsINSPrecondBlockF<T, MatOrder> >
 class gsBlockPrecondStokesTriang : public gsINSBlockPrecondBase<T, MatOrder>
 {

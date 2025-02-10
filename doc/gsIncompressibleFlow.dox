@@ -11,11 +11,11 @@ This module provides tools for solving incompressible flow problems.
 The mathematical model of incompressible viscous Newtonian flow is based on the incompressible Navier--Stokes equations. It is a system of \f$d+1\f$ differential equations, where \f$d\f$ is the spatial dimension. The time-dependent incompressible Navier--Stokes equations take the form
 
 \f{align*}{
-    \frac{\partial \boldsymbol{u}}{\partial t} + \boldsymbol{u} \cdot \nabla \boldsymbol{u} - \nu \Delta \boldsymbol{u} + \nabla p &= \boldsymbol{f},\\
-    \nabla \cdot \boldsymbol{u} &=& 0,
+    \frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u} - \nu \Delta \mathbf{u} + \nabla p &= \mathbf{f},\\
+    \nabla \cdot \mathbf{u} &= 0,
 \f}
 
-where \f$\boldsymbol{u}\f$ is the velocity vector, \f$p\f$ is the kinematic pressure, \f$\nu\f$ is the kinematic viscosity and \f$\boldsymbol{f}\f$ represents external forces acting on the fluid. When none of the quantities (including the force function \f$\boldsymbol{f}\f$) depend on time, we have \f$ \frac{\partial \boldsymbol{u}}{\partial t} = 0 \f$ and we talk about stationary or steady-state Navier--Stokes equations.
+where \f$\mathbf{u}\f$ is the velocity vector, \f$p\f$ is the kinematic pressure, \f$\nu\f$ is the kinematic viscosity and \f$\mathbf{f}\f$ represents external forces acting on the fluid. When none of the quantities (including the force function \f$\mathbf{f}\f$) depend on time, we have \f$ \frac{\partial \mathbf{u}}{\partial t} = 0 \f$ and we talk about stationary or steady-state Navier--Stokes equations.
 
 The flow can be (roughly) characterized by a dimensionless quantity called Reynolds number
 
@@ -27,14 +27,14 @@ where \f$L\f$ is a characteristic length scale of the computational domain and \
 
 \subsection gsIF_LinDiscr Linearization and discretization
 
-Picard linearization of the nonlinear convective term \f$ \boldsymbol{u} \cdot \nabla \boldsymbol{u} \f$ is considered in gsIncompressibleFlow module, resulting in an iterative process even in the stationary case. The weak formulation of the steady-state equations in the \f$(k+1)\f$-th iteration is
+Picard linearization of the nonlinear convective term \f$ \mathbf{u} \cdot \nabla \mathbf{u} \f$ is considered in gsIncompressibleFlow module, resulting in an iterative process even in the stationary case. The weak formulation of the steady-state equations in the \f$(k+1)\f$-th iteration is
 
 \f{align*}{
-    \int_{\Omega} (\boldsymbol{u}^k \cdot \nabla \boldsymbol{u}^{k+1}) \cdot \boldsymbol{v} + \nu \int_{\Omega} \nabla \boldsymbol{u}^{k+1} : \nabla \boldsymbol{v} - \int_{\Omega} p^{k+1} \nabla \cdot \boldsymbol{v} &= \int_{\Omega} \boldsymbol{f} \cdot \boldsymbol{v},\\
-    \int_{\Omega} q \nabla \cdot \boldsymbol{u}^{k+1} &= 0,
+    \int_{\Omega} (\mathbf{u}^k \cdot \nabla \mathbf{u}^{k+1}) \cdot \mathbf{v} + \nu \int_{\Omega} \nabla \mathbf{u}^{k+1} : \nabla \mathbf{v} - \int_{\Omega} p^{k+1} \nabla \cdot \mathbf{v} &= \int_{\Omega} \mathbf{f} \cdot \mathbf{v},\\
+    \int_{\Omega} q \nabla \cdot \mathbf{u}^{k+1} &= 0,
 \f}
 
-where \f$ \boldsymbol{v}, q \f$ are the velocity and pressure test functions, respectively.
+where \f$ \mathbf{v}, q \f$ are the velocity and pressure test functions, respectively.
 
 Galerkin discretization of this problem leads to a saddle-point linear system in each Picard iteration:
 

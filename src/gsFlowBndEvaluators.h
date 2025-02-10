@@ -22,8 +22,9 @@ namespace gismo
  * Used for evaluating some integral quantity defined on a part of a patch boundary, e.g. flow rate.
  * 
  * @tparam T real number type
+ * @ingroup IncompressibleFlow
  */
-template<class T>
+template <class T>
 class gsFlowBndEvaluator
 {
 
@@ -146,7 +147,8 @@ public: // *** Getters/setters ***
 
 /// @brief Flow rate evaluator.
 /// @tparam T real number type
-template<class T>
+/// @ingroup IncompressibleFlow
+template <class T>
 class gsFlowBndEvaluator_flowRate : public gsFlowBndEvaluator<T>
 {
 

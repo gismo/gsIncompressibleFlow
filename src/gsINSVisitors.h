@@ -25,6 +25,7 @@ namespace gismo
 /// @brief Base visitor for the velocity-velocity part of the Navier-Stokes system.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSVisitorUU : public gsFlowVisitor<T, MatOrder>
 {
@@ -74,6 +75,7 @@ public: // *** Member functions ***
 /// @brief Visitor for the linear terms in the velocity-velocity part of the Navier-Stokes system.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSVisitorUUlin : public gsINSVisitorUU<T, MatOrder>
 {
@@ -118,6 +120,7 @@ protected: // *** Member functions ***
 /// @brief Visitor for the non-linear terms in the velocity-velocity part of the Navier-Stokes system.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSVisitorUUnonlin : public gsINSVisitorUU<T, MatOrder>
 {
@@ -159,6 +162,7 @@ protected: // *** Member functions ***
 /// @brief Visitor for the velocity mass matrix.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSVisitorUUmass : public gsINSVisitorUU<T, MatOrder>
 {
@@ -198,6 +202,7 @@ protected: // *** Member functions ***
 /// @brief Visitor for the time discretization term.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSVisitorUUtimeDiscr : public gsINSVisitorUU<T, MatOrder>
 {
@@ -245,6 +250,8 @@ protected: // *** Member functions ***
  * 
  * @tparam T            real number type
  * @tparam MatOrder     sparse matrix storage order (ColMajor/RowMajor)
+ * 
+ * @ingroup IncompressibleFlow
  */
 template <class T, int MatOrder>
 class gsINSVisitorPU : public gsFlowVisitorVectorValued<T, MatOrder>  // PU: trial, test
@@ -307,6 +314,8 @@ public: // *** Member functions ***
  * 
  * @tparam T            real number type
  * @tparam MatOrder     sparse matrix storage order (ColMajor/RowMajor)
+ * 
+ * @ingroup IncompressibleFlow
  */
 template <class T, int MatOrder>
 class gsINSVisitorPU_withUPrhs : public gsINSVisitorPU<T, MatOrder>  // PU: trial, test
@@ -356,6 +365,8 @@ public: // *** Member functions ***
  * 
  * @tparam T            real number type
  * @tparam MatOrder     sparse matrix storage order (ColMajor/RowMajor)
+ * 
+ * @ingroup IncompressibleFlow
  */
 template <class T, int MatOrder>
 class gsINSVisitorUP : public gsFlowVisitorVectorValued<T, MatOrder>  // UP: trial, test
@@ -415,6 +426,7 @@ public: // *** Member functions ***
 /// @brief Base visitor for the pressure-pressure part of the Navier-Stokes system.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSVisitorPP : public gsFlowVisitor<T, MatOrder>
 {
@@ -535,6 +547,7 @@ public: // *** Member functions ***
 /// @brief Visitor for the pressure mass matrix.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSVisitorPPmass : public gsINSVisitorPP<T, MatOrder>
 {
@@ -578,6 +591,8 @@ protected: // *** Member functions ***
  * 
  * @tparam T            real number type
  * @tparam MatOrder     sparse matrix storage order (ColMajor/RowMajor)
+ * 
+ * @ingroup IncompressibleFlow
  */
 template <class T, int MatOrder>
 class gsINSVisitorPPlaplace : public gsINSVisitorPP<T, MatOrder>
@@ -622,6 +637,8 @@ protected: // *** Member functions ***
  * 
  * @tparam T            real number type
  * @tparam MatOrder     sparse matrix storage order (ColMajor/RowMajor)
+ * 
+ * @ingroup IncompressibleFlow
  */
 template <class T, int MatOrder>
 class gsINSVisitorPPconvection : public gsINSVisitorPP<T, MatOrder>
@@ -697,6 +714,7 @@ protected: // *** Member functions ***
 /// @brief Visitor for right-hand side of the momentum equations (force function).
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSVisitorRhsU : public gsFlowVisitor<T, MatOrder>
 {
@@ -765,6 +783,7 @@ public: // *** Member functions ***
 /// @brief Visitor for right-hand side of the continuity equation (source function).
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
 template <class T, int MatOrder>
 class gsINSVisitorRhsP : public gsFlowVisitor<T, MatOrder>
 {

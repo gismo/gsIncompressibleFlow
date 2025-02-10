@@ -19,17 +19,18 @@
 namespace gismo
 {
 
-/** @brief
-    A class that holds all parameters needed by the incompressible flow solver.
-
-    - the INS PDE representation
-    - discretization bases
-    - list of parameters/options for the solver
-    - list of assembler options
-    - list of preconditioner options
+/** @brief A class that holds all parameters needed by the incompressible flow solver.
+ * 
+ * - the INS PDE representation
+ * - discretization bases
+ * - list of parameters/options for the solver
+ * - list of assembler options
+ * - list of preconditioner options
+ * 
+ * @ingroup IncompressibleFlow
  */
 
-template<class T>
+template <class T>
 class gsFlowSolverParams
 {
 

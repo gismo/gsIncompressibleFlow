@@ -26,7 +26,8 @@ namespace gismo
 /// @brief              A base class for incompressible Navier-Stokes solvers.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-template<class T, int MatOrder>
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
 class gsINSSolver: public gsFlowSolverBase<T, MatOrder>
 {
 
@@ -81,7 +82,8 @@ public: // *** Getters/setters ***
 /// @brief              The steady incompressible Navier-Stokes solver.
 /// @tparam T           coefficient type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-template<class T = real_t, int MatOrder = RowMajor>
+/// @ingroup IncompressibleFlow
+template <class T = real_t, int MatOrder = RowMajor>
 class gsINSSolverSteady : public gsINSSolver<T, MatOrder>
 {
 
@@ -142,7 +144,8 @@ public: // *** Getters/setters ***
 /// @brief              The unsteady incompressible Navier-Stokes solver.
 /// @tparam T           coefficient type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-template<class T = real_t, int MatOrder = RowMajor>
+/// @ingroup IncompressibleFlow
+template <class T = real_t, int MatOrder = RowMajor>
 class gsINSSolverUnsteady : public gsINSSolver<T, MatOrder>
 {
 

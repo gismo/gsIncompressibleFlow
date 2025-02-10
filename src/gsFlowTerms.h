@@ -19,6 +19,7 @@ namespace gismo
 
 /// @brief      A class computing individual terms of the weak formulation appearing in incompressible flow problems.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsFlowTerm
 {
@@ -111,6 +112,7 @@ protected: // *** Member functions ***
 
 /// @brief      A class computing nonlinear terms of the weak formulation appearing in incompressible flow problems.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsFlowTermNonlin : public gsFlowTerm<T>
 {
@@ -171,6 +173,7 @@ protected: // *** Member functions ***
 
 /// @brief      A class for integrals of the form: test function value * trial function value.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsFlowTerm_ValVal : public gsFlowTerm<T>
 {
@@ -195,6 +198,7 @@ public: // *** Member functions ***
 
 /// @brief      A class for integrals of the form: (1 / time step) * test function value * trial function value.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsFlowTerm_TimeDiscr : public gsFlowTerm_ValVal<T>
 {
@@ -222,6 +226,7 @@ protected: // *** Member functions ***
 
 /// @brief      A class for integrals of the form: test function gradient * trial function gradient.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsFlowTerm_GradGrad : public gsFlowTerm<T>
 {
@@ -246,6 +251,7 @@ public: // *** Member functions ***
 
 /// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsFlowTerm_Diffusion : public gsFlowTerm_GradGrad<T>
 {
@@ -273,6 +279,7 @@ protected: // *** Member functions ***
 
 /// @brief      A class for integrals of the form: test function value * rhs function value.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsFlowTerm_rhs : public gsFlowTerm<T>
 {

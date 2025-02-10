@@ -20,6 +20,7 @@ namespace gismo
 
 /// @brief      A class for integrals of the form: pressure trial function value * velocity test function divergence.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsINSTerm_PvalUdiv : public gsFlowTerm<T> // PU: trial, test
 {
@@ -50,6 +51,7 @@ public: // *** Member functions ***
 
 /// @brief      A class for integrals of the form: velocity trial function divergence * pressure test function value.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsINSTerm_UdivPval : public gsFlowTerm<T> // UP: trial, test
 {
@@ -74,6 +76,7 @@ public: // *** Member functions ***
 
 /// @brief      A class for integrals of the form: velocity solution * trial function gradient * test function value.
 /// @tparam T   real number type
+/// @ingroup IncompressibleFlow
 template <class T>
 class gsINSTerm_UsolGradVal : public gsFlowTermNonlin<T> // order: trial, test
 {
