@@ -239,8 +239,6 @@ void gsFlowVisitor<T, MatOrder>::setupQuadrature()
     index_t maxDegTest = m_testBasisPtr->maxDegree();
     index_t maxDegTrial = m_trialBasisPtr->maxDegree();
 
-    // numQuadNodes.setConstant(m_paramsPtr->getBases().front().piece(0).maxDegree() + 1);
-    // numQuadNodes.setConstant(math::min(maxDegTest, maxDegTrial)+1);
     numQuadNodes.setConstant(math::max(maxDegTest, maxDegTrial)+1);
 
     m_quRule = gsGaussRule<T>(numQuadNodes);
