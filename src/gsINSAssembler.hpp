@@ -710,7 +710,6 @@ template<class T, int MatOrder>
 void gsINSAssemblerUnsteady<T, MatOrder>::initMembers()
 {
     Base::initMembers();
-    updateSizes();
 
     m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T, MatOrder>(m_paramsPtr);
     m_visitorTimeDiscr.initialize();
