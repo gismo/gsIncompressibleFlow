@@ -757,7 +757,7 @@ void gsINSVisitorRhsU<T, MatOrder>::localToGlobal_per(gsMatrix<T>& globalRhs)
                 {
                     for (int t = 0; t < dim; t++)
                     {
-                        T tmp = m_periodicTransformMat(t, s) * m_localMat(i, t);
+                        T tmp = m_periodicTransformMat(t, s) * m_localMat(i, s);
 
                         if (tmp != 0)
                             globalRhs.coeffRef(iiMapped + t*uCompSize, 0) += tmp; // t or s???

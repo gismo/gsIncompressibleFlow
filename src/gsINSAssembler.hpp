@@ -241,7 +241,7 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
     else
     {
         m_blockUUnonlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_whole.outerSize(), m_nnzPerRowU));
-        this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_whole, m_rhsUlin);
+        this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_whole, m_rhsUnonlin);
     }
 
     // linear operators needed for PCD preconditioner
