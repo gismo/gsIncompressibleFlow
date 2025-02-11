@@ -79,7 +79,7 @@ public: // *** Constructor/destructor ***
         //gsTMSolverSST<T> m_TMsolver;
         
         // create assembler
-        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(m_paramsPtr);
+        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr);
                 
         initMembers();
 

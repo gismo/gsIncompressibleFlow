@@ -58,7 +58,9 @@ public: // *** Constructor/destructor ***
 
     gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
     Base(paramsPtr)
-    { }
+    { 
+        initMembers();
+    }
 
     virtual ~gsRANSAssemblerUnsteady()
     { }

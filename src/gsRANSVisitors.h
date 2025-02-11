@@ -61,6 +61,12 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     void initMembers();
 
+    virtual void defineTestShapeUnknowns()
+    {
+        m_testUnkID = 0;    // velocity
+        m_shapeUnkID = 0;   // velocity
+    }
+
     // upravit pro RANS
     virtual void defineTerms()
     {
@@ -122,6 +128,12 @@ protected: // *** Member functions ***
 
     /// @brief Initialize all members.
     void initMembers();
+
+    virtual void defineTestShapeUnknowns()
+    {
+        m_testUnkID = 0;    // velocity
+        m_shapeUnkID = 0;   // velocity
+    }
 
     // upravit pro RANS
     virtual void defineTerms()
