@@ -38,7 +38,9 @@ protected: // *** Class members ***
     gsSparseMatrix<T, MatOrder> m_matRANSsymgradoffdiag;
     gsMatrix<T> m_rhsRANS;
     gsMatrix<T> m_rhsRANSsymgradoffdiag;
-
+    gsTMSolverSST<T, MatOrder>* m_TMsolver;
+    //gsTMSolverSST<T, MatOrder>* m_TMsolver;
+    bool m_bComputeTMfirst;
 
 protected: // *** Base class members ***
 
@@ -56,10 +58,10 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
+    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr, gsTMSolverSST<T, MatOrder>* TMsolver): 
     Base(paramsPtr)
     { 
-        initMembers();
+        initMembers(TMsolver);
     }
 
     virtual ~gsRANSAssemblerUnsteady()
@@ -69,7 +71,7 @@ public: // *** Constructor/destructor ***
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    void initMembers();
+    void initMembers(gsTMSolverSST<T, MatOrder>* TMsolver);
 
     /// @brief Assemble the linear part of the matrix.
     virtual void assembleLinearPart();

@@ -63,7 +63,8 @@ public: // *** Constructor/destructor ***
 public: // *** Member functions ***
 
     /// @brief Compute the Stokes problem and save the solution into m_solution.
-    virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/);
+    //virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/);
+    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes);
 
     //virtual void plotTurbulentViscosity();
 
@@ -72,7 +73,11 @@ public: // *** Getters/setters ***
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsTMSolverSST"; }
 
-    gsVector<T> getTurbulentViscosity() { return m_TurbulentViscosityVals; }
+    gsVector<T> getTurbulentViscosity() 
+    { 
+        GISMO_ASSERT(m_TurbulentViscosityVals.rows() > 0, "Turbulent viscosity not evaluated yet.");    
+        return m_TurbulentViscosityVals; 
+    }
 
     /// @brief Returns a pointer to the assembler.
     //virtual gsINSAssembler<T, MatOrder>* getAssembler() const

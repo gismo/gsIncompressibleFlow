@@ -16,19 +16,21 @@ namespace gismo
 {
 
 template<class T, int MatOrder>
-void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers()
+void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers(gsTMSolverSST<T, MatOrder>* TMsolver)
 {
     Base::initMembers();
     Base::updateSizes();
 
-    m_visitorRANSsymgraddiag = gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>(m_paramsPtr);
+    m_TMsolver = TMsolver;
+
+    m_visitorRANSsymgraddiag = gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>(m_paramsPtr, m_TMsolver);
     m_visitorRANSsymgraddiag.initialize();
 
-    m_visitorRANSsymgradoffdiag = gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>(m_paramsPtr);
+    m_visitorRANSsymgradoffdiag = gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>(m_paramsPtr, m_TMsolver);
     m_visitorRANSsymgradoffdiag.initialize();
     
     // neco s turbulentni viskozitou nebo modelem?
-
+    m_TMsolver = TMsolver;
 }
 
 template<class T, int MatOrder>

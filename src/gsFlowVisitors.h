@@ -191,6 +191,7 @@ protected: // *** Base class members ***
     using Base::m_mapData;
     using Base::m_testFunActives;
     using Base::m_shapeFunActives;
+    using Base::m_quNodes;
     using Base::m_quWeights;
     using Base::m_testFunData;
     using Base::m_shapeFunData;

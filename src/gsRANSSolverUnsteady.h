@@ -44,7 +44,7 @@ public: // *** Class members ***
     //T m_innerTol;
 
     // nove definovane zde
-    //gsTMSolverSST<T, MatOrder>* m_TMsolver = NULL;
+    gsTMSolverSST<T, MatOrder>* m_TMsolver = NULL;
     bool m_bComputeTMfirst;
     real_t m_turbT;
 
@@ -76,10 +76,10 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr)
     { 
         // create turbulence solver
-        //gsTMSolverSST<T> m_TMsolver;
+        m_TMsolver = new gsTMSolverSST<T, MatOrder>(paramsPtr);
         
         // create assembler
-        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr);
+        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr, m_TMsolver);
                 
         initMembers();
 

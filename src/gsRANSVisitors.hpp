@@ -16,14 +16,40 @@ namespace gismo
 {
 
 template <class T, int MatOrder>
-void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::initMembers()
+void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::initMembers(gsTMSolverSST<T, MatOrder>* TMsolver)
 {
     m_viscosity = m_paramsPtr->getPde().viscosity();
-    
-    m_TMsolver = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
+    gsInfo << "viskozita v initMembers() " << m_viscosity << std::endl;
 
+    gsInfo << "m_quNodes " << m_quNodes.rows() << ", " << m_quNodes.rows() << std::endl;
+    
+    m_TMsolver = TMsolver;
     m_TMsolver->evalTurbulentViscosity(m_quNodes);
     m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+    
+}
+
+// ========================================================================================================
+
+template <class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::initMembers()
+{
+    //m_viscosity = m_paramsPtr->getPde().viscosity();
+    //gsInfo << "viskozita v initMembers() " << m_viscosity << std::endl;
+
+    //gsInfo << "m_quNodes " << m_quNodes.rows() << ", " << m_quNodes.rows() << std::endl;
+    
+    //m_TMsolver->evalTurbulentViscosity(m_quNodes);
+
+    
+}
+
+template<class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::initialize()
+{
+    Base::initialize();
+
+    
 }
 
 template <class T, int MatOrder>
@@ -81,12 +107,18 @@ void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::localToGlobal(const std:
 template <class T, int MatOrder>
 void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::initMembers()
 {
-    m_viscosity = m_paramsPtr->getPde().viscosity();
+    //m_viscosity = m_paramsPtr->getPde().viscosity();
 
-    m_TMsolver = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
+    //m_TMsolver = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
+}
 
-    m_TMsolver->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+template<class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::initialize()
+{
+    Base::initialize();
+
+    //m_TMsolver->evalTurbulentViscosity(m_quNodes);
+    //m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
 }
 
 template <class T, int MatOrder>

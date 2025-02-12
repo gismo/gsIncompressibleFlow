@@ -16,8 +16,10 @@ namespace gismo
 {
 
 template<class T, int MatOrder>
-void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/)
+void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes)
 {
+    gsInfo << "evalTurbVisc " << quNodes.cols() << std::endl;
+
     m_TurbulentViscosityVals.setZero(quNodes.cols());
     
     for (index_t i = 0; i < quNodes.cols(); i++)
