@@ -29,6 +29,10 @@ class gsTMSolverBase: public gsFlowSolverBase<T, MatOrder>
 public:
     typedef gsFlowSolverBase<T, MatOrder> Base;
 
+public: // *** Class members ***
+
+    gsVector<T> m_TurbulentViscosityVals;
+
 protected: // *** Base class members ***
 
     using Base::m_assemblerPtr;
@@ -66,6 +70,12 @@ public: // *** Getters/setters ***
 
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsTMSolverBase"; }
+
+    gsVector<T> getTurbulentViscosity() 
+    { 
+        GISMO_ASSERT(m_TurbulentViscosityVals.rows() > 0, "Turbulent viscosity not evaluated yet.");    
+        return m_TurbulentViscosityVals; 
+    }
 
     /// @brief Returns a pointer to the assembler.
     //virtual gsINSAssembler<T, MatOrder>* getAssembler() const

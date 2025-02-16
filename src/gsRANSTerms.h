@@ -31,14 +31,14 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsRANSTerm_SymmetricGradientDiag(real_t viscosity, gsVector<T> turbViscVals)
+    gsRANSTerm_SymmetricGradientDiag(/*real_t viscosity, gsVector<T> turbViscVals*/)
     {
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
         this->m_testFunFlags = NEED_DERIV;
         this->m_shapeFunFlags = NEED_DERIV;
 
-        m_viscosity = viscosity;
-        m_turbViscosityVals = turbViscVals;
+        //m_viscosity = viscosity;
+        //m_turbViscosityVals = turbViscVals;
     }
 
 
@@ -46,6 +46,12 @@ public: // *** Member functions ***
 
     //virtual void gsRANSTerm_Diffusion<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMatA, std::vector<gsMatrix<T> > localMatDiag);
     void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat);
+
+public: // *** Getter/setters
+
+    void setTurbulentViscosityVals(gsVector<T> turbViscosityVals) { m_turbViscosityVals = turbViscosityVals; }
+
+    void setViscosity(real_t viscosity) { m_viscosity = viscosity; }
 
 };
 
@@ -64,14 +70,14 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsRANSTerm_SymmetricGradientOffdiag(real_t viscosity, gsVector<T> turbViscVals)
+    gsRANSTerm_SymmetricGradientOffdiag(/*real_t viscosity, gsVector<T> turbViscVals*/)
     {
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
         this->m_testFunFlags = NEED_DERIV;
         this->m_shapeFunFlags = NEED_DERIV;
 
-        m_viscosity = viscosity;
-        m_turbViscosityVals = turbViscVals;
+        //m_viscosity = viscosity;
+        //m_turbViscosityVals = turbViscVals;
     }
 
 
@@ -79,6 +85,12 @@ public: // *** Member functions ***
 
     //virtual void gsRANSTerm_Diffusion<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMatA, std::vector<gsMatrix<T> > localMatDiag);
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat);
+
+public: // *** Getter/setters
+
+    void setTurbulentViscosityVals(gsVector<T> turbViscosityVals) { m_turbViscosityVals = turbViscosityVals; }
+
+    void setViscosity(real_t viscosity) { m_viscosity = viscosity; }
 
 };
 

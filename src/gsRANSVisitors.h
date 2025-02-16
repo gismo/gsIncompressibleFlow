@@ -20,6 +20,7 @@
 namespace gismo
 {
 
+/*
 template <class T, int MatOrder>
 class gsRANSVisitorUUSymmetricGradient : public gsFlowVisitorVectorValued<T, MatOrder>
 {
@@ -61,23 +62,31 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     void initMembers(gsTMSolverSST<T, MatOrder>* TMsolver);
 
+    void evaluate(index_t testFunID);
+
+    void evaluate(const gsDomainIterator<T>* domIt);
+
     virtual void defineTestShapeUnknowns()
     {
         m_testUnkID = 0;    // velocity
         m_shapeUnkID = 0;   // velocity
     }
-
-
 };
+*/
 
 // ========================================================================================================
 
 template <class T, int MatOrder>
-class gsRANSVisitorUUSymmetricGradientDiag : public gsRANSVisitorUUSymmetricGradient<T, MatOrder>
+class gsRANSVisitorUUSymmetricGradientDiag : public gsFlowVisitorVectorValued<T, MatOrder>
 {
 
 public:
-    typedef gsRANSVisitorUUSymmetricGradient<T, MatOrder> Base;
+    typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
+
+public:
+    real_t m_viscosity;
+    gsTMSolverSST<T, MatOrder>* m_TMsolver = NULL;
+    gsVector<T> m_TurbulentViscosityVals;
 
 protected: // *** Base class members ***
 
@@ -91,36 +100,47 @@ protected: // *** Base class members ***
     using Base::m_shapeFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
-    using Base::m_TurbulentViscosityVals;
-    using Base::m_viscosity;
+    //using Base::m_TurbulentViscosityVals;
+    //using Base::m_viscosity;
+    //using Base::m_TMsolver;
 
 public: // *** Constructor/destructor ***
 
     gsRANSVisitorUUSymmetricGradientDiag() {}
 
-    gsRANSVisitorUUSymmetricGradientDiag(typename gsFlowSolverParams<T>::Ptr paramsPtr, gsTMSolverSST<T, MatOrder>* TMsolver) :
-    Base(paramsPtr, TMsolver)
+    gsRANSVisitorUUSymmetricGradientDiag(typename gsFlowSolverParams<T>::Ptr paramsPtr/*, gsTMSolverSST<T, MatOrder>* TMsolver*/) :
+    Base(paramsPtr)
     { 
-        initMembers();
+        initMembers(/*TMsolver*/);
     }
 
 
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    void initMembers();
+    void initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/);
+
+    void evaluate(index_t testFunID);
+
+    void evaluate(const gsDomainIterator<T>* domIt);
 
     // upravit pro RANS
     virtual void defineTerms()
     {
         // evaluate turbulent viscosity
 
-        m_terms.push_back( new gsRANSTerm_SymmetricGradientDiag<T>(m_viscosity, m_TurbulentViscosityVals) );
+        m_terms.push_back( new gsRANSTerm_SymmetricGradientDiag<T>(/*m_viscosity, m_TurbulentViscosityVals*/) );
         
         //if(m_paramsPtr->options().getSwitch("unsteady"))
         //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
 
         // ... other terms, e.g. from stabilizations
+    }
+
+    virtual void defineTestShapeUnknowns()
+    {
+        m_testUnkID = 0;    // velocity
+        m_shapeUnkID = 0;   // velocity
     }
 
 public: // *** Member functions *** 
@@ -130,16 +150,25 @@ public: // *** Member functions ***
 
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
+public: // Getter/setters
+
+    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolver = TMsolver;}
+
 };
 
 // ==========================================================================================================
 
 template <class T, int MatOrder>
-class gsRANSVisitorUUSymmetricGradientOffdiag : public gsRANSVisitorUUSymmetricGradient<T, MatOrder>
+class gsRANSVisitorUUSymmetricGradientOffdiag : public gsFlowVisitorVectorValued<T, MatOrder>
 {
 
 public:
-    typedef gsRANSVisitorUUSymmetricGradient<T, MatOrder> Base;
+    typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
+
+public:
+    real_t m_viscosity;
+    gsTMSolverBase<T, MatOrder>* m_TMsolver = NULL;
+    gsVector<T> m_TurbulentViscosityVals;
 
 protected: // *** Base class members ***
 
@@ -153,36 +182,46 @@ protected: // *** Base class members ***
     using Base::m_shapeFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
-    using Base::m_TurbulentViscosityVals;
-    using Base::m_viscosity;
+    //using Base::m_TurbulentViscosityVals;
+    //using Base::m_viscosity;
 
 public: // *** Constructor/destructor ***
 
     gsRANSVisitorUUSymmetricGradientOffdiag() {}
 
-    gsRANSVisitorUUSymmetricGradientOffdiag(typename gsFlowSolverParams<T>::Ptr paramsPtr, gsTMSolverSST<T, MatOrder>* TMsolver) :
-    Base(paramsPtr, TMsolver)
+    gsRANSVisitorUUSymmetricGradientOffdiag(typename gsFlowSolverParams<T>::Ptr paramsPtr/*, gsTMSolverSST<T, MatOrder>* TMsolver*/) :
+    Base(paramsPtr)
     { 
-        initMembers();
+        initMembers(/*TMsolver*/);
     }
 
 
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    void initMembers();
+    void initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/);
+
+    void evaluate(index_t testFunID);
+
+    void evaluate(const gsDomainIterator<T>* domIt);
 
     // upravit pro RANS
     virtual void defineTerms()
     {
         // evaluate turbulent viscosity
 
-        m_terms.push_back( new gsRANSTerm_SymmetricGradientOffdiag<T>(m_viscosity, m_TurbulentViscosityVals) );
+        m_terms.push_back( new gsRANSTerm_SymmetricGradientOffdiag<T>(/*m_viscosity, m_TurbulentViscosityVals*/) );
 
         //if(m_paramsPtr->options().getSwitch("unsteady"))
         //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
 
         // ... other terms, e.g. from stabilizations
+    }
+
+    virtual void defineTestShapeUnknowns()
+    {
+        m_testUnkID = 0;    // velocity
+        m_shapeUnkID = 0;   // velocity
     }
 
 public: // *** Member functions ***    
@@ -192,6 +231,10 @@ public: // *** Member functions ***
 
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
+public: // Getter/setters
+
+    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolver = TMsolver;}
+    
 };
 
 } // namespace gismo

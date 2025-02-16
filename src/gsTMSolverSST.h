@@ -31,10 +31,6 @@ class gsTMSolverSST: public gsTMSolverBase<T, MatOrder>
 public:
     typedef gsTMSolverBase<T, MatOrder> Base;
 
-public: // *** Class members ***
-
-    gsVector<T> m_TurbulentViscosityVals;
-
 protected: // *** Base class members ***
 
     using Base::m_assemblerPtr;
@@ -44,6 +40,7 @@ protected: // *** Base class members ***
     using Base::m_outFile;
     using Base::m_fileOutput;
     using Base::m_dispOutput;
+    using Base::m_TurbulentViscosityVals;
 
 public: // *** Constructor/destructor ***
 
@@ -72,12 +69,6 @@ public: // *** Getters/setters ***
 
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsTMSolverSST"; }
-
-    gsVector<T> getTurbulentViscosity() 
-    { 
-        GISMO_ASSERT(m_TurbulentViscosityVals.rows() > 0, "Turbulent viscosity not evaluated yet.");    
-        return m_TurbulentViscosityVals; 
-    }
 
     /// @brief Returns a pointer to the assembler.
     //virtual gsINSAssembler<T, MatOrder>* getAssembler() const

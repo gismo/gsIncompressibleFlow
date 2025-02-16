@@ -28,6 +28,10 @@ void gsRANSTerm_SymmetricGradientDiag<T>::assemble(const gsMapData<T>& mapData, 
     const index_t nQuPoints = quWeights.rows();
     gsMatrix<T> testFunPhysGrad, shapeFunPhysGrad;
 
+    gsMatrix<T> lMat(nQuPoints, nQuPoints); // add one matrix to localMat for matrix A_nuT
+    lMat.setZero();
+    localMat.push_back(lMat);
+
     for (index_t k = 0; k < nQuPoints; k++)
     {
         const T weight = quWeights(k) * coeffMeasure(k);
@@ -59,6 +63,10 @@ void gsRANSTerm_SymmetricGradientOffdiag<T>::assemble(const gsMapData<T>& mapDat
 
     const index_t nQuPoints = quWeights.rows();
     gsMatrix<T> testFunPhysGrad, shapeFunPhysGrad;
+
+    gsMatrix<T> lMat(nQuPoints, nQuPoints); // add one matrix to localMat for matrix A_nuT
+    lMat.setZero();
+    localMat.push_back(lMat);
 
     for (index_t k = 0; k < nQuPoints; k++)
     {

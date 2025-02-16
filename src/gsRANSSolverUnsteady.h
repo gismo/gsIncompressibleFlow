@@ -44,7 +44,7 @@ public: // *** Class members ***
     //T m_innerTol;
 
     // nove definovane zde
-    gsTMSolverSST<T, MatOrder>* m_TMsolver = NULL;
+    gsTMSolverBase<T, MatOrder>* m_TMsolver = NULL;
     bool m_bComputeTMfirst;
     real_t m_turbT;
 
@@ -76,11 +76,18 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr)
     { 
         // create turbulence solver
-        m_TMsolver = new gsTMSolverSST<T, MatOrder>(paramsPtr);
-        
+        if (m_paramsPtr->options().getString("TM.eval") == "SST") 
+        {
+            m_TMsolver = new gsTMSolverSST<T, MatOrder>(paramsPtr);
+        }
+        //elseif (m_paramsPtr->options().getSwitch("TM.eval") == "SA") 
+        //{ }
+        else 
+            gsInfo << "Undefined turbulent model!" << std::endl;
+
         // create assembler
-        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr, m_TMsolver);
-                
+        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr/*, m_TMsolver*/);
+                        
         initMembers();
 
         m_paramsPtr->options().setSwitch("unsteady", true);

@@ -15,25 +15,49 @@
 namespace gismo
 {
 
+/*
 template <class T, int MatOrder>
 void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::initMembers(gsTMSolverSST<T, MatOrder>* TMsolver)
 {
     m_viscosity = m_paramsPtr->getPde().viscosity();
     gsInfo << "viskozita v initMembers() " << m_viscosity << std::endl;
 
+    m_TMsolver = TMsolver;
+}
+
+template <class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::evaluate(index_t testFunID)
+{
+    Base::evaluate(testFunID);
+
     gsInfo << "m_quNodes " << m_quNodes.rows() << ", " << m_quNodes.rows() << std::endl;
     
-    m_TMsolver = TMsolver;
     m_TMsolver->evalTurbulentViscosity(m_quNodes);
     m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
     
 }
 
+template <class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    Base::evaluate(domIt);
+
+    gsInfo << "m_quNodes " << m_quNodes.rows() << ", " << m_quNodes.rows() << std::endl;
+    
+    m_TMsolver->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+    
+}
+*/
+
 // ========================================================================================================
 
 template <class T, int MatOrder>
-void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::initMembers()
+void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/)
 {
+    m_viscosity = m_paramsPtr->getPde().viscosity();
+    
+    //m_TMsolver = TMsolver;
     //m_viscosity = m_paramsPtr->getPde().viscosity();
     //gsInfo << "viskozita v initMembers() " << m_viscosity << std::endl;
 
@@ -50,6 +74,42 @@ void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::initialize()
     Base::initialize();
 
     
+}
+
+
+template <class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::evaluate(index_t testFunID)
+{
+    Base::evaluate(testFunID);
+
+    m_TMsolver->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+
+    gsRANSTerm_SymmetricGradientDiag<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradientDiag<T>* > (m_terms.back());
+
+    if (termPtr)
+    {
+        termPtr->setViscosity(m_viscosity);
+        termPtr->setTurbulentViscosityVals(m_TurbulentViscosityVals);
+    } 
+    
+}
+
+template <class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    Base::evaluate(domIt);
+
+    m_TMsolver->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+
+    gsRANSTerm_SymmetricGradientDiag<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradientDiag<T>* > (m_terms.back());
+
+    if (termPtr)
+    {
+        termPtr->setViscosity(m_viscosity);
+        termPtr->setTurbulentViscosityVals(m_TurbulentViscosityVals);
+    }  
 }
 
 template <class T, int MatOrder>
@@ -105,8 +165,11 @@ void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::localToGlobal(const std:
 // ===========================================================================================================
 
 template <class T, int MatOrder>
-void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::initMembers()
+void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/)
 {
+    m_viscosity = m_paramsPtr->getPde().viscosity();
+    
+    //m_TMsolver = TMsolver;
     //m_viscosity = m_paramsPtr->getPde().viscosity();
 
     //m_TMsolver = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
@@ -119,6 +182,41 @@ void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::initialize()
 
     //m_TMsolver->evalTurbulentViscosity(m_quNodes);
     //m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+}
+
+template <class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::evaluate(index_t testFunID)
+{
+    Base::evaluate(testFunID);
+
+    m_TMsolver->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+
+    gsRANSTerm_SymmetricGradientOffdiag<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradientOffdiag<T>* > (m_terms.back());
+
+    if (termPtr)
+    {
+        termPtr->setViscosity(m_viscosity);
+        termPtr->setTurbulentViscosityVals(m_TurbulentViscosityVals);
+    } 
+    
+}
+
+template <class T, int MatOrder>
+void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    Base::evaluate(domIt);
+
+    m_TMsolver->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+
+    gsRANSTerm_SymmetricGradientOffdiag<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradientOffdiag<T>* > (m_terms.back());
+
+    if (termPtr)
+    {
+        termPtr->setViscosity(m_viscosity);
+        termPtr->setTurbulentViscosityVals(m_TurbulentViscosityVals);
+    }  
 }
 
 template <class T, int MatOrder>
@@ -149,14 +247,14 @@ void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::localToGlobal(const s
 
                 if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
                 {
-                    globalMat.coeffRef(ii, jj + uCompSize) += m_locMatVec[dim+1](i, j);   // block E12
-                    globalMat.coeffRef(ii + uCompSize, jj) += m_locMatVec[dim+1](i, j);   // block E21=sym(E12)
+                    globalMat.coeffRef(ii, jj + uCompSize) += m_locMatVec[0](i, j);   // block E12
+                    globalMat.coeffRef(ii + uCompSize, jj) += m_locMatVec[0](i, j);   // block E21=sym(E12)
                     if (dim == 3)
                     {
-                        globalMat.coeffRef(ii, jj + 2*uCompSize) += m_locMatVec[dim+2](i, j);   // block E13
-                        globalMat.coeffRef(ii + 2*uCompSize, jj) += m_locMatVec[dim+2](i, j);   // block E31=sym(E13)
-                        globalMat.coeffRef(ii + uCompSize, jj + 2*uCompSize) += m_locMatVec[dim+3](i, j);   // block E23
-                        globalMat.coeffRef(ii + 2*uCompSize, jj + uCompSize) += m_locMatVec[dim+3](i, j);   // block E32=sym(E23)
+                        globalMat.coeffRef(ii, jj + 2*uCompSize) += m_locMatVec[1](i, j);   // block E13
+                        globalMat.coeffRef(ii + 2*uCompSize, jj) += m_locMatVec[1](i, j);   // block E31=sym(E13)
+                        globalMat.coeffRef(ii + uCompSize, jj + 2*uCompSize) += m_locMatVec[2](i, j);   // block E23
+                        globalMat.coeffRef(ii + 2*uCompSize, jj + uCompSize) += m_locMatVec[2](i, j);   // block E32=sym(E23)
                     }
                 }
                 /* as off-diagonal blocks Ekl go directly to rhs, nothing originating from boundary conditions for these block is added to rhs

@@ -38,7 +38,7 @@ protected: // *** Class members ***
     gsSparseMatrix<T, MatOrder> m_matRANSsymgradoffdiag;
     gsMatrix<T> m_rhsRANS;
     gsMatrix<T> m_rhsRANSsymgradoffdiag;
-    gsTMSolverSST<T, MatOrder>* m_TMsolver;
+    gsTMSolverBase<T, MatOrder>* m_TMsolver;
     //gsTMSolverSST<T, MatOrder>* m_TMsolver;
     bool m_bComputeTMfirst;
 
@@ -58,10 +58,10 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr, gsTMSolverSST<T, MatOrder>* TMsolver): 
+    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr/*, gsTMSolverSST<T, MatOrder>* TMsolver*/): 
     Base(paramsPtr)
     { 
-        initMembers(TMsolver);
+        initMembers(/*TMsolver*/);
     }
 
     virtual ~gsRANSAssemblerUnsteady()
@@ -71,7 +71,13 @@ public: // *** Constructor/destructor ***
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    void initMembers(gsTMSolverSST<T, MatOrder>* TMsolver);
+    void initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/);
+
+    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    virtual void updateSizes();
+
+    /// @brief Update the DOF mappers in all visitors (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    virtual void updateDofMappers();
 
     /// @brief Assemble the linear part of the matrix.
     virtual void assembleLinearPart();
@@ -79,8 +85,17 @@ protected: // *** Member functions ***
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();
 
+    /// @brief 
+    /// @param solVector 
+    /// @param[in] updateSol    true - save solVector into m_solution (false is used in the inner Picard iteration for unsteady problem)
+    virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
+
 
 //public: // *** Member functions ***
+
+public: // Getter/setters
+
+    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolver = TMsolver;}
 
 }; //gsRANSAssemblerUnsteady
 
