@@ -33,6 +33,9 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers(/*gsTMSolverSST<T, MatOrd
     //gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>* m_visitorRANSsymgraddiag = dynamic_cast<gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>*>(m_visitorRANSsymgraddiag);
     m_visitorRANSsymgraddiag.setTurbulenceSolver(m_TMsolver);
     m_visitorRANSsymgradoffdiag.setTurbulenceSolver(m_TMsolver);
+
+    //m_visitorRANSsymgraddiag.setRANSassembler(this);
+    //m_visitorRANSsymgradoffdiag.setRANSassembler(this);
 }
 
 template<class T, int MatOrder>

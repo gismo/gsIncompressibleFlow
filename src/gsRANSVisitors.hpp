@@ -56,6 +56,8 @@ template <class T, int MatOrder>
 void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/)
 {
     m_viscosity = m_paramsPtr->getPde().viscosity();
+
+    //getAssembler()->setTurbulenceSolver(m_TMsolver);
     
     //m_TMsolver = TMsolver;
     //m_viscosity = m_paramsPtr->getPde().viscosity();
@@ -168,6 +170,8 @@ template <class T, int MatOrder>
 void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/)
 {
     m_viscosity = m_paramsPtr->getPde().viscosity();
+
+    
     
     //m_TMsolver = TMsolver;
     //m_viscosity = m_paramsPtr->getPde().viscosity();
@@ -188,6 +192,9 @@ template <class T, int MatOrder>
 void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
+
+    //gsRANSAssemblerUnsteady<T, MatOrder>* m_assemblerPtr = dynamic_cast<gsRANSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
+    //getAssembler()->setTurbulenceSolver(m_TMsolver);
 
     m_TMsolver->evalTurbulentViscosity(m_quNodes);
     m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();

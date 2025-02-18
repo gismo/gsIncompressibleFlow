@@ -11,11 +11,16 @@
 
 #pragma once
 
+#include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
+#include <gsIncompressibleFlow/src/gsINSAssembler.h>
+//#include <gsIncompressibleFlow/src/gsRANSAssemblerUnsteady.h>
 #include <gsIncompressibleFlow/src/gsFlowVisitors.h>
 #include <gsIncompressibleFlow/src/gsINSVisitors.h>
 #include <gsIncompressibleFlow/src/gsINSTerms.h>
 #include <gsIncompressibleFlow/src/gsRANSTerms.h>
+#include <gsIncompressibleFlow/src/gsTMSolverBase.h>
 #include <gsIncompressibleFlow/src/gsTMSolverSST.h>
+
 
 namespace gismo
 {
@@ -85,8 +90,9 @@ public:
 
 public:
     real_t m_viscosity;
-    gsTMSolverSST<T, MatOrder>* m_TMsolver = NULL;
+    gsTMSolverBase<T, MatOrder>* m_TMsolver = NULL;
     gsVector<T> m_TurbulentViscosityVals;
+    gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr = NULL;
 
 protected: // *** Base class members ***
 
@@ -154,6 +160,15 @@ public: // Getter/setters
 
     void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolver = TMsolver;}
 
+    // @brief Returns a pointer to the assembler.
+    //gsFlowAssemblerBase<T, MatOrder>* getAssembler() const
+    //{
+    //    //return dynamic_cast<gsRANSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
+    //    return m_assemblerPtr;
+    //}
+
+    //void setRANSassembler(gsINSAssemblerUnsteady<T, MatOrder>* assemblerPtr) { m_assemblerPtr = assemblerPtr; }
+
 };
 
 // ==========================================================================================================
@@ -169,6 +184,7 @@ public:
     real_t m_viscosity;
     gsTMSolverBase<T, MatOrder>* m_TMsolver = NULL;
     gsVector<T> m_TurbulentViscosityVals;
+    gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr = NULL;
 
 protected: // *** Base class members ***
 
@@ -234,6 +250,15 @@ public: // *** Member functions ***
 public: // Getter/setters
 
     void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolver = TMsolver;}
+
+    // @brief Returns a pointer to the assembler.
+    //gsFlowAssemblerBase<T, MatOrder>* getAssembler() const
+    //{
+    //    //return dynamic_cast<gsRANSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
+    //    return m_assemblerPtr;
+    //}
+
+    //void setRANSassembler(gsINSAssemblerUnsteady<T, MatOrder>* assemblerPtr) { m_assemblerPtr = assemblerPtr; }
     
 };
 

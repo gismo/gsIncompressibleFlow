@@ -13,8 +13,10 @@
 
 #include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsINSAssembler.h>
+#include <gsIncompressibleFlow/src/gsFlowVisitors.h>
 #include <gsIncompressibleFlow/src/gsINSVisitors.h>
 #include <gsIncompressibleFlow/src/gsRANSVisitors.h>
+#include <gsIncompressibleFlow/src/gsTMSolverBase.h>
 
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 
@@ -38,7 +40,7 @@ protected: // *** Class members ***
     gsSparseMatrix<T, MatOrder> m_matRANSsymgradoffdiag;
     gsMatrix<T> m_rhsRANS;
     gsMatrix<T> m_rhsRANSsymgradoffdiag;
-    gsTMSolverBase<T, MatOrder>* m_TMsolver;
+    gsTMSolverBase<T, MatOrder>* m_TMsolver = NULL;
     //gsTMSolverSST<T, MatOrder>* m_TMsolver;
     bool m_bComputeTMfirst;
 
@@ -96,6 +98,8 @@ protected: // *** Member functions ***
 public: // Getter/setters
 
     void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolver = TMsolver;}
+
+    //setRANSassembler(gsRANSAssemblerUnsteady<T, MatOrder>* assemblerPtr) { m_assemblerPtr = assemblerPtr; }
 
 }; //gsRANSAssemblerUnsteady
 

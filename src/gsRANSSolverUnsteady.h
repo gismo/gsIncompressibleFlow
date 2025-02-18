@@ -76,6 +76,7 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr)
     { 
         // create turbulence solver
+        // m_TMsolver =TMSolverBase::make(m_paramsPtr->options().getString("TM.eval"))
         if (m_paramsPtr->options().getString("TM.eval") == "SST") 
         {
             m_TMsolver = new gsTMSolverSST<T, MatOrder>(paramsPtr);
