@@ -35,7 +35,7 @@ public:
 
 public:
     real_t m_viscosity;
-    gsTMSolverSST<T, MatOrder>* m_TMsolver = NULL;
+    gsTMSolverSST<T, MatOrder>* m_TMsolverPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
 
 protected:   // *** Base class members ***
@@ -90,7 +90,7 @@ public:
 
 public:
     real_t m_viscosity;
-    gsTMSolverBase<T, MatOrder>* m_TMsolver = NULL;
+    gsTMSolverBase<T, MatOrder>* m_TMsolverPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
     gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr = NULL;
 
@@ -108,7 +108,7 @@ protected: // *** Base class members ***
     using Base::m_quNodes;
     //using Base::m_TurbulentViscosityVals;
     //using Base::m_viscosity;
-    //using Base::m_TMsolver;
+    //using Base::m_TMsolverPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -158,7 +158,7 @@ public: // *** Member functions ***
 
 public: // Getter/setters
 
-    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolver = TMsolver;}
+    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolverPtr = TMsolver;}
 
     // @brief Returns a pointer to the assembler.
     //gsFlowAssemblerBase<T, MatOrder>* getAssembler() const
@@ -182,7 +182,7 @@ public:
 
 public:
     real_t m_viscosity;
-    gsTMSolverBase<T, MatOrder>* m_TMsolver = NULL;
+    gsTMSolverBase<T, MatOrder>* m_TMsolverPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
     gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr = NULL;
 
@@ -249,7 +249,7 @@ public: // *** Member functions ***
 
 public: // Getter/setters
 
-    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolver = TMsolver;}
+    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolverPtr = TMsolver;}
 
     // @brief Returns a pointer to the assembler.
     //gsFlowAssemblerBase<T, MatOrder>* getAssembler() const

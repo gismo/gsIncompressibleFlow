@@ -20,13 +20,13 @@ void gsRANSSolverUnsteady<T, MatOrder>::initMembers()
 {
     Base::initMembers();
 
-    getAssembler()->setTurbulenceSolver(m_TMsolver);
+    getAssembler()->setTurbulenceSolver(m_TMsolverPtr);
 
     m_bComputeTMfirst = false;
     m_turbT = 0;
 
     // inicializace turbulentniho solveru
-    //m_TMsolver = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
+    //m_TMsolverPtr = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
 
     // initialize turbulence solver
     /*if (!(m_pTurbulenceSolver->isInitialized()))

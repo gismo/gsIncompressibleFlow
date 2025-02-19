@@ -22,7 +22,7 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::initMembers(gsTMSolverSST<T,
     m_viscosity = m_paramsPtr->getPde().viscosity();
     gsInfo << "viskozita v initMembers() " << m_viscosity << std::endl;
 
-    m_TMsolver = TMsolver;
+    m_TMsolverPtr = TMsolver;
 }
 
 template <class T, int MatOrder>
@@ -32,8 +32,8 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::evaluate(index_t testFunID)
 
     gsInfo << "m_quNodes " << m_quNodes.rows() << ", " << m_quNodes.rows() << std::endl;
     
-    m_TMsolver->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
     
 }
 
@@ -44,8 +44,8 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::evaluate(const gsDomainItera
 
     gsInfo << "m_quNodes " << m_quNodes.rows() << ", " << m_quNodes.rows() << std::endl;
     
-    m_TMsolver->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
     
 }
 */
@@ -57,15 +57,15 @@ void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::initMembers(/*gsTMSolver
 {
     m_viscosity = m_paramsPtr->getPde().viscosity();
 
-    //getAssembler()->setTurbulenceSolver(m_TMsolver);
+    //getAssembler()->setTurbulenceSolver(m_TMsolverPtr);
     
-    //m_TMsolver = TMsolver;
+    //m_TMsolverPtr = TMsolver;
     //m_viscosity = m_paramsPtr->getPde().viscosity();
     //gsInfo << "viskozita v initMembers() " << m_viscosity << std::endl;
 
     //gsInfo << "m_quNodes " << m_quNodes.rows() << ", " << m_quNodes.rows() << std::endl;
     
-    //m_TMsolver->evalTurbulentViscosity(m_quNodes);
+    //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
 
     
 }
@@ -84,8 +84,8 @@ void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::evaluate(index_t testFun
 {
     Base::evaluate(testFunID);
 
-    m_TMsolver->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     gsRANSTerm_SymmetricGradientDiag<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradientDiag<T>* > (m_terms.back());
 
@@ -102,8 +102,8 @@ void gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>::evaluate(const gsDomainI
 {
     Base::evaluate(domIt);
 
-    m_TMsolver->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     gsRANSTerm_SymmetricGradientDiag<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradientDiag<T>* > (m_terms.back());
 
@@ -173,10 +173,10 @@ void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::initMembers(/*gsTMSol
 
     
     
-    //m_TMsolver = TMsolver;
+    //m_TMsolverPtr = TMsolver;
     //m_viscosity = m_paramsPtr->getPde().viscosity();
 
-    //m_TMsolver = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
+    //m_TMsolverPtr = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
 }
 
 template<class T, int MatOrder>
@@ -184,8 +184,8 @@ void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::initialize()
 {
     Base::initialize();
 
-    //m_TMsolver->evalTurbulentViscosity(m_quNodes);
-    //m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+    //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
+    //m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 }
 
 template <class T, int MatOrder>
@@ -194,10 +194,10 @@ void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::evaluate(index_t test
     Base::evaluate(testFunID);
 
     //gsRANSAssemblerUnsteady<T, MatOrder>* m_assemblerPtr = dynamic_cast<gsRANSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
-    //getAssembler()->setTurbulenceSolver(m_TMsolver);
+    //getAssembler()->setTurbulenceSolver(m_TMsolverPtr);
 
-    m_TMsolver->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     gsRANSTerm_SymmetricGradientOffdiag<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradientOffdiag<T>* > (m_terms.back());
 
@@ -214,8 +214,8 @@ void gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>::evaluate(const gsDoma
 {
     Base::evaluate(domIt);
 
-    m_TMsolver->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolver->getTurbulentViscosity();
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
+    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     gsRANSTerm_SymmetricGradientOffdiag<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradientOffdiag<T>* > (m_terms.back());
 

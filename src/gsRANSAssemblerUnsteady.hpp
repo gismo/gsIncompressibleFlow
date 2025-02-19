@@ -21,21 +21,14 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers(/*gsTMSolverSST<T, MatOrd
     Base::initMembers();
     updateSizes();
 
-    //m_TMsolver = TMsolver;
+    //m_TMsolverPtr = TMsolver;
 
-    m_visitorRANSsymgraddiag = gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>(m_paramsPtr/*, m_TMsolver*/);
+    m_visitorRANSsymgraddiag = gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>(m_paramsPtr);
     m_visitorRANSsymgraddiag.initialize();
 
-    m_visitorRANSsymgradoffdiag = gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>(m_paramsPtr/*, m_TMsolver*/);
+    m_visitorRANSsymgradoffdiag = gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>(m_paramsPtr);
     m_visitorRANSsymgradoffdiag.initialize();
     
-    // neco s turbulentni viskozitou nebo modelem?
-    //gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>* m_visitorRANSsymgraddiag = dynamic_cast<gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>*>(m_visitorRANSsymgraddiag);
-    m_visitorRANSsymgraddiag.setTurbulenceSolver(m_TMsolver);
-    m_visitorRANSsymgradoffdiag.setTurbulenceSolver(m_TMsolver);
-
-    //m_visitorRANSsymgraddiag.setRANSassembler(this);
-    //m_visitorRANSsymgradoffdiag.setRANSassembler(this);
 }
 
 template<class T, int MatOrder>
@@ -61,6 +54,9 @@ template<class T, int MatOrder>
 void gsRANSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
 {
     Base::assembleLinearPart();
+
+    m_visitorRANSsymgraddiag.setTurbulenceSolver(m_TMsolverPtr);
+    m_visitorRANSsymgradoffdiag.setTurbulenceSolver(m_TMsolverPtr);
 
     // matrix cleaning
     m_matRANSsymgraddiag.resize(m_pshift, m_pshift);
@@ -99,7 +95,7 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
 
     if(updateSol)
     {
-        gsInfo << "Updatine symmetric gradient terms ... ";
+        gsInfo << "Updating symmetric gradient terms ... ";
         m_matRANSsymgraddiag.resize(m_pshift, m_pshift);
         m_matRANSsymgraddiag.reserve(gsVector<index_t>::Constant(m_matRANSsymgraddiag.outerSize(), m_tarDim * m_nnzPerRowU));
         m_rhsRANS.setZero(m_pshift, 1);
