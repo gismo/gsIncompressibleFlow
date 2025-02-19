@@ -14,7 +14,8 @@
 #include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
 #include <gsIncompressibleFlow/src/gsINSSolver.h>
 #include <gsIncompressibleFlow/src/gsRANSAssemblerUnsteady.h>
-#include <gsIncompressibleFlow/src/gsTMSolverSST.h>
+#include <gsIncompressibleFlow/src/gsTMSolverBase.h>
+//#include <gsIncompressibleFlow/src/gsTMSolverSST.h>
 
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
@@ -36,6 +37,10 @@ class gsRANSSolverUnsteady : public gsINSSolverUnsteady<T, MatOrder>
 public:
     typedef gsINSSolverUnsteady<T, MatOrder> Base;
 
+//public: // *** Smart pointers ***
+
+    //typedef memory::shared_ptr<gsTMSolverBase> Ptr;    
+
 
 public: // *** Class members ***
 
@@ -44,7 +49,7 @@ public: // *** Class members ***
     //T m_innerTol;
 
     // nove definovane zde
-    gsTMSolverBase<T, MatOrder>* m_TMsolverPtr = NULL;
+    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
     bool m_bComputeTMfirst;
     real_t m_turbT;
 
@@ -76,15 +81,15 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr)
     { 
         // create turbulence solver
-        // m_TMsolverPtr =TMSolverBase::make(m_paramsPtr->options().getString("TM.eval"))
-        if (m_paramsPtr->options().getString("TM.eval") == "SST") 
-        {
-            m_TMsolverPtr = new gsTMSolverSST<T, MatOrder>(paramsPtr);
-        }
-        //elseif (m_paramsPtr->options().getSwitch("TM.eval") == "SA") 
-        //{ }
-        else 
-            gsInfo << "Undefined turbulent model!" << std::endl;
+        m_TMsolverPtr = gsTMSolverBase<T, MatOrder>::make(paramsPtr->options().getString("TM.eval"), paramsPtr);
+        //if (m_paramsPtr->options().getString("TM.eval") == "SST") 
+        //{
+        //    m_TMsolverPtr = new gsTMSolverSST<T, MatOrder>(paramsPtr);
+        //}
+        ////elseif (m_paramsPtr->options().getSwitch("TM.eval") == "SA") 
+        ////{ }
+        //else 
+        //    gsInfo << "Undefined turbulent model!" << std::endl;
 
         // create assembler
         m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr);

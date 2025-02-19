@@ -35,7 +35,7 @@ public:
 public:
     gsMatrix<T> m_solution;
     real_t m_viscosity;
-    gsTMSolverBase<T, MatOrder>* m_TMsolverPtr = NULL;
+    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
     //gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr = NULL;
 
@@ -103,7 +103,7 @@ public: // *** Member functions ***
 
 public: // Getter/setters
 
-    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolverPtr = TMsolver;}
+    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
 
     void setRANSsolution(gsMatrix<T> sol) { m_solution = sol;}
 

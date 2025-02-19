@@ -12,7 +12,9 @@
 #pragma once
 
 #include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
-#include <gsIncompressibleFlow/src/gsFlowLinSystSolver.h>
+//#include <gsIncompressibleFlow/src/gsFlowLinSystSolver.h>
+
+
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 
@@ -28,6 +30,10 @@ class gsTMSolverBase: public gsFlowSolverBase<T, MatOrder>
 
 public:
     typedef gsFlowSolverBase<T, MatOrder> Base;
+
+public: // *** Smart pointers ***
+
+    typedef memory::shared_ptr<gsTMSolverBase> tmPtr;
 
 public: // *** Class members ***
 
@@ -57,6 +63,13 @@ public: // *** Constructor/destructor ***
     virtual ~gsTMSolverBase()
     { }
 
+public: // *** Static functions ***
+
+    /// @brief Returns a unique pointer to a newly created instance of the given preconditioner type.
+    /// @param[in] precType the reqiured preconditioner type as a string
+    /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner (assuming the following order: NS system matrix, mass matrix (velocity, pressure or both), other matrices)
+    /// @param[in] opt a list of options for the preconditioner
+    static tmPtr make(std::string turbModel, typename gsFlowSolverParams<T>::Ptr paramsPtr);
 
 public: // *** Member functions ***
 
@@ -87,5 +100,5 @@ public: // *** Getters/setters ***
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsTMSolverSST.hpp)
+#include GISMO_HPP_HEADER(gsTMSolverBase.hpp)
 #endif

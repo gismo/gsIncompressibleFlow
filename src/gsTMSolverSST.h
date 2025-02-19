@@ -31,6 +31,10 @@ class gsTMSolverSST: public gsTMSolverBase<T, MatOrder>
 public:
     typedef gsTMSolverBase<T, MatOrder> Base;
 
+public: // *** Smart pointers ***
+
+    typedef memory::shared_ptr<gsTMSolverSST> tmPtr;    
+
 protected: // *** Base class members ***
 
     using Base::m_assemblerPtr;
@@ -56,6 +60,15 @@ public: // *** Constructor/destructor ***
     virtual ~gsTMSolverSST()
     { }
 
+public: // *** Static functions ***
+
+    /// @brief Returns a unique pointer to a newly created instance.
+    /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
+    /// @param[in] opt a list of options for the preconditioner
+    static tmPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr)
+    {
+        return memory::make_shared_not_owned(new gsTMSolverSST<T, MatOrder>(paramsPtr));
+    }
 
 public: // *** Member functions ***
 

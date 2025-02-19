@@ -40,7 +40,7 @@ protected: // *** Class members ***
     //gsSparseMatrix<T, MatOrder> m_matRANSsymgradoffdiag;
     gsMatrix<T> m_rhsRANS;
     //gsMatrix<T> m_rhsRANSsymgradoffdiag;
-    gsTMSolverBase<T, MatOrder>* m_TMsolverPtr = NULL;
+    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
     //gsTMSolverSST<T, MatOrder>* m_TMsolverPtr;
     bool m_bComputeTMfirst;
 
@@ -97,7 +97,7 @@ protected: // *** Member functions ***
 
 public: // Getter/setters
 
-    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolverPtr = TMsolver;}
+    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
 
     //setRANSassembler(gsRANSAssemblerUnsteady<T, MatOrder>* assemblerPtr) { m_assemblerPtr = assemblerPtr; }
 

@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsIncompressibleFlow/src/gsTMSolverBase.h>
-//#include <gsIncompressibleFlow/src/gsTMSolverBase.hpp>
+#include <gsIncompressibleFlow/src/gsTMSolverBase.hpp>
 
 namespace gismo
 {
