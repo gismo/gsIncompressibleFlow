@@ -25,7 +25,6 @@
 namespace gismo
 {
 
-/*
 template <class T, int MatOrder>
 class gsRANSVisitorUUSymmetricGradient : public gsFlowVisitorVectorValued<T, MatOrder>
 {
@@ -34,11 +33,13 @@ public:
     typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
 public:
+    gsMatrix<T> m_solution;
     real_t m_viscosity;
-    gsTMSolverSST<T, MatOrder>* m_TMsolverPtr = NULL;
+    gsTMSolverBase<T, MatOrder>* m_TMsolverPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
+    //gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr = NULL;
 
-protected:   // *** Base class members ***
+protected: // *** Base class members ***
 
     using Base::m_locMatVec;
     using Base::m_paramsPtr;
@@ -50,37 +51,67 @@ protected:   // *** Base class members ***
     using Base::m_shapeFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
+    //using Base::m_TurbulentViscosityVals;
+    //using Base::m_viscosity;
+    //using Base::m_TMsolverPtr;
 
 public: // *** Constructor/destructor ***
 
     gsRANSVisitorUUSymmetricGradient() {}
 
-    gsRANSVisitorUUSymmetricGradient(typename gsFlowSolverParams<T>::Ptr paramsPtr, gsTMSolverSST<T, MatOrder>* TMsolver) :
+    gsRANSVisitorUUSymmetricGradient(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
     Base(paramsPtr)
     { 
-        initMembers(TMsolver);
+        initMembers();
     }
 
 
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    void initMembers(gsTMSolverSST<T, MatOrder>* TMsolver);
+    void initMembers();
 
     void evaluate(index_t testFunID);
 
     void evaluate(const gsDomainIterator<T>* domIt);
+
+    // upravit pro RANS
+    virtual void defineTerms()
+    {
+        // evaluate turbulent viscosity
+
+        m_terms.push_back( new gsRANSTerm_SymmetricGradient<T>() );
+        
+        //if(m_paramsPtr->options().getSwitch("unsteady"))
+        //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
+
+        // ... other terms, e.g. from stabilizations
+    }
 
     virtual void defineTestShapeUnknowns()
     {
         m_testUnkID = 0;    // velocity
         m_shapeUnkID = 0;   // velocity
     }
+
+public: // *** Member functions *** 
+
+    /// @brief Initialize the visitor.
+    void initialize();
+
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+public: // Getter/setters
+
+    void setTurbulenceSolver(gsTMSolverBase<T, MatOrder>* TMsolver) { m_TMsolverPtr = TMsolver;}
+
+    void setRANSsolution(gsMatrix<T> sol) { m_solution = sol;}
+
 };
-*/
 
 // ========================================================================================================
 
+/*
 template <class T, int MatOrder>
 class gsRANSVisitorUUSymmetricGradientDiag : public gsFlowVisitorVectorValued<T, MatOrder>
 {
@@ -114,17 +145,17 @@ public: // *** Constructor/destructor ***
 
     gsRANSVisitorUUSymmetricGradientDiag() {}
 
-    gsRANSVisitorUUSymmetricGradientDiag(typename gsFlowSolverParams<T>::Ptr paramsPtr/*, gsTMSolverSST<T, MatOrder>* TMsolver*/) :
+    gsRANSVisitorUUSymmetricGradientDiag(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
     Base(paramsPtr)
     { 
-        initMembers(/*TMsolver*/);
+        initMembers();
     }
 
 
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    void initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/);
+    void initMembers();
 
     void evaluate(index_t testFunID);
 
@@ -135,7 +166,7 @@ protected: // *** Member functions ***
     {
         // evaluate turbulent viscosity
 
-        m_terms.push_back( new gsRANSTerm_SymmetricGradientDiag<T>(/*m_viscosity, m_TurbulentViscosityVals*/) );
+        m_terms.push_back( new gsRANSTerm_SymmetricGradientDiag<T>() );
         
         //if(m_paramsPtr->options().getSwitch("unsteady"))
         //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
@@ -205,17 +236,17 @@ public: // *** Constructor/destructor ***
 
     gsRANSVisitorUUSymmetricGradientOffdiag() {}
 
-    gsRANSVisitorUUSymmetricGradientOffdiag(typename gsFlowSolverParams<T>::Ptr paramsPtr/*, gsTMSolverSST<T, MatOrder>* TMsolver*/) :
+    gsRANSVisitorUUSymmetricGradientOffdiag(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
     Base(paramsPtr)
     { 
-        initMembers(/*TMsolver*/);
+        initMembers();
     }
 
 
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    void initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/);
+    void initMembers();
 
     void evaluate(index_t testFunID);
 
@@ -226,7 +257,7 @@ protected: // *** Member functions ***
     {
         // evaluate turbulent viscosity
 
-        m_terms.push_back( new gsRANSTerm_SymmetricGradientOffdiag<T>(/*m_viscosity, m_TurbulentViscosityVals*/) );
+        m_terms.push_back( new gsRANSTerm_SymmetricGradientOffdiag<T>() );
 
         //if(m_paramsPtr->options().getSwitch("unsteady"))
         //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
@@ -261,6 +292,7 @@ public: // Getter/setters
     //void setRANSassembler(gsINSAssemblerUnsteady<T, MatOrder>* assemblerPtr) { m_assemblerPtr = assemblerPtr; }
     
 };
+*/
 
 } // namespace gismo
 

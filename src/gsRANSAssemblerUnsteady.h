@@ -34,12 +34,12 @@ public:
 
 protected: // *** Class members ***
 
-    gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder> m_visitorRANSsymgraddiag;
-    gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder> m_visitorRANSsymgradoffdiag;
-    gsSparseMatrix<T, MatOrder> m_matRANSsymgraddiag;
-    gsSparseMatrix<T, MatOrder> m_matRANSsymgradoffdiag;
+    gsRANSVisitorUUSymmetricGradient<T, MatOrder> m_visitorRANSsymgrad;
+    //gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder> m_visitorRANSsymgradoffdiag;
+    gsSparseMatrix<T, MatOrder> m_matRANSsymgrad;
+    //gsSparseMatrix<T, MatOrder> m_matRANSsymgradoffdiag;
     gsMatrix<T> m_rhsRANS;
-    gsMatrix<T> m_rhsRANSsymgradoffdiag;
+    //gsMatrix<T> m_rhsRANSsymgradoffdiag;
     gsTMSolverBase<T, MatOrder>* m_TMsolverPtr = NULL;
     //gsTMSolverSST<T, MatOrder>* m_TMsolverPtr;
     bool m_bComputeTMfirst;
@@ -60,10 +60,10 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr/*, gsTMSolverSST<T, MatOrder>* TMsolver*/): 
+    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
     Base(paramsPtr)
     { 
-        initMembers(/*TMsolver*/);
+        initMembers();
     }
 
     virtual ~gsRANSAssemblerUnsteady()
@@ -73,7 +73,7 @@ public: // *** Constructor/destructor ***
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    void initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/);
+    void initMembers();
 
     /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
     virtual void updateSizes();

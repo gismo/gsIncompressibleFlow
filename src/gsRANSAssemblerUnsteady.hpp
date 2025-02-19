@@ -16,18 +16,18 @@ namespace gismo
 {
 
 template<class T, int MatOrder>
-void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers(/*gsTMSolverSST<T, MatOrder>* TMsolver*/)
+void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers()
 {
     Base::initMembers();
     updateSizes();
 
     //m_TMsolverPtr = TMsolver;
 
-    m_visitorRANSsymgraddiag = gsRANSVisitorUUSymmetricGradientDiag<T, MatOrder>(m_paramsPtr);
-    m_visitorRANSsymgraddiag.initialize();
+    m_visitorRANSsymgrad = gsRANSVisitorUUSymmetricGradient<T, MatOrder>(m_paramsPtr);
+    m_visitorRANSsymgrad.initialize();
 
-    m_visitorRANSsymgradoffdiag = gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>(m_paramsPtr);
-    m_visitorRANSsymgradoffdiag.initialize();
+    //m_visitorRANSsymgradoffdiag = gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder>(m_paramsPtr);
+    //m_visitorRANSsymgradoffdiag.initialize();
     
 }
 
@@ -36,8 +36,8 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::updateSizes()
 {
     Base::updateSizes();
 
-    m_matRANSsymgraddiag.resize(m_pshift, m_pshift);
-    m_matRANSsymgradoffdiag.resize(m_pshift, m_pshift);
+    m_matRANSsymgrad.resize(m_pshift, m_pshift);
+    //m_matRANSsymgradoffdiag.resize(m_pshift, m_pshift);
     m_rhsRANS.setZero(m_pshift, 1);
 }
 
@@ -46,8 +46,8 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::updateDofMappers()
 {
     Base::updateDofMappers();
 
-    m_visitorRANSsymgraddiag.updateDofMappers(m_dofMappers);
-    m_visitorRANSsymgradoffdiag.updateDofMappers(m_dofMappers);
+    m_visitorRANSsymgrad.updateDofMappers(m_dofMappers);
+    //m_visitorRANSsymgradoffdiag.updateDofMappers(m_dofMappers);
 }
 
 template<class T, int MatOrder>
@@ -55,27 +55,30 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
 {
     Base::assembleLinearPart();
 
-    m_visitorRANSsymgraddiag.setTurbulenceSolver(m_TMsolverPtr);
-    m_visitorRANSsymgradoffdiag.setTurbulenceSolver(m_TMsolverPtr);
+    m_visitorRANSsymgrad.setTurbulenceSolver(m_TMsolverPtr);
+    //m_visitorRANSsymgradoffdiag.setTurbulenceSolver(m_TMsolverPtr);
+
+    m_visitorRANSsymgrad.setRANSsolution(m_solution);
+    //m_visitorRANSsymgradoffdiag.setRANSsolution(mm_solution);
 
     // matrix cleaning
-    m_matRANSsymgraddiag.resize(m_pshift, m_pshift);
-    m_matRANSsymgraddiag.reserve(gsVector<index_t>::Constant(m_matRANSsymgraddiag.outerSize(), m_tarDim * m_nnzPerRowU));
+    m_matRANSsymgrad.resize(m_pshift, m_pshift);
+    m_matRANSsymgrad.reserve(gsVector<index_t>::Constant(m_matRANSsymgrad.outerSize(), m_tarDim * m_nnzPerRowU));
 
     m_rhsRANS.setZero(m_pshift, 1);
 
-    this->assembleBlock(m_visitorRANSsymgraddiag, 0, m_matRANSsymgraddiag, m_rhsRANS);
+    this->assembleBlock(m_visitorRANSsymgrad, 0, m_matRANSsymgrad, m_rhsRANS);
 
     // matrix cleaning
-    m_matRANSsymgradoffdiag.resize(m_pshift, m_pshift);
-    m_matRANSsymgradoffdiag.reserve(gsVector<index_t>::Constant(m_matRANSsymgradoffdiag.outerSize(), m_tarDim * m_nnzPerRowU));
+    //m_matRANSsymgradoffdiag.resize(m_pshift, m_pshift);
+    //m_matRANSsymgradoffdiag.reserve(gsVector<index_t>::Constant(m_matRANSsymgradoffdiag.outerSize(), m_tarDim * m_nnzPerRowU));
 
-    gsMatrix<T> dummyRhs;
-    dummyRhs.setZero(m_pshift, 1);
+    //gsMatrix<T> dummyRhs;
+    //dummyRhs.setZero(m_pshift, 1);
 
-    this->assembleBlock(m_visitorRANSsymgradoffdiag, 0, m_matRANSsymgradoffdiag, dummyRhs);
+    //this->assembleBlock(m_visitorRANSsymgradoffdiag, 0, m_matRANSsymgradoffdiag, dummyRhs);
 
-    m_rhsRANSsymgradoffdiag = m_matRANSsymgradoffdiag * m_solution.topRows(m_pshift);
+    //m_rhsRANSsymgradoffdiag = m_matRANSsymgradoffdiag * m_solution.topRows(m_pshift);
 }
 
 template<class T, int MatOrder>
@@ -83,9 +86,9 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::fillSystem()
 {
     Base::fillSystem();
 
-    this->fillGlobalMat_UU(m_matrix, m_matRANSsymgraddiag);
+    this->fillGlobalMat_UU(m_matrix, m_matRANSsymgrad);
     m_rhs.topRows(m_pshift) += m_rhsRANS;
-    m_rhs.topRows(m_pshift) += m_rhsRANSsymgradoffdiag;
+    //m_rhs.topRows(m_pshift) += m_rhsRANSsymgradoffdiag;
 }
 
 template<class T, int MatOrder>
@@ -96,20 +99,23 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
     if(updateSol)
     {
         gsInfo << "Updating symmetric gradient terms ... ";
-        m_matRANSsymgraddiag.resize(m_pshift, m_pshift);
-        m_matRANSsymgraddiag.reserve(gsVector<index_t>::Constant(m_matRANSsymgraddiag.outerSize(), m_tarDim * m_nnzPerRowU));
+        m_visitorRANSsymgrad.setRANSsolution(m_solution);
+        m_matRANSsymgrad.resize(m_pshift, m_pshift);
+        m_matRANSsymgrad.reserve(gsVector<index_t>::Constant(m_matRANSsymgrad.outerSize(), m_tarDim * m_nnzPerRowU));
         m_rhsRANS.setZero(m_pshift, 1);
-        this->assembleBlock(m_visitorRANSsymgraddiag, 0, m_matRANSsymgraddiag, m_rhsRANS);
+        this->assembleBlock(m_visitorRANSsymgrad, 0, m_matRANSsymgrad, m_rhsRANS);
 
-        gsMatrix<T> dummyRhs;
-        dummyRhs.setZero(m_pshift, 1);
-        this->assembleBlock(m_visitorRANSsymgradoffdiag, 0, m_matRANSsymgradoffdiag, dummyRhs);
-        m_rhsRANSsymgradoffdiag = m_matRANSsymgradoffdiag * m_solution.topRows(m_pshift);
-        gsInfo << "Done" << std::endl;
+        //gsMatrix<T> dummyRhs;
+        //dummyRhs.setZero(m_pshift, 1);
+        //this->assembleBlock(m_visitorRANSsymgradoffdiag, 0, m_matRANSsymgradoffdiag, dummyRhs);
+        //m_rhsRANSsymgradoffdiag = m_matRANSsymgradoffdiag * m_solution.topRows(m_pshift);
+        gsInfo << "Done " << m_solution.rows() << ", " << m_solution.cols() << std::endl;
     }
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
+    {
         fillSystem();
+    }
 }
 
 }
