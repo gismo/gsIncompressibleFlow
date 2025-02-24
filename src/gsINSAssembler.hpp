@@ -514,11 +514,13 @@ T gsINSAssembler<T, MatOrder>::computeFlowRate(index_t patch, boxSide side, gsMa
     gsMapData<T> mapData;
     mapData.flags = NEED_VALUE | NEED_OUTER_NORMAL;
 
-    typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(side);
-    for (; domIt->good(); domIt->next())
+    //typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(side);
+    typename gsBasis<T>::domainIter domIt = basis.domain()->beginBdr(side);
+    typename gsBasis<T>::domainIter domItEnd = basis.domain()->endBdr(side);
+    for (; domIt!=domItEnd; ++domIt)
     {
         // Compute the quadrature rule on patch1
-        QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+        QuRule.mapTo(domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         mapData.points = quNodes;
