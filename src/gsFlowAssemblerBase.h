@@ -86,7 +86,8 @@ protected: // *** Member functions ***
     /// @param[in]  testBasisID ID of the test basis
     /// @param[out] block       the resulting matrix block
     /// @param[out] blockRhs    right-hand side for the matrix block (arising from eliminated Dirichlet DOFs)
-    void assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs);
+    /// @param[in]  compressMat call makeCompressed() at the end
+    void assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat = true);
 
     /// @brief Assemble the right-hand side.
     /// @param[in]  visitor     visitor for the right-hand side
@@ -130,10 +131,11 @@ public: // *** Member functions ***
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Construct solution from computed solution vector for unknown \a unk.
-    /// @param[in]  solVector   the solution vector obtained from the linear system
-    /// @param[out] result      the resulting solution as a gsMultiPatch object
-    /// @param[in]  unk         the considered unknown
-    virtual gsField<T> constructSolution(const gsMatrix<T>& solVector, index_t unk) const
+    /// @param[in]  solVector    the solution vector obtained from the linear system
+    /// @param[out] result       the resulting solution as a gsMultiPatch object
+    /// @param[in]  unk          the considered unknown
+    /// @param[in]  customSwitch a switch to be used for any purpose by derived classes
+    virtual gsField<T> constructSolution(const gsMatrix<T>& solVector, index_t unk, bool customSwitch = false) const
     {GISMO_NO_IMPLEMENTATION}
 
 

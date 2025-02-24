@@ -25,13 +25,13 @@ void gsINSAssembler<T, MatOrder>::initMembers()
     m_ddof.resize(2);
     m_paramsPtr->createDofMappers(m_dofMappers);  
 
-    m_nnzPerRowU = 1;
+    m_nnzPerOuterU = 1;
     for (short_t i = 0; i < m_tarDim; i++)
-        m_nnzPerRowU *= 2 * getBases().front().maxDegree(i) + 1;
+        m_nnzPerOuterU *= 2 * getBases().front().maxDegree(i) + 1;
 
-    m_nnzPerRowP = 1;
+    m_nnzPerOuterP = 1;
     for (short_t i = 0; i < m_tarDim; i++)
-        m_nnzPerRowP *= 2 * getBases().back().maxDegree(i) + 1;
+        m_nnzPerOuterP *= 2 * getBases().back().maxDegree(i) + 1;
 
     m_visitorUUlin = gsINSVisitorUUlin<T, MatOrder>(m_paramsPtr);
     m_visitorUUlin.initialize();
@@ -51,8 +51,7 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 
     m_isMassMatReady = false;
     m_massMatBlocks.resize(2); // [velocity, pressure]
-
-    m_hasPeriodicBC = false;
+    m_massMatRhs.resize(2); // [velocity, pressure]
 
     updateSizes();
 }
@@ -61,20 +60,10 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 template<class T, int MatOrder>
 void gsINSAssembler<T, MatOrder>::updateSizes()
 {
-    if (m_paramsPtr->getPde().bc().numPeriodic() != 0)
+    if (m_paramsPtr->hasPeriodicBC())
     {
-        m_hasPeriodicBC = true;
-        m_velPeriodicHelperPtr = gsFlowPeriodicHelper<T>::make(getBases().front(), m_dofMappers[0], m_paramsPtr->getPde().bc());
-        m_presPeriodicHelperPtr = gsFlowPeriodicHelper<T>::make(getBases().back(), m_dofMappers[1], m_paramsPtr->getPde().bc());
-    
-        m_visitorUUlin.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
-        m_visitorUUnonlin.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
-        m_visitorUP.setPeriodicHelpers(m_velPeriodicHelperPtr, m_presPeriodicHelperPtr);
-        m_visitorF.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
-        m_visitorG.setPeriodicHelpers(m_presPeriodicHelperPtr, m_presPeriodicHelperPtr);
-
-        m_udofs = m_velPeriodicHelperPtr->numFreeDofs();
-        m_pdofs = m_presPeriodicHelperPtr->numFreeDofs();
+        m_udofs = m_paramsPtr->getPerHelperPtr(0)->numFreeDofs();
+        m_pdofs = m_paramsPtr->getPerHelperPtr(1)->numFreeDofs();
     }
     else
     {
@@ -133,7 +122,7 @@ void gsINSAssembler<T, MatOrder>::updateCurrentSolField(const gsMatrix<T> & solV
     if (updateSol)
         m_solution = solVector;
 
-    m_currentVelField = constructSolution(solVector, 0);
+    m_currentVelField = constructSolution(solVector, 0, m_paramsPtr->isRotation()); // construct relative velocity if isRotation() = true
     m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
 }
 
@@ -153,75 +142,104 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     int nnzPerOuterUP = 0;
 
     if (MatOrder == RowMajor)
-        nnzPerOuterUP = m_nnzPerRowP;
+        nnzPerOuterUP = m_nnzPerOuterP;
     else 
-        nnzPerOuterUP = m_tarDim * m_nnzPerRowU;
+        nnzPerOuterUP = m_tarDim * m_nnzPerOuterU;
 
+    bool hasPeriodicBC = m_paramsPtr->hasPeriodicBC();
+    bool isRotation = m_paramsPtr->isRotation();
 
-    if (!m_hasPeriodicBC)
+    if (hasPeriodicBC || isRotation)
     {
-        m_blockUUlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUlin_comp.outerSize(), m_nnzPerRowU));
-        this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_comp, m_rhsUlin);
+        index_t nnzU = m_nnzPerOuterU;
+
+        if (isRotation)
+        nnzU *= 2;
+
+        m_blockUUlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUlin_whole.outerSize(), nnzU));
+        this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_whole, m_rhsUlin, false);
     }
     else
     {
-        m_blockUUlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUlin_whole.outerSize(), m_nnzPerRowU));
-        this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_whole, m_rhsUlin);
+        m_blockUUlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUlin_comp.outerSize(), m_nnzPerOuterU));
+        this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_comp, m_rhsUlin);
     }
 
     m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.outerSize(), nnzPerOuterUP));
     this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
-    
     this->assembleRhs(m_visitorF, 0, m_rhsF);
 
     if(m_paramsPtr->getPde().source()) // if the continuity eqn rhs is given
         this->assembleRhs(m_visitorG, 1, m_rhsG);
 
-    // mass matrices for velocity and pressure (needed for preconditioners)
-    if ( m_paramsPtr->options().getString("lin.solver") == "iter" )
+    // velocity mass matrix (needed for preconditioners and/or rotating frame of reference)
+    if ( m_paramsPtr->options().getString("lin.solver") == "iter" || isRotation )
     {
-        gsMatrix<T> dummyRhsU(m_pshift, 1);
-        gsMatrix<T> dummyRhsP(m_pdofs, 1);
+        m_massMatRhs[0].setZero(m_pshift, 1);
 
         gsINSVisitorUUmass<T, MatOrder> visitorUUmass(m_paramsPtr);
-        gsINSVisitorPPmass<T, MatOrder> visitorPPmass(m_paramsPtr);
-        
         visitorUUmass.initialize();
-        visitorPPmass.initialize();
-
-        if (!m_hasPeriodicBC)
+        
+        if (!hasPeriodicBC)
             m_massMatBlocks[0].resize(m_udofs, m_udofs);
         else
             m_massMatBlocks[0].resize(m_pshift, m_pshift);
 
-        m_massMatBlocks[0].reserve(gsVector<index_t>::Constant(m_massMatBlocks[0].outerSize(), m_nnzPerRowU));
+        m_massMatBlocks[0].reserve(gsVector<index_t>::Constant(m_massMatBlocks[0].outerSize(), m_nnzPerOuterU));
+
+        this->assembleBlock(visitorUUmass, 0, m_massMatBlocks[0], m_massMatRhs[0]);
+        
+        m_isMassMatReady = true;
+    }
+
+    // pressure mass matrix (needed for preconditioners)
+    if ( m_paramsPtr->options().getString("lin.solver") == "iter" )
+    {
+        m_massMatRhs[1].setZero(m_pdofs, 1);
+
+        gsINSVisitorPPmass<T, MatOrder> visitorPPmass(m_paramsPtr);
+        visitorPPmass.initialize();
 
         m_massMatBlocks[1].resize(m_pdofs, m_pdofs);
-        m_massMatBlocks[1].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerRowP));
+        m_massMatBlocks[1].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerOuterP));
 
-        this->assembleBlock(visitorUUmass, 0, m_massMatBlocks[0], dummyRhsU);
-        this->assembleBlock(visitorPPmass, 0, m_massMatBlocks[1], dummyRhsP);
-
-        m_isMassMatReady = true;
-        
-
-        // linear operators needed for PCD preconditioner
-        // if ( m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
-        // {
-        //     // pressure Laplace operator
-
-        //     gsINSVisitorPPlaplace<T, MatOrder> visitorPPlaplace(m_paramsPtr);
-        //     visitorPPlaplace.initialize();
-
-        //     m_pcdBlocks[0].resize(m_pdofs, m_pdofs);
-        //     m_pcdBlocks[0].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerRowP));
-
-        //     this->assembleBlock(visitorPPlaplace, 0, m_pcdBlocks[0], dummyRhsP);
-
-        //     // prepare for BCs
-        //     findPressureBoundaryIDs();
-        // }
+        this->assembleBlock(visitorPPmass, 0, m_massMatBlocks[1], m_massMatRhs[1]);
     }
+
+    // fill the rotation part into the UU matrix
+    if (isRotation)
+    {
+        real_t omega = m_paramsPtr->options().getReal("omega");
+
+        for (index_t outer = 0; outer < m_udofs; outer++)
+            for (typename gsSparseMatrix<T,MatOrder>::InnerIterator it(m_massMatBlocks[0], outer); it; ++it)
+            {
+                m_blockUUlin_whole.coeffRef(it.row(), it.col() + m_udofs) = -omega * it.value();
+                m_blockUUlin_whole.coeffRef(it.row() + m_udofs, it.col()) = omega * it.value();
+            }
+
+        m_blockUUlin_whole.makeCompressed();
+
+        m_rhsUlin.middleRows(0, m_udofs) -= omega * m_massMatRhs[0].middleRows(m_udofs, m_udofs);
+        m_rhsUlin.middleRows(m_udofs, m_udofs) += omega * m_massMatRhs[0].middleRows(0, m_udofs);
+    }
+
+    // linear operators needed for PCD preconditioner
+    // if ( m_paramsPtr->options().getString("lin.solver") == "iter" && m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
+    // {
+    //     // pressure Laplace operator
+
+    //     gsINSVisitorPPlaplace<T, MatOrder> visitorPPlaplace(m_paramsPtr);
+    //     visitorPPlaplace.initialize();
+
+    //     m_pcdBlocks[0].resize(m_pdofs, m_pdofs);
+    //     m_pcdBlocks[0].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerOuterP));
+
+    //     this->assembleBlock(visitorPPlaplace, 0, m_pcdBlocks[0], dummyRhsP);
+
+    //     // prepare for BCs
+    //     findPressureBoundaryIDs();
+    // }
 }
 
 
@@ -233,14 +251,14 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
     m_blockUUnonlin_whole.resize(m_pshift, m_pshift);
     m_rhsUnonlin.setZero();
 
-    if (!m_hasPeriodicBC)
+    if (!m_paramsPtr->hasPeriodicBC())
     {
-        m_blockUUnonlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_comp.outerSize(), m_nnzPerRowU));
+        m_blockUUnonlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_comp.outerSize(), m_nnzPerOuterU));
         this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_comp, m_rhsUnonlin);
     }
     else
     {
-        m_blockUUnonlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_whole.outerSize(), m_nnzPerRowU));
+        m_blockUUnonlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_whole.outerSize(), m_nnzPerOuterU));
         this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_whole, m_rhsUnonlin);
     }
 
@@ -260,7 +278,7 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
     //     visitorPPconv.setCurrentSolution(m_currentVelField);
 
     //     m_pcdBlocks[2].resize(m_pdofs, m_pdofs);
-    //     m_pcdBlocks[2].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerRowP));
+    //     m_pcdBlocks[2].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerOuterP));
 
     //     this->assembleBlock(visitorPPconv, 0, m_pcdBlocks[2], dummyRhsP);
     // }
@@ -378,6 +396,9 @@ void gsINSAssembler<T, MatOrder>::initialize()
 {
     Base::initialize();
 
+    if (m_paramsPtr->isRotation())
+        computeOmegaXrCoeffs();
+
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillBaseSystem();
 }
@@ -398,19 +419,13 @@ void gsINSAssembler<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< g
 {
     m_paramsPtr->createDofMappers(m_dofMappers, false);
 
-    //m_dofMappers[unk] = gsDofMapper(getBases().at(unk), getBCs(), unk);
-
-    // if (getAssemblerOptions().intStrategy == iFace::conforming)
-    //     for (gsBoxTopology::const_iiterator it = getPatches().iBegin(); it != getPatches().iEnd(); ++it)
-    //     {
-    //         getBases().at(unk).matchInterface(*it, m_dofMappers[unk]);
-    //     }
-
     for (size_t i = 0; i < boundaryDofs.size(); i++)
         m_dofMappers[unk].markBoundary(i, boundaryDofs[i]);
 
     m_dofMappers[0].finalize();
     m_dofMappers[1].finalize();
+
+    m_paramsPtr->createPeriodicHelpers(m_dofMappers);
 
     this->updateDofMappers();
     this->updateSizes();
@@ -432,8 +447,12 @@ void gsINSAssembler<T, MatOrder>::fillStokesSystem(gsSparseMatrix<T, MatOrder>& 
 
 
 template<class T, int MatOrder>
-gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& solVector, index_t unk) const
+gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& solVector, index_t unk, bool customSwitch) const
 {
+    // if there is no rotation, absolute and relative velocity are equal, m_omegaXrCoeffs not computed
+    if (!m_paramsPtr->isRotation())
+        customSwitch = false;
+
     index_t fullUdofs = m_dofMappers[0].freeSize();
     index_t fullPdofs = m_dofMappers[1].freeSize();
     index_t fullPshift = m_tarDim * fullUdofs;
@@ -441,7 +460,7 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
 
     gsMatrix<T> solution;
 
-    if (m_hasPeriodicBC && solVector.rows() == m_dofs) // the passed solVector is periodic
+    if (m_paramsPtr->hasPeriodicBC() && solVector.rows() == m_dofs) // the passed solVector is periodic
         per2nonper_into(solVector, solution);
     else
     {
@@ -452,6 +471,10 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
     gsMultiPatch<T>* result = new gsMultiPatch<T>;
 
     const gsDofMapper& mapper = m_dofMappers[unk];
+    gsDofMapper rotMapper; // mapper for omega x r coeffs
+
+    if (unk == 0 && customSwitch)
+        this->getBases().at(unk).getMapper(getAssemblerOptions().intStrategy, rotMapper);
 
     const index_t dim = (unk == 0 ? m_tarDim : 1);
     gsMatrix<T> coeffs;
@@ -472,13 +495,12 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
         for (index_t i = 0; i < sz; ++i)
         {
             if (mapper.is_free(i, p)) // DoF value is in the solution vector
-            {
                 coeffs.row(i) = solV.row(mapper.index(i, p));
-            }
             else // eliminated DoF: fill with Dirichlet data
-            {
                 coeffs.row(i) = m_ddof[unk].row(mapper.bindex(i, p));
-            }
+
+            if (unk == 0 && customSwitch)
+                coeffs.row(i) -= m_omegaXrCoeffs.row(rotMapper.index(i, p));
         }
 
         result->addPatch(this->getBases().at(unk).piece(p).makeGeometry(coeffs));
@@ -636,7 +658,7 @@ void gsINSAssembler<T, MatOrder>::nonper2per_into(const gsMatrix<T>& fullVector,
             if (row < fullPshift)
             {
                 for (int d = 0; d < m_tarDim; d++)
-                    perVector( m_velPeriodicHelperPtr->map(row % fullUdofs) + d * m_udofs, 0) += m_paramsPtr->getPde().bc().getTransformMatrix()(d, row / fullUdofs) * fullVector(row, 0);
+                    perVector( m_paramsPtr->getPerHelperPtr(0)->map(row % fullUdofs) + d * m_udofs, 0) += m_paramsPtr->getPde().bc().getTransformMatrix()(d, row / fullUdofs) * fullVector(row, 0);
             }
             else
                 perVector(mapPeriodic(row), 0) += fullVector(row, 0);
@@ -656,14 +678,14 @@ void gsINSAssembler<T, MatOrder>::per2nonper_into(const gsMatrix<T>& perVector, 
     for (index_t row = 0; row < m_dofs; row++)
         fullVector(invMapPeriodic(row), 0) += perVector(row, 0);
 
-    std::vector<index_t> elimDofsU = m_velPeriodicHelperPtr->getElimPeriodicDofs();
-    std::vector<index_t> elimDofsP = m_presPeriodicHelperPtr->getElimPeriodicDofs();
+    std::vector<index_t> elimDofsU = m_paramsPtr->getPerHelperPtr(0)->getElimPeriodicDofs();
+    std::vector<index_t> elimDofsP = m_paramsPtr->getPerHelperPtr(1)->getElimPeriodicDofs();
 
     for (size_t i = 0; i < elimDofsU.size(); i++)
     {
         gsMatrix<T> u(m_tarDim, 1);
         for (int d = 0; d < m_tarDim; d++)
-            u(d, 0) = perVector(m_velPeriodicHelperPtr->map(elimDofsU[i]) + d * m_udofs, 0);
+            u(d, 0) = perVector(m_paramsPtr->getPerHelperPtr(0)->map(elimDofsU[i]) + d * m_udofs, 0);
 
         u = m_paramsPtr->getPde().bc().getTransformMatrix().transpose() * u; // multiplication by an inverse tranform matrix
 
@@ -713,9 +735,6 @@ void gsINSAssemblerUnsteady<T, MatOrder>::initMembers()
 
     m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T, MatOrder>(m_paramsPtr);
     m_visitorTimeDiscr.initialize();
-
-    if (this->m_hasPeriodicBC)
-        m_visitorTimeDiscr.setPeriodicHelpers(m_velPeriodicHelperPtr, m_velPeriodicHelperPtr);
 }
 
 
@@ -746,7 +765,7 @@ void gsINSAssemblerUnsteady<T, MatOrder>::updateCurrentSolField(const gsMatrix<T
     Base::updateCurrentSolField(solVector, updateSol);
 
     if (updateSol)
-        m_oldTimeVelField = this->constructSolution(solVector, 0);
+        m_oldTimeVelField = this->constructSolution(solVector, 0, m_paramsPtr->isRotation());
 }
 
 
@@ -755,9 +774,9 @@ void gsINSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
 {
     Base::assembleLinearPart();
 
-    // matrix cleaning
+    // matrix cleaningm_nnzPerOuterU
     m_blockTimeDiscr.resize(m_pshift, m_pshift);
-    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.outerSize(), m_nnzPerRowU));
+    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.outerSize(), m_nnzPerOuterU));
 
     gsMatrix<T> dummyRhs;
     dummyRhs.setZero(m_pshift, 1);

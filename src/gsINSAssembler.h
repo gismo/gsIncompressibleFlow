@@ -12,6 +12,7 @@
 #pragma once
 
 #include <gsCore/gsField.h>
+#include <gsUtils/gsL2Projection.h>
 #include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsINSVisitors.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
@@ -40,7 +41,7 @@ protected: // *** Class members ***
     index_t m_udofs;
     index_t m_pdofs;
     index_t m_pshift;
-    index_t m_nnzPerRowU, m_nnzPerRowP;
+    index_t m_nnzPerOuterU, m_nnzPerOuterP;
     gsINSVisitorUUlin<T, MatOrder> m_visitorUUlin;
     gsINSVisitorUUnonlin<T, MatOrder> m_visitorUUnonlin;
     gsINSVisitorPU_withUPrhs<T, MatOrder> m_visitorUP;
@@ -53,10 +54,10 @@ protected: // *** Class members ***
 
     bool m_isMassMatReady;
     std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;
+    std::vector< gsMatrix<T> > m_massMatRhs;
 
-    // periodic BCs
-    bool m_hasPeriodicBC;
-    typename gsFlowPeriodicHelper<T>::Ptr m_velPeriodicHelperPtr, m_presPeriodicHelperPtr;
+    // rotation members
+    gsMatrix<T> m_omegaXrCoeffs;
 
     // PCD members
     // std::vector<index_t> m_presInIDs, m_presOutIDs, m_presWallIDs
@@ -147,9 +148,9 @@ protected: // *** Member functions ***
         index_t fullPshift = m_tarDim * fullUdofs;
         
         if (i < fullPshift)
-            return ( m_velPeriodicHelperPtr->map(i % fullUdofs) + (i / fullUdofs) * m_udofs );
+            return ( m_paramsPtr->getPerHelperPtr(0)->map(i % fullUdofs) + (i / fullUdofs) * m_udofs );
         else
-            return ( m_presPeriodicHelperPtr->map(i % fullPshift) + m_pshift);
+            return ( m_paramsPtr->getPerHelperPtr(1)->map(i % fullPshift) + m_pshift);
     }
 
     inline index_t invMapPeriodic(int i) const
@@ -158,9 +159,9 @@ protected: // *** Member functions ***
         index_t fullPshift = m_tarDim * fullUdofs;
 
         if (i < m_pshift)
-            return ( m_velPeriodicHelperPtr->invMap(i % m_udofs) + (i / m_udofs) * fullUdofs );
+            return ( m_paramsPtr->getPerHelperPtr(0)->invMap(i % m_udofs) + (i / m_udofs) * fullUdofs );
         else
-            return ( m_presPeriodicHelperPtr->invMap(i % m_pshift) + fullPshift);
+            return ( m_paramsPtr->getPerHelperPtr(1)->invMap(i % m_pshift) + fullPshift);
     }
 
     inline bool isEliminatedPeriodic(int i) const
@@ -169,13 +170,128 @@ protected: // *** Member functions ***
         index_t fullPshift = m_tarDim * fullUdofs;
 
         if (i < fullPshift)
-            return ( m_velPeriodicHelperPtr->isEliminated(i % fullUdofs) );
+            return ( m_paramsPtr->getPerHelperPtr(0)->isEliminated(i % fullUdofs) );
         else
-            return ( m_presPeriodicHelperPtr->isEliminated(i % fullPshift) );
+            return ( m_paramsPtr->getPerHelperPtr(1)->isEliminated(i % fullPshift) );
     }
 
     void nonper2per_into(const gsMatrix<T>& fullVector, gsMatrix<T>& perVector) const;
     void per2nonper_into(const gsMatrix<T>& perVector, gsMatrix<T>& fullVector) const;
+
+
+    // --- member functions for rotating frame of reference ---
+
+    void computeOmegaXrCoeffs()
+    {
+        real_t omega = m_paramsPtr->options().getReal("omega");
+
+        gsFunctionExpr<T> omegaXr;
+        std::ostringstream s1, s2;
+
+        s1 << -omega << " * y";
+        s2 << omega << " * x";
+
+        switch (m_tarDim)
+        {
+        case 2:
+            omegaXr = gsFunctionExpr<T>(s1.str(), s2.str(), 2);
+            break;
+
+        case 3:
+            omegaXr = gsFunctionExpr<T>(s1.str(), s2.str(), "0", 3);
+            break;
+
+        default:
+            GISMO_ERROR("Wrong space dimension.");
+            break;
+        }
+
+        // gsMatrix<T> tmpCoeffs;
+        // gsL2Projection<T> proj;
+        // proj.projectFunction(getBases().front(), omegaXr, m_paramsPtr->getPde().domain(), tmpCoeffs);
+
+        gsDofMapper mapper;
+        getBases().front().getMapper(getAssemblerOptions().intStrategy, mapper);
+        int matSize = mapper.freeSize();
+        m_omegaXrCoeffs.setZero(matSize, m_tarDim);
+
+        // gsInfo << "tmpCoeffs size = " << tmpCoeffs.size() << "\n";
+        // gsInfo << "m_omegaXrCoeffs size = " << m_omegaXrCoeffs.size() << "\n";
+        // gsInfo << "difference = " << tmpCoeffs.size() - m_omegaXrCoeffs.size() << "\n\n";
+        // gsInfo << "boundary size = " << m_dofMappers[0].boundarySize() << "\n";
+        // gsInfo << "coupled size = " << m_dofMappers[0].coupledSize() << "\n";
+        // gsInfo << "free size = " << m_dofMappers[0].freeSize() << "\n";
+        // gsInfo << "size = " << m_dofMappers[0].size() << "\n";
+        // gsInfo << "total size = " << m_dofMappers[0].totalSize() << "\n";
+
+        gsSparseMatrix<T, MatOrder> projMatrix(matSize, matSize);
+        gsMatrix<T> projRhs(matSize, m_tarDim);
+        projRhs.setZero();
+
+        int nnzPerOuter = 1;
+        for (int i = 0; i < m_tarDim; i++)
+        nnzPerOuter *= 2 * getBases().front().maxDegree(i) + 1;
+
+        projMatrix.reserve(gsVector<int>::Constant(matSize, nnzPerOuter));
+
+        gsMatrix<T> quNodes;
+        gsVector<T> quWeights;
+        gsQuadRule<T> QuRule;
+
+        gsMatrix<T> basisVals;
+        gsMatrix<T> rhsVals;
+        gsMatrix<index_t> globIdxAct;
+
+        gsMapData<T> mapData;
+        mapData.flags = NEED_MEASURE;
+
+        for (unsigned int p = 0; p < getPatches().nPatches(); ++p)
+        {
+            const gsBasis<T> & basis = (getBases().front()).piece(p);
+            mapData.patchId = p;
+
+            gsVector<index_t> numQuadNodes(basis.dim());
+            for (int i = 0; i < basis.dim(); ++i)
+                numQuadNodes[i] = basis.maxDegree() + 1;
+            QuRule = gsGaussRule<T>(numQuadNodes);
+
+            typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
+
+            for (; domIt->good(); domIt->next())
+            {
+                QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+                mapData.points = quNodes;
+                m_paramsPtr->getPde().patches().patch(p).computeMap(mapData);
+                rhsVals = omegaXr.eval(getPatches().patch(p).eval(quNodes));
+                basis.eval_into(quNodes, basisVals);
+                basis.active_into(quNodes.col(0), globIdxAct);
+                mapper.localToGlobal(globIdxAct, p, globIdxAct);
+
+                for (index_t k = 0; k < quNodes.cols(); k++)
+                {
+                    const T weight_k = quWeights[k] * mapData.measure(k);
+
+                    for (int i = 0; i < globIdxAct.size(); i++)
+                    {
+                        const unsigned ii = globIdxAct(i);
+
+                        for (int j = 0; j < globIdxAct.size(); j++)
+                        {
+                            const unsigned jj = globIdxAct(j);
+
+                            projMatrix.coeffRef(ii, jj) += weight_k * basisVals(i, k) * basisVals(j, k);
+                        }
+
+                        projRhs.row(ii) += weight_k *  basisVals(i, k) * rhsVals.col(k).transpose();
+                    }
+                }
+            }
+        }
+
+        projMatrix.makeCompressed();
+        typename gsSparseSolver<T>::CGDiagonal solver;
+        m_omegaXrCoeffs = solver.compute(projMatrix).solve(projRhs);
+    }
 
 
     // --- PCD member functions ---
@@ -204,10 +320,11 @@ public: // *** Member functions ***
     virtual void fillStokesSystem(gsSparseMatrix<T, MatOrder>& stokesMat, gsMatrix<T>& stokesRhs);
 
     /// @brief Construct solution from computed solution vector for unknown \a unk.
-    /// @param[in]  solVector   the solution vector obtained from the linear system
-    /// @param[out] result      the resulting solution as a gsMultiPatch object
-    /// @param[in]  unk         the considered unknown
-    virtual gsField<T> constructSolution(const gsMatrix<T>& solVector, index_t unk) const;
+    /// @param[in]  solVector    the solution vector obtained from the linear system
+    /// @param[out] result       the resulting solution as a gsMultiPatch object
+    /// @param[in]  unk          the considered unknown
+    /// @param[in]  customSwitch used if unk = 0 (true = construct relative velocity, false = construct absolute velocity; relevant for rotating frame of reference)
+    virtual gsField<T> constructSolution(const gsMatrix<T>& solVector, index_t unk, bool customSwitch = false) const;
 
     /// @brief Compute flow rate through a side of a given patch.
     /// @param[in] patch        the given patch ID
@@ -373,14 +490,13 @@ protected: // *** Base class members ***
 
     using Base::m_paramsPtr;
     using Base::m_pshift;
-    using Base::m_nnzPerRowU;
+    using Base::m_nnzPerOuterU;
     using Base::m_dofMappers;
     using Base::m_solution;
     using Base::m_baseMatrix;
     using Base::m_matrix;
     using Base::m_rhs;
     using Base::m_currentVelField;
-    using Base::m_velPeriodicHelperPtr;
 
 
 public: // *** Constructor/destructor ***

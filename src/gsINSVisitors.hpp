@@ -64,7 +64,7 @@ template <class T, int MatOrder>
 void gsINSVisitorUU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
-    const index_t uCompSize = m_testPeriodicHelperPtr->numFreeDofs(); // number of dofs for one velocity component
+    const index_t uCompSize = m_paramsPtr->getPerHelperPtr(m_testUnkID)->numFreeDofs(); // number of dofs for one velocity component
     index_t nComponents = globalMat.rows() / uCompSize;
 
     GISMO_ASSERT(nComponents == dim, "Wrong matrix size in gsINSVisitorUU::localToGlobal_per, matrix has to contain all components.");
@@ -81,8 +81,8 @@ void gsINSVisitorUU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
-            bool iiElim = m_testPeriodicHelperPtr->isEliminated(ii);
-            const index_t iiMapped = m_testPeriodicHelperPtr->map(ii);
+            bool iiElim = m_paramsPtr->getPerHelperPtr(m_testUnkID)->isEliminated(ii);
+            const index_t iiMapped = m_paramsPtr->getPerHelperPtr(m_testUnkID)->map(ii);
 
             for (index_t j = 0; j < numActTrial; ++j)
             {
@@ -90,8 +90,8 @@ void gsINSVisitorUU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
 
                 if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
-                    bool jjElim = m_trialPeriodicHelperPtr->isEliminated(jj);
-                    const index_t jjMapped = m_trialPeriodicHelperPtr->map(jj);
+                    bool jjElim = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->isEliminated(jj);
+                    const index_t jjMapped = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(jj);
 
                     // ii and jj are not eliminated periodic dofs:
                     if (!iiElim && !jjElim) 
@@ -217,7 +217,7 @@ template <class T, int MatOrder>
 void gsINSVisitorPU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
-    const index_t uCompSize = m_testPeriodicHelperPtr->numFreeDofs(); // number of dofs for one velocity component
+    const index_t uCompSize = m_paramsPtr->getPerHelperPtr(m_testUnkID)->numFreeDofs(); // number of dofs for one velocity component
 
     GISMO_ASSERT(globalMat.rows() == dim*uCompSize, "Wrong matrix size in gsINSVisitorPU::localToGlobal_per.");
 
@@ -233,8 +233,8 @@ void gsINSVisitorPU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
-            bool iiElim = m_testPeriodicHelperPtr->isEliminated(ii);
-            const index_t iiMapped = m_testPeriodicHelperPtr->map(ii);
+            bool iiElim = m_paramsPtr->getPerHelperPtr(m_testUnkID)->isEliminated(ii);
+            const index_t iiMapped = m_paramsPtr->getPerHelperPtr(m_testUnkID)->map(ii);
 
             for (index_t j = 0; j < numActTrial; ++j)
             {
@@ -242,8 +242,8 @@ void gsINSVisitorPU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
 
                 if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
-                    bool jjElim = m_trialPeriodicHelperPtr->isEliminated(jj);
-                    const index_t jjMapped = m_trialPeriodicHelperPtr->map(jj);
+                    bool jjElim = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->isEliminated(jj);
+                    const index_t jjMapped = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(jj);
 
                     // ii and jj are not eliminated periodic dofs or only jj is eliminated:
                     if (!iiElim) 
@@ -376,7 +376,7 @@ template <class T, int MatOrder>
 void gsINSVisitorPU_withUPrhs<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
-    const index_t uCompSize = m_testPeriodicHelperPtr->numFreeDofs(); // number of dofs for one velocity component
+    const index_t uCompSize = m_paramsPtr->getPerHelperPtr(m_testUnkID)->numFreeDofs(); // number of dofs for one velocity component
 
     GISMO_ASSERT(globalMat.rows() == dim*uCompSize, "Wrong matrix size in gsINSVisitorPU_withUPrhs::localToGlobal_per.");
 
@@ -392,8 +392,8 @@ void gsINSVisitorPU_withUPrhs<T, MatOrder>::localToGlobal_per(const std::vector<
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
-            bool iiElim = m_testPeriodicHelperPtr->isEliminated(ii);
-            const index_t iiMapped = m_testPeriodicHelperPtr->map(ii);
+            bool iiElim = m_paramsPtr->getPerHelperPtr(m_testUnkID)->isEliminated(ii);
+            const index_t iiMapped = m_paramsPtr->getPerHelperPtr(m_testUnkID)->map(ii);
 
             for (index_t j = 0; j < numActTrial; ++j)
             {
@@ -401,8 +401,8 @@ void gsINSVisitorPU_withUPrhs<T, MatOrder>::localToGlobal_per(const std::vector<
 
                 if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
-                    bool jjElim = m_trialPeriodicHelperPtr->isEliminated(jj);
-                    const index_t jjMapped = m_trialPeriodicHelperPtr->map(jj);
+                    bool jjElim = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->isEliminated(jj);
+                    const index_t jjMapped = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(jj);
 
                     // ii and jj are not eliminated periodic dofs or only jj is eliminated:
                     if (!iiElim) 
@@ -481,7 +481,7 @@ void gsINSVisitorPU_withUPrhs<T, MatOrder>::localToGlobal_per(const std::vector<
                     for (index_t d = 0; d < dim; d++)
                         tmp += m_locMatVec[d](i, k) * eliminatedDofs[m_testUnkID](bb, d);
 
-                    globalRhs(m_trialPeriodicHelperPtr->map(kk) + dim*uCompSize, 0) += tmp;
+                    globalRhs(m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(kk) + dim*uCompSize, 0) += tmp;
                 }
             }
         }
@@ -540,7 +540,7 @@ template <class T, int MatOrder>
 void gsINSVisitorUP<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
-    const index_t uCompSize = m_trialPeriodicHelperPtr->numFreeDofs(); // number of dofs for one velocity component
+    const index_t uCompSize = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->numFreeDofs(); // number of dofs for one velocity component
 
     GISMO_ASSERT(globalMat.cols() == dim*uCompSize, "Wrong matrix size in gsINSVisitorUP::localToGlobal_per.");
 
@@ -556,8 +556,8 @@ void gsINSVisitorUP<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
-            bool iiElim = m_testPeriodicHelperPtr->isEliminated(ii);
-            const index_t iiMapped = m_testPeriodicHelperPtr->map(ii);
+            bool iiElim = m_paramsPtr->getPerHelperPtr(m_testUnkID)->isEliminated(ii);
+            const index_t iiMapped = m_paramsPtr->getPerHelperPtr(m_testUnkID)->map(ii);
 
             for (index_t j = 0; j < numActTrial; ++j)
             {
@@ -565,8 +565,8 @@ void gsINSVisitorUP<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
 
                 if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
-                    bool jjElim = m_trialPeriodicHelperPtr->isEliminated(jj);
-                    const index_t jjMapped = m_trialPeriodicHelperPtr->map(jj);
+                    bool jjElim = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->isEliminated(jj);
+                    const index_t jjMapped = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(jj);
 
                     // ii and jj are not eliminated periodic dofs or only ii is eliminated:
                     if (!iiElim) 
@@ -667,7 +667,7 @@ void gsINSVisitorPP<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
     for (index_t i = 0; i < numActTest; ++i)
     {
         const int ii = m_testFunActives(i);
-        const index_t iiMapped = m_testPeriodicHelperPtr->map(ii);
+        const index_t iiMapped = m_paramsPtr->getPerHelperPtr(m_testUnkID)->map(ii);
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
@@ -677,7 +677,7 @@ void gsINSVisitorPP<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
 
                 if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
-                    globalMat.coeffRef(iiMapped, m_trialPeriodicHelperPtr->map(jj)) += m_localMat(i, j);
+                    globalMat.coeffRef(iiMapped, m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(jj)) += m_localMat(i, j);
                 }
                 else // is_boundary_index(jj)
                 {
@@ -729,7 +729,7 @@ template <class T, int MatOrder>
 void gsINSVisitorRhsU<T, MatOrder>::localToGlobal_per(gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
-    const index_t uCompSize = m_testPeriodicHelperPtr->numFreeDofs(); // number of dofs for one velocity component
+    const index_t uCompSize = m_paramsPtr->getPerHelperPtr(m_testUnkID)->numFreeDofs(); // number of dofs for one velocity component
 
     m_dofMappers[m_testUnkID].localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
 
@@ -741,8 +741,8 @@ void gsINSVisitorRhsU<T, MatOrder>::localToGlobal_per(gsMatrix<T>& globalRhs)
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
-            bool iiElim = m_testPeriodicHelperPtr->isEliminated(ii);
-            const index_t iiMapped = m_testPeriodicHelperPtr->map(ii);
+            bool iiElim = m_paramsPtr->getPerHelperPtr(m_testUnkID)->isEliminated(ii);
+            const index_t iiMapped = m_paramsPtr->getPerHelperPtr(m_testUnkID)->map(ii);
 
             // ii is not eliminated periodic dof
             if (!iiElim) 
@@ -808,7 +808,7 @@ void gsINSVisitorRhsP<T, MatOrder>::localToGlobal_per(gsMatrix<T>& globalRhs)
         const index_t ii = m_testFunActives(i);
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
-            globalRhs(m_testPeriodicHelperPtr->map(ii), 0) += m_localMat(i);
+            globalRhs(m_paramsPtr->getPerHelperPtr(m_testUnkID)->map(ii), 0) += m_localMat(i);
     }
 } 
 

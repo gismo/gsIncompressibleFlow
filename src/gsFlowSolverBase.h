@@ -155,10 +155,10 @@ public: // *** Member functions ***
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Construct solution field for the unknown \a unk for the current solution vector.
-    /// @param unk the considered unknown (0 - velocity, 1 - pressure)
-    /// @return 
-    gsField<T> constructSolution(int unk) const
-    { return getAssembler()->constructSolution(m_solution, unk); }
+    /// @param[in] unk          the considered unknown (0 - velocity, 1 - pressure)
+    /// @param[in] customSwitch a switch to be used for any purpose by derived classes
+    gsField<T> constructSolution(int unk, bool customSwitch = false) const
+    { return getAssembler()->constructSolution(m_solution, unk, customSwitch); }
 
     /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.
     /// @param[in] boundaryDofs     indices of the given boundary DOFs

@@ -46,8 +46,6 @@ protected: // *** Base class members ***
     using Base::m_localMat;
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
-    using Base::m_testPeriodicHelperPtr;
-    using Base::m_trialPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -276,8 +274,6 @@ protected: // *** Base class members ***
     using Base::m_terms;
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
-    using Base::m_testPeriodicHelperPtr;
-    using Base::m_trialPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -342,8 +338,6 @@ protected: // *** Base class members ***
     using Base::m_trialFunActives;
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
-    using Base::m_testPeriodicHelperPtr;
-    using Base::m_trialPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -400,8 +394,6 @@ protected: // *** Base class members ***
     using Base::m_terms;
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
-    using Base::m_testPeriodicHelperPtr;
-    using Base::m_trialPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -461,8 +453,6 @@ protected: // *** Base class members ***
     using Base::m_localMat;
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
-    using Base::m_testPeriodicHelperPtr;
-    using Base::m_trialPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -761,7 +751,6 @@ protected: // *** Base class members ***
     using Base::m_testFunData;
     using Base::m_trialFunData;
     using Base::m_periodicTransformMat;
-    using Base::m_testPeriodicHelperPtr;
 
 
 public: // *** Constructor/destructor ***
@@ -834,7 +823,6 @@ protected: // *** Base class members ***
     using Base::m_testFunData;
     using Base::m_trialFunData;
     using Base::m_periodicTransformMat;
-    using Base::m_testPeriodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 

@@ -15,6 +15,7 @@
 
 #include <gsIncompressibleFlow/src/gsNavStokesPde.h>
 #include <gsIncompressibleFlow/src/gsINSPreconditioners.h>
+#include <gsIncompressibleFlow/src/gsFlowPeriodicHelper.h>
 
 namespace gismo
 {
@@ -50,6 +51,9 @@ protected: // *** Class members ***
     bool m_isBndSet;
     std::vector<std::pair<int, boxSide> > m_bndIn, m_bndOut, m_bndWall;
 
+    bool m_hasPeriodicBC;
+    std::vector< typename gsFlowPeriodicHelper<T>::Ptr > m_periodicHelpers;
+
 public: // *** Constructor/destructor ***
 
     gsFlowSolverParams() {}
@@ -68,6 +72,13 @@ public: // *** Constructor/destructor ***
         m_precOpt = gsINSPreconditioner<T, RowMajor>::defaultOptions();
 
         m_isBndSet = false;
+        m_hasPeriodicBC = false;
+
+        if (m_pdePtr->bc().numPeriodic() != 0)
+        {
+            m_hasPeriodicBC = true;
+            createPeriodicHelpers();
+        }
     }
 
     ~gsFlowSolverParams()
@@ -98,9 +109,10 @@ public: // *** Static functions ***
         //opt.addSwitch("assemb.sumFact", "Use sum factorization for integration", false);
         opt.addSwitch("fillGlobalSyst", "Fill the global linear systems from blocks", true);
         
-        // time-dependent problem
+        // problem settings
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
         opt.addReal("timeStep", "Time step size", 0.1);
+        opt.addReal("omega", "Angular velocity (for rotating frame of reference)", 0.0);
 
         // output
         opt.addSwitch("fileOutput", "Create an output file", false);
@@ -121,7 +133,9 @@ public: // *** Static functions ***
 
 public: // *** Member functions ***
 
-    /// @brief Creates DOF mappers for velocity and pressure.
+    /// @brief Create DOF mappers for velocity and pressure.
+    /// @param[out] mappers     vector of created DOF mappers
+    /// @param[in]  finalize    finalize the DOF mapper (yes/no)
     void createDofMappers(std::vector<gsDofMapper>& mappers, bool finalize = true)
     {
         mappers.resize(2);
@@ -129,6 +143,18 @@ public: // *** Member functions ***
         m_bases.front().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pdePtr->bc(), mappers.front(), 0, finalize);
         m_bases.back().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy,  m_pdePtr->bc(), mappers.back(), 1, finalize);
     }
+
+
+    /// @brief Create helpers for mapping of radial periodic conditions.
+    /// @param[in]  mappers     vector of DOF mappers
+    void createPeriodicHelpers(const std::vector<gsDofMapper>& mappers)
+    {
+        m_periodicHelpers.resize(2);
+
+        m_periodicHelpers[0] = gsFlowPeriodicHelper<T>::make(getBases().front(), mappers.front(), m_pdePtr->bc());
+        m_periodicHelpers[1] = gsFlowPeriodicHelper<T>::make(getBases().back(), mappers.back(), m_pdePtr->bc());
+    }
+
 
     /// @brief Set boundary parts (vectors of pairs [patch, side]).
     /// @param[in] bndIn    inflow boundary part 
@@ -141,6 +167,17 @@ public: // *** Member functions ***
         m_bndWall = bndWall;
 
         m_isBndSet = true;
+    }
+
+
+protected: // *** Member functions ***
+
+    /// @brief Create helpers for mapping of radial periodic conditions.
+    void createPeriodicHelpers()
+    {
+        std::vector<gsDofMapper> mappers;
+        createDofMappers(mappers);
+        createPeriodicHelpers(mappers);
     }
 
 
@@ -213,6 +250,19 @@ public: // *** Getters/setters ***
         GISMO_ASSERT(m_isBndSet, "Boundary parts are not set in gsFlowSolverParams, call setBndParts(...).");
         return m_bndWall;
     }
+
+    /// @brief Returns true if the angular velocity omega is non-zero.
+    bool isRotation()
+    { return (options().getReal("omega") != 0); }
+
+    /// @brief Returns true if the boundary conditions in m_pdePtr contain periodic conditions.
+    bool hasPeriodicBC()
+    { return m_hasPeriodicBC; }
+
+    /// @brief Returns shared pointer to the helper class for radial periodic conditions for unknown \a unk.
+    /// @param[in] unk unknown
+    typename gsFlowPeriodicHelper<T>::Ptr getPerHelperPtr(index_t unk)
+    { return m_periodicHelpers[unk]; }
 
 
 }; // class gsFlowSolverParams

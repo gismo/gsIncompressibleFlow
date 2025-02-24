@@ -19,7 +19,6 @@
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowTerms.h>
 #include <gsIncompressibleFlow/src/gsINSTerms.h>
-#include <gsIncompressibleFlow/src/gsFlowPeriodicHelper.h>
 
 namespace gismo
 {
@@ -69,7 +68,6 @@ protected: // *** Class members ***
     // for periodicity in radially symmetric domains
     bool m_hasPeriodicBC;
     gsMatrix<T> m_periodicTransformMat;
-    typename gsFlowPeriodicHelper<T>::Ptr m_testPeriodicHelperPtr, m_trialPeriodicHelperPtr;
     
 
 public: // *** Constructor/destructor ***
@@ -81,7 +79,13 @@ public: // *** Constructor/destructor ***
     gsFlowVisitor(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     m_paramsPtr(paramsPtr)
     {
-        m_hasPeriodicBC = false;
+        if (m_paramsPtr->hasPeriodicBC())
+        {
+            m_hasPeriodicBC = true;
+            m_periodicTransformMat = m_paramsPtr->getPde().bc().getTransformMatrix();
+        }
+        else 
+            m_hasPeriodicBC = false;
     }
 
     ~gsFlowVisitor()
@@ -202,14 +206,6 @@ public: // *** Member functions ***
     /// @brief Add local contributions to the global right-hand side vector.
     /// @param[out] globalRhs reference to the global right-hand side
     virtual void localToGlobal(gsMatrix<T>& globalRhs);
-
-    void setPeriodicHelpers(typename gsFlowPeriodicHelper<T>::Ptr testPerHelperPtr, typename gsFlowPeriodicHelper<T>::Ptr trialPerHelperPtr)
-    { 
-        m_testPeriodicHelperPtr = testPerHelperPtr;
-        m_trialPeriodicHelperPtr = trialPerHelperPtr;
-        m_hasPeriodicBC = true;
-        m_periodicTransformMat = m_paramsPtr->getPde().bc().getTransformMatrix();
-    }
 
 };
 

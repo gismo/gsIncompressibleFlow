@@ -267,7 +267,7 @@ void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofsL2Proj(const index_t 
 
 
 template<class T, int MatOrder>
-void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs)
+void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
 {
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
@@ -302,7 +302,8 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
         }    
     }
 
-    block.makeCompressed();
+    if (compressMat)
+        block.makeCompressed();
 }
 
 
