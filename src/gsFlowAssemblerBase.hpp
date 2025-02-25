@@ -192,11 +192,12 @@ void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofsL2Proj(const index_t 
         gsGaussRule<T> bdQuRule(basis, 1.0, 1, it->side().direction());
 
         // Create the iterator along the given part boundary.
-        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(it->side());
+        typename gsBasis<T>::domainIter bdryIter =  basis.domain()->beginBdr(it->side());
+        typename gsBasis<T>::domainIter bdryItEnd =  basis.domain()->endBdr(it->side());
 
-        for (; bdryIter->good(); bdryIter->next())
+        for (; bdryIter < bdryItEnd; ++bdryIter )
         {
-            bdQuRule.mapTo(bdryIter->lowerCorner(), bdryIter->upperCorner(),
+            bdQuRule.mapTo(bdryIter.lowerCorner(), bdryIter.upperCorner(),
                 mapData.points, quWeights);
 
             patch.computeMap(mapData);
@@ -269,6 +270,10 @@ void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofsL2Proj(const index_t 
 template<class T, int MatOrder>
 void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
 {
+
+    // Todo: iteration over all patches at once
+    //typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().domain()->beginAll();
+
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
         visitor.initOnPatch(p);
@@ -289,15 +294,18 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
             if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
                 gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
 
-            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).makeDomainIterator(boundary::none);
+            //typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).makeDomainIterator(boundary::none);
+            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBases().front().piece(p).domain()->endAll();
 
-            while (domIt->good())
+
+            while (domIt!=domItEnd)
             {
                 visitor.evaluate(domIt.get());
                 visitor.assemble();
                 visitor.localToGlobal(m_ddof, block, blockRhs);
 
-                domIt->next();
+                ++domIt;
             }
         }    
     }
@@ -327,15 +335,16 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(gsFlowVisitor<T, MatOrder>& v
         }
         else
         {
-            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).makeDomainIterator(boundary::none);
+            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBases().front().piece(p).domain()->endAll();
 
-            while (domIt->good())
+            while (domIt!=domItEnd)
             {
                 visitor.evaluate(domIt.get());
                 visitor.assemble();
                 visitor.localToGlobal(rhs);
 
-                domIt->next();
+                ++domIt;
             }
         }
     }

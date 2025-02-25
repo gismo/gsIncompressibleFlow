@@ -34,10 +34,10 @@ void gsFlowBndEvaluator<T>::evalOnPatchSide(index_t patchID, boxSide side)
     gsMatrix<T> quNodes; 
     gsVector<T> quWeights; 
 
-    typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator(side);
-    for (; domIt->good(); domIt->next())
+    typename gsBasis<T>::domainIter domItEnd =  basis->domain()->endAll();
+    for (auto domIt = basis->domain()->beginAll(); domIt<domItEnd; ++domIt )
     {
-        QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+        QuRule.mapTo(domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights);
     
         m_mapData.points = quNodes;
         m_mapData.side = side;
