@@ -12,8 +12,8 @@
 #pragma once
 
 #include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
-//#include <gsIncompressibleFlow/src/gsFlowLinSystSolver.h>
-
+#include <gsIncompressibleFlow/src/gsTMAssemblerBase.h>
+#include <gsIncompressibleFlow/src/gsFlowLinSystSolver.h>
 
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
@@ -89,6 +89,8 @@ public: // *** Getters/setters ***
         GISMO_ASSERT(m_TurbulentViscosityVals.rows() > 0, "Turbulent viscosity not evaluated yet.");    
         return m_TurbulentViscosityVals; 
     }
+
+    bool isInitialized() { return getAssembler()->isInitialized(); }
 
     /// @brief Returns a pointer to the assembler.
     //virtual gsINSAssembler<T, MatOrder>* getAssembler() const

@@ -178,11 +178,11 @@ public: // *** Getters/setters ***
      * 
      * There is also a const version returning a const reference.
      */
-    std::vector< gsMultiBasis<T> >& getBases() { return m_paramsPtr->getBases(); }
-    const std::vector< gsMultiBasis<T> >& getBases() const { return m_paramsPtr->getBases(); }
+    virtual std::vector< gsMultiBasis<T> >& getBases() { return m_paramsPtr->getBases(); }
+    virtual const std::vector< gsMultiBasis<T> >& getBases() const { return m_paramsPtr->getBases(); }
 
     /// @brief Returns a const reference to the boundary conditions.
-    const gsBoundaryConditions<T>& getBCs() const { return m_paramsPtr->getBCs(); }
+    virtual const gsBoundaryConditions<T>& getBCs() const { return m_paramsPtr->getBCs(); }
 
     /// @brief Returns a pointer to the right-hand-side function.
     const gsFunction<T>* getRhsFcn() const { return m_paramsPtr->getPde().rhs(); }

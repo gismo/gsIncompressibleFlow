@@ -14,6 +14,8 @@
 #include <gsIncompressibleFlow/src/gsFlowSolverBase.h>
 #include <gsIncompressibleFlow/src/gsFlowLinSystSolver.h>
 #include <gsIncompressibleFlow/src/gsTMSolverBase.h>
+#include <gsIncompressibleFlow/src/gsTMAssemblerBase.h>
+#include <gsIncompressibleFlow/src/gsTMAssemblerSST.h>
 
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
@@ -33,7 +35,13 @@ public:
 
 public: // *** Smart pointers ***
 
-    typedef memory::shared_ptr<gsTMSolverSST> tmPtr;    
+    typedef memory::shared_ptr<gsTMSolverSST> tmPtr;
+
+protected: // *** Class members ***
+
+    T m_TMtime, m_TMtimeStepSize;
+    T m_TMinnerIter, m_TMavgPicardIter;
+    T m_TMinnerTol;    
 
 protected: // *** Base class members ***
 
@@ -55,10 +63,20 @@ public: // *** Constructor/destructor ***
 
     gsTMSolverSST(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr)
-    { }
+    { 
+        m_assemblerPtr = new gsTMAssemblerSST<T, MatOrder>(paramsPtr);
+
+        initMembers();
+        m_paramsPtr->options().setSwitch("unsteady", true);
+    }
 
     virtual ~gsTMSolverSST()
     { }
+
+protected: // *** Member functions ***
+
+    /// @brief Initialize all members.
+    void initMembers();
 
 public: // *** Static functions ***
 
@@ -76,18 +94,30 @@ public: // *** Member functions ***
     //virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/);
     virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes);
 
+    /// @brief Perform next iteration step.
+    virtual void nextIteration();
+
     //virtual void plotTurbulentViscosity();
 
 public: // *** Getters/setters ***
 
+    /// @brief Returns a pointer to the assembler.
+    gsTMAssemblerSST<T, MatOrder>* getAssembler() const
+    {
+        return dynamic_cast<gsTMAssemblerSST<T, MatOrder>*>(m_assemblerPtr);
+    }
+
+    /// @brief Returns the average number of Picard iterations per time step.
+    T getAvgPicardIterations() const { return m_TMavgPicardIter / m_iterationNumber; }
+
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsTMSolverSST"; }
-
-    /// @brief Returns a pointer to the assembler.
-    //virtual gsINSAssembler<T, MatOrder>* getAssembler() const
-    //{ return dynamic_cast<gsTMAssembler<T, MatOrder>*>(m_assemblerPtr); }
 
 };
 
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsTMSolverSST.hpp)
+#endif

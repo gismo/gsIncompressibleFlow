@@ -15,6 +15,20 @@
 namespace gismo
 {
 
+// upravit
+template<class T, int MatOrder>
+void gsTMSolverSST<T, MatOrder>::initMembers()
+{
+    //Base::initMembers();
+
+    m_TMtime = 0;
+    m_TMtimeStepSize = m_paramsPtr->options().getReal("timeStep");
+    m_TMinnerIter = m_paramsPtr->options().getInt("TM.maxIt");
+    m_TMinnerTol = m_paramsPtr->options().getReal("TM.tol");
+    m_TMavgPicardIter = 0;
+}
+
+// upravit
 template<class T, int MatOrder>
 void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes)
 {
@@ -103,6 +117,49 @@ void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes)
 
         m_bEffectiveViscSet = true;
     */
+}
+
+// upravit
+template<class T, int MatOrder>
+void gsTMSolverSST<T, MatOrder>::nextIteration()
+{
+    GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
+
+    this->updateAssembler();
+
+    if (!m_iterationNumber)
+        this->initIteration();
+
+    gsMatrix<T> tmpSolution = m_solution;
+
+    this->applySolver(tmpSolution);
+
+    this->writeSolChangeRelNorm(m_solution, tmpSolution);
+
+    index_t picardIter = 0;
+    T relNorm = this->solutionChangeRelNorm(m_solution, tmpSolution);
+
+    gsWriteOutputLine(m_outFile, "        [u, p] Picard's iterations...", m_fileOutput, m_dispOutput);
+
+    while((relNorm > m_TMinnerTol) && (picardIter < m_TMinnerIter))
+    {
+        gsWriteOutput(m_outFile, "         ", m_fileOutput, m_dispOutput);
+
+        gsMatrix<T> oldSol = tmpSolution;
+
+        this->updateAssembler(tmpSolution, false);
+        this->applySolver(tmpSolution);
+        this->writeSolChangeRelNorm(oldSol, tmpSolution);
+
+        relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);
+        picardIter++;
+    }
+    
+    m_solution = tmpSolution;
+
+    m_TMtime += m_TMtimeStepSize;
+    m_TMavgPicardIter += picardIter;
+    m_iterationNumber++;
 }
 
 
