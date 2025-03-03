@@ -35,6 +35,17 @@ public:
 protected: // *** Class members ***
 
     gsBoundaryConditions<T> m_bc;
+    gsTMVisitorLinearSST<T, MatOrder> m_visitorLinearSST;
+    gsTMVisitorTimeIterationSST<T, MatOrder> m_visitorTimeIterationSST_K, m_visitorTimeIterationSST_O;
+    gsTMVisitorNonlinearSST<T, MatOrder> m_visitorNonlinearSST_K, m_visitorNonlinearSST_O;
+
+    gsSparseMatrix<T, MatOrder> m_blockLinearK, m_blockLinearO, m_blockTimeIterationK, m_blockTimeIterationO, m_blockNonlinearK, m_blockNonlinearO;
+    gsMatrix<T> m_rhsLinearK, m_rhsLinearO, m_rhsTimeIterationK, m_rhsTimeIterationO, m_rhsNonlinearK, m_rhsNonlinearO;
+
+    gsField<T> m_currentFieldK, m_currentFieldO, m_oldTimeFieldK, m_oldTimeFieldO;
+
+    //bool m_isMassMatReady;
+    //std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;
     
 protected: // *** Base class members ***
 
@@ -101,12 +112,7 @@ protected: // *** Member functions ***
     /// @brief Fill the velocity-velocity block into the global saddle-point matrix.
     /// @param globalMat[out]   global saddle-point matrix
     /// @param sourceMat[in]    velocity-velocity block (either for one velocity component or the whole block for all components)
-    void fillGlobalMat_KK(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat);
-
-    /// @brief Fill the pressure-pressure block into the global saddle-point matrix.
-    /// @param globalMat[out]   global saddle-point matrix
-    /// @param sourceMat[in]    pressure-pressure block
-    void fillGlobalMat_OO(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat);
+    void fillGlobalMat(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat);
 
     /// @brief Fill the linear part of the global matrix and right-hand side.https://www.twitch.tv/mikeses
     virtual void fillBaseSystem();
@@ -185,6 +191,10 @@ public: // *** Getters/setters ***
     /// @param[in] linPartOnly if true, returns only the linear part of the velocity-velocity block
     virtual gsSparseMatrix<T, MatOrder> getBlockKK(bool linPartOnly = false);
 
+    /// @brief Returns the velocity-velocity block of the linear system.
+    /// @param[in] linPartOnly if true, returns only the linear part of the velocity-velocity block
+    virtual gsSparseMatrix<T, MatOrder> getBlockOO(bool linPartOnly = false);
+
     /*
     /// @brief Returns the diagonal block of velocity-velocity block for i-th component.
     virtual gsSparseMatrix<T, MatOrder> getBlockUUcompDiag(index_t i = 0)
@@ -236,17 +246,8 @@ public: // *** Getters/setters ***
     /// @brief /// @brief Returns the velocity part of the right-hand side.
     virtual gsMatrix<T> getRhsK() const;
 
-    /*
-    /// @brief /// @brief Returns part of the right-hand side for i-th velocity component.
-    virtual gsMatrix<T> getRhsUcomp(index_t i) const
-    { 
-        GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
-        return getRhsU().middleRows(i * m_udofs, m_udofs);
-    }
-
-    /// @brief Returns the pressure part of the right-hand side.
-    gsMatrix<T> getRhsP() const;
-    */
+    /// @brief /// @brief Returns the velocity part of the right-hand side.
+    virtual gsMatrix<T> getRhsO() const;
 
 }; // gsTMAssemblerSST
 

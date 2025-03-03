@@ -44,7 +44,6 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     gsFunctionExpr<T> Owall(util::to_string(owall), m_tarDim);
     addBCs(m_bc, bndIn, bndWall, Oin, Owall);
 
-    numTMvars = m_bases.size();
     m_dofMappers.resize(numTMvars);
     for (short_t i = 0; i < numTMvars; i++)
     {
@@ -53,29 +52,24 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
 
     updateSizes();
 
-    /*
-    m_visitorUUlin = gsINSVisitorUUlin<T, MatOrder>(m_paramsPtr);
-    m_visitorUUlin.initialize();
-
-    m_visitorUUnonlin = gsINSVisitorUUnonlin<T, MatOrder>(m_paramsPtr);
-    m_visitorUUnonlin.initialize();
-    m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
-
-    m_visitorUP = gsINSVisitorPU_withUPrhs<T, MatOrder>(m_paramsPtr);
-    m_visitorUP.initialize();
-
-    m_visitorF = gsINSVisitorRhsU<T, MatOrder>(m_paramsPtr);
-    m_visitorF.initialize();
-
-    m_visitorG = gsINSVisitorRhsP<T, MatOrder>(m_paramsPtr);
-    m_visitorG.initialize();
     
-    m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T, MatOrder>(m_paramsPtr);
-    m_visitorTimeDiscr.initialize();
+    m_visitorLinearSST = gsTMVisitorLinearSST<T, MatOrder>(m_paramsPtr);
+    m_visitorLinearSST.initialize();
 
-    m_isMassMatReady = false;
-    m_massMatBlocks.resize(2); // [velocity, pressure]
-    */
+    m_visitorTimeIterationSST_K = gsTMVisitorTimeIterationSST<T, MatOrder>(m_paramsPtr, 0);
+    m_visitorTimeIterationSST_O = gsTMVisitorTimeIterationSST<T, MatOrder>(m_paramsPtr, 1);
+    m_visitorTimeIterationSST_K.initialize();
+    m_visitorTimeIterationSST_O.initialize();
+
+    m_visitorNonlinearSST_K = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, 0);
+    m_visitorNonlinearSST_O = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, 1);
+    m_visitorNonlinearSST_K.initialize();
+    m_visitorNonlinearSST_O.initialize();
+    m_visitorNonlinearSST_K.setCurrentSolution(m_solution);
+    m_visitorNonlinearSST_O.setCurrentSolution(m_solution);
+
+    //m_isMassMatReady = false;
+    //m_massMatBlocks.resize(2); // [k, omega]
 }
 
 
@@ -106,105 +100,87 @@ void gsTMAssemblerSST<T, MatOrder>::updateSizes()
 
     m_solution.setZero(m_dofs, 1);
 
-    // upravit dale
-    /*
-    m_currentVelField = constructSolution(m_solution, 0);
+    m_blockLinearK.resize(m_kdofs[0], m_kdofs[0]);
+    m_blockLinearO.resize(m_kdofs[1], m_kdofs[1]);
+    m_blockTimeIterationK.resize(m_kdofs[0], m_kdofs[0]);
+    m_blockTimeIterationO.resize(m_kdofs[1], m_kdofs[1]);
+    m_blockNonlinearK.resize(m_kdofs[0], m_kdofs[0]);
+    m_blockNonlinearO.resize(m_kdofs[1], m_kdofs[1]);
+        
+    m_rhsLinearK.setZero(m_kdofs[0], 1);
+    m_rhsLinearO.setZero(m_kdofs[1], 1);
+    m_rhsTimeIterationK.setZero(m_kdofs[0], 1);
+    m_rhsTimeIterationO.setZero(m_kdofs[1], 1);
+    m_rhsNonlinearK.setZero(m_kdofs[0], 1);
+    m_rhsNonlLinearO.setZero(m_kdofs[1], 1);
 
-    m_blockUUlin_comp.resize(m_udofs, m_udofs);
-    m_blockUUnonlin_comp.resize(m_udofs, m_udofs);
-    m_blockUUlin_whole.resize(m_pshift, m_pshift);
-    m_blockUUnonlin_whole.resize(m_pshift, m_pshift);
-    m_blockUP.resize(m_pshift, m_pdofs);
+    m_currentFieldK = constructSolution(m_solution, 0);
+    m_currentFieldO = constructSolution(m_solution, 1);
+    m_oldTimeFieldK = m_currentFieldK;
+    m_oldTimeFieldO = m_currentFieldO;
 
-    m_baseMatrix.resize(m_dofs, m_dofs);
-    m_matrix.resize(m_dofs, m_dofs);
-
-    m_rhsUlin.setZero(m_pshift, 1);
-    m_rhsUnonlin.setZero(m_pshift, 1);
-    m_rhsBtB.setZero(m_dofs, 1);
-    m_rhsFG.setZero(m_dofs, 1);
-    m_baseRhs.setZero(m_dofs, 1);
-    m_rhs.setZero(m_dofs, 1);
-
-    m_oldTimeVelField = m_currentVelField;
-
-    m_blockTimeDiscr.resize(m_pshift, m_pshift);
-    m_rhsTimeDiscr.setZero(m_pshift, 1);
-    */
+    //m_blockTimeDiscr.resize(m_pshift, m_pshift);
+    //m_rhsTimeDiscr.setZero(m_pshift, 1);
+    
 }
 
 
 template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::updateDofMappers()
 {
-    /*
-    m_visitorUUlin.updateDofMappers(m_dofMappers);
-    m_visitorUUnonlin.updateDofMappers(m_dofMappers);
-    m_visitorUP.updateDofMappers(m_dofMappers);
-    m_visitorF.updateDofMappers(m_dofMappers);
-    m_visitorG.updateDofMappers(m_dofMappers);
-    m_visitorTimeDiscr.updateDofMappers(m_dofMappers);
-    */
+    m_visitorLinearSST.updateDofMappers(m_dofMappers);
+    m_visitorTimeIterationSST_K.updateDofMappers(m_dofMappers);
+    m_visitorTimeIterationSST_O.updateDofMappers(m_dofMappers);
+    m_visitorNonlinearSST_K.updateDofMappers(m_dofMappers);
+    m_visitorNonlinearSST_O.updateDofMappers(m_dofMappers);
 }
 
 
 template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
 {
+    m_currentFieldK = constructSolution(solVector, 0);
+    m_visitorNonlinearSST_K.setCurrentSolution(m_currentFieldK);
+    m_paramsPtr->getSSTModel().setKSolution(m_currentFieldK);
+    m_currentFieldO = constructSolution(solVector, 1);
+    m_visitorNonlinearSST_O.setCurrentSolution(m_currentFieldO);
+    m_paramsPtr->getSSTModel().setOmegaSolution(m_currentFieldO);
+
     if (updateSol)
+    {
         m_solution = solVector;
-
-    /*
-    m_currentVelField = constructSolution(solVector, 0);
-    m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
-
-
-    if (updateSol)
-        m_oldTimeVelField = this->constructSolution(solVector, 0);
-    */
+        m_oldTimeFieldK = m_currentFieldK;
+        m_oldTimeFieldO = m_currentFieldO;
+    }
 }
 
 
 template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::assembleLinearPart()
 {
-    /*
     // matrix and rhs cleaning
-    m_blockUUlin_comp.resize(m_udofs, m_udofs);
-    m_blockUP.resize(m_pshift, m_pdofs);
-    m_rhsUlin.setZero();
-    m_rhsBtB.setZero();
-    m_rhsFG.setZero();
-
+    m_blockLinearK.resize(m_kdofs[0], m_kdofs[0]);;
+    m_blockLinearO.resize(m_kdofs[0], m_kdofs[0]);;
+    m_rhsLinearK.setZero();
+    m_rhsLinearO.setZero();
+    
     int nnzPerOuterUP = 0;
 
-    if (MatOrder == RowMajor)
-        nnzPerOuterUP = m_nnzPerRowP;
-    else 
-        nnzPerOuterUP = m_tarDim * m_nnzPerRowU;
-
     // memory allocation
-    m_blockUUlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUlin_comp.outerSize(), m_nnzPerRowU));
-    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.outerSize(), nnzPerOuterUP));
+    m_blockLinearK.reserve(gsVector<index_t>::Constant(m_blockLinearK.outerSize(), m_nnzPerRowTM));
+    m_blockLinearO.reserve(gsVector<index_t>::Constant(m_blockLinearK.outerSize(), m_nnzPerRowTM));
 
-    this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_comp, m_rhsUlin);
-    this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
-    this->assembleRhs(m_visitorF, 0, m_rhsFG);
+    // in this case, linear blocks correspond to time discretization blocks only
+    this->assembleBlock(m_visitorLinearSST, 0, m_blockLinearK, m_rhsLinearK);
+    this->assembleBlock(m_visitorLinearSST, 1, m_blockLinearO, m_rhsLinearO);
+    
+    //if(m_paramsPtr->getPde().source()) // if the continuity eqn rhs is given
+    //    this->assembleRhs(m_visitorG, 1, m_rhsFG);
 
-    if(m_paramsPtr->getPde().source()) // if the continuity eqn rhs is given
-        this->assembleRhs(m_visitorG, 1, m_rhsFG);
+    m_rhsLinearK = m_blockLinearK * m_solution.topRows(m_kdofs[0]);
+    m_rhsLinearO = m_blockLinearO * m_solution.bottomRows(m_kdofs[1]);
 
-    // matrix cleaning
-    m_blockTimeDiscr.resize(m_pshift, m_pshift);
-    m_blockTimeDiscr.reserve(gsVector<index_t>::Constant(m_blockTimeDiscr.outerSize(), m_nnzPerRowU));
-
-    gsMatrix<T> dummyRhs;
-    dummyRhs.setZero(m_pshift, 1);
-
-    this->assembleBlock(m_visitorTimeDiscr, 0, m_blockTimeDiscr, dummyRhs);
-
-    m_rhsTimeDiscr = m_blockTimeDiscr * m_solution.topRows(m_pshift);
-
+    /*
     // mass matrices for velocity and pressure (needed for preconditioners)
     if ( m_paramsPtr->options().getString("lin.solver") == "iter" )
     {
@@ -252,15 +228,18 @@ void gsTMAssemblerSST<T, MatOrder>::assembleLinearPart()
 template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::assembleNonlinearPart()
 {
-    /*
     // matrix and rhs cleaning
-    m_blockUUnonlin_comp.resize(m_udofs, m_udofs);
-    m_rhsUnonlin.setZero();
+    m_blockNonlinearK.resize(m_kdofs[0], m_kdofs[0]);
+    m_blockNonlinearO.resize(m_kdofs[1], m_kdofs[1]);
+    m_rhsNonlinearK.setZero();
+    m_rhsNonlinearO.setZero();
 
     // memory allocation
-    m_blockUUnonlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_comp.outerSize(), m_nnzPerRowU));
+    m_blockNonlinearK.reserve(gsVector<index_t>::Constant(m_blockNonlinearK.outerSize(), m_nnzPerRowTM));
+    m_blockNonlinearO.reserve(gsVector<index_t>::Constant(m_blockNonlinearO.outerSize(), m_nnzPerRowTM));
 
-    this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_comp, m_rhsUnonlin);
+    this->assembleBlock(m_visitorNonlinearSST_K, 0, m_blockNonlinearK, m_rhsNonlinearK);
+    this->assembleBlock(m_visitorNonlinearSST_O, 1, m_blockNonlinearO, m_rhsNonlinearO);
 
     // linear operators needed for PCD preconditioner
     // if ( m_paramsPtr->options().getString("lin.solver") == "iter" &&  m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
@@ -282,110 +261,79 @@ void gsTMAssemblerSST<T, MatOrder>::assembleNonlinearPart()
 
     //     this->assembleBlock(visitorPPconv, 0, m_pcdBlocks[2], dummyRhsP);
     // }
-    */
 }
 
 
 template<class T, int MatOrder>
-void gsTMAssemblerSST<T, MatOrder>::fillGlobalMat_KK(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat)
+void gsTMAssemblerSST<T, MatOrder>::fillGlobalMat(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat)
 {
-    /*
-    if (sourceMat.rows() == m_udofs) // sourceMat is a block for one velocity component
-    {
-        for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
-            for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
-                for (short_t d = 0; d < m_tarDim; d++)
-                    globalMat.coeffRef(it.row() + d*m_udofs, it.col() + d*m_udofs) += it.value();
-    }
-    else // sourceMat is the whole UU block
+    if (sourceMat.rows() == m_kdofs[0]) // sourceMat is a block for k
     {
         for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
             for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
                 globalMat.coeffRef(it.row(), it.col()) += it.value();
     }
-    */
-}
-
-
-template<class T, int MatOrder>
-void gsTMAssemblerSST<T, MatOrder>::fillGlobalMat_OO(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat)
-{
-    for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
-        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
-            { }//globalMat.coeffRef(it.row() + m_pshift, it.col() + m_pshift) += it.value();
+    else if (sourceMat.rows() == m_kdofs[1]) // sourceMat is a block for omega
+    {
+        for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
+            for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
+                globalMat.coeffRef(it.row() + m_kdofs[0], it.col() + m_kdofs[0]) += it.value();
+    }
+    else // something wrong happened
+        GISMO_ASSERT((sourceMat.rows() == m_kdofs[0]) || (sourceMat.rows() == m_kdofs[1]), "Wrong matrix size for k or omega component in SST model.");
 }
 
 
 template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::fillBaseSystem() 
 {
-    /*
     gsVector<index_t> nonZerosVector(m_dofs);
-    gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(m_blockUUlin_comp);
-
-    for (short_t d = 0; d < m_tarDim; d++)
-        nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
-
-    nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(m_blockUUlin_whole);
-
-    gsSparseMatrix<T, MatOrder> blockPU = gsSparseMatrix<T, MatOrder>(-m_blockUP.transpose());
-
-    if (MatOrder == ColMajor)
-    {
-        nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(blockPU);
-        nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(m_blockUP);
-    }
-    else
-    {
-        nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(m_blockUP);
-        nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(blockPU);
-    }
+    
+    nonZerosVector.topRows(m_kdofs[0]) = getNnzVectorPerOuter(m_blockLinearK);
+    nonZerosVector.bottomRows(m_kdofs[1]) = getNnzVectorPerOuter(m_blockLinearO);
 
     m_baseMatrix.resize(m_dofs, m_dofs);
     m_baseMatrix.reserve(nonZerosVector);
 
-    fillGlobalMat_UU(m_baseMatrix, m_blockUUlin_comp);
-    fillGlobalMat_UU(m_baseMatrix, m_blockUUlin_whole);
-    fillGlobalMat_UP(m_baseMatrix, m_blockUP);
-    fillGlobalMat_PU(m_baseMatrix, blockPU);
-
-    m_baseRhs.noalias() = m_rhsFG + m_rhsBtB;
-    m_baseRhs.topRows(m_pshift) += m_rhsUlin;
+    fillGlobalMat(m_baseMatrix, m_blockLinearK);
+    fillGlobalMat(m_baseMatrix, m_blockLinearO);
+    
+    m_baseRhs.topRows(m_kdofs[0]) = m_rhsLinearK;
+    m_baseRhs.bottomRows(m_kdofs[1]) = m_rhsLinearO;
 
     m_isBaseReady = true;
     m_isSystemReady = false;
-    */
 }
 
 
 template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::fillSystem()
 {
-    /*
     m_matrix = m_baseMatrix;
 
-    fillGlobalMat_UU(m_matrix, m_blockUUnonlin_comp);
-    fillGlobalMat_UU(m_matrix, m_blockUUnonlin_whole);
+    fillGlobalMat(m_matrix, m_blockNonlinearK);
+    fillGlobalMat(m_matrix, m_blockNonlinearO);
 
     if (!m_matrix.isCompressed())
         m_matrix.makeCompressed();
 
     m_rhs = m_baseRhs;
-    m_rhs.topRows(m_pshift) += m_rhsUnonlin;
+    m_rhs.topRows(m_kdofs[0]) += m_rhsNonlinearK;
+    m_rhs.bottomRows(m_kdofs[1]) += m_rhsNonlinearO;
 
-
-    this->fillGlobalMat_UU(m_matrix, m_blockTimeDiscr);
-    m_rhs.topRows(m_pshift) += m_rhsTimeDiscr;
+    this->fillGlobalMat(m_matrix, m_blockTimeIterationK);
+    this->fillGlobalMat(m_matrix, m_blockTimeIterationO);
+    m_rhs.topRows(m_kdofs[0]) += m_rhsTimeIterationK;
+    m_rhs.bottomRows(m_kdofs[1]) += m_rhsTimeIterationO;
 
     m_isSystemReady = true;
-    */
 }
 
 
 template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::initialize()
 {
-    Base::initialize();
+    gsFlowAssemblerBase::initialize();
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillBaseSystem();
@@ -399,18 +347,29 @@ void gsTMAssemblerSST<T, MatOrder>::update(const gsMatrix<T> & solVector, bool u
 {
     Base::update(solVector, updateSol);
 
-    if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
-        fillSystem();
-
-    /*
-    gsFlowAssemblerBase<T, MatOrder>::update(solVector, updateSol);
-
     if(updateSol)
-        m_rhsTimeDiscr = m_blockTimeDiscr * m_solution.topRows(m_pshift);
+    {
+        gsInfo << "Updating time iteration terms in TM solver ... ";
+        // matrix and rhs cleaning
+        m_blockTimeIterationK.resize(m_kdofs[0], m_kdofs[0]);
+        m_blockTimeIterationO.resize(m_kdofs[1], m_kdofs[1]);
+        m_rhsTimeIterationK.setZero();
+        m_rhsTimeIterationO.setZero();
+
+        // memory allocation
+        m_blockTimeIterationK.reserve(gsVector<index_t>::Constant(m_blockTimeIterationK.outerSize(), m_nnzPerRowTM));
+        m_blockTimeIterationO.reserve(gsVector<index_t>::Constant(m_blockTimeIterationO.outerSize(), m_nnzPerRowTM));
+
+        this->assembleBlock(m_visitorTimeIterationSST_K, 0, m_blockTimeIterationK, m_rhsTimeIterationK);
+        this->assembleBlock(m_visitorTimeIterationSST_O, 1, m_blockTimeIterationO, m_rhsTimeIterationO);
+
+        m_rhsLinearK = m_blockLinearK * m_solution.topRows(m_kdofs[0]);
+        m_rhsLinearO = m_blockLinearO * m_solution.bottomRows(m_kdofs[1]);
+    }
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillSystem();
-    */
+
 }
 
 /*
@@ -511,58 +470,74 @@ index_t gsINSAssembler<T, MatOrder>::numDofsUnk(index_t i)
 template<class T, int MatOrder>
 gsSparseMatrix<T, MatOrder> gsTMAssemblerSST<T, MatOrder>::getBlockKK(bool linPartOnly)
 {
-    /*
     if (m_isSystemReady && !linPartOnly)
     {
-        return m_matrix.topLeftCorner(m_pshift, m_pshift);
+        return m_matrix.topLeftCorner(m_kdofs[0], m_kdofs[0]);
     }
     else if (m_isBaseReady && linPartOnly)
     {
-        return m_baseMatrix.topLeftCorner(m_pshift, m_pshift);
+        return m_baseMatrix.topLeftCorner(m_kdofs[0], m_kdofs[0]);
     }
     else
     {
-        gsSparseMatrix<T, MatOrder> blockUUcomp = m_blockUUlin_comp;
+        gsSparseMatrix<T, MatOrder> blockK = m_blockLinearK;
 
         if(!linPartOnly)
-            blockUUcomp += m_blockUUnonlin_comp;
+            blockK += m_blockNonlinearK;
 
-        gsSparseMatrix<T, MatOrder> blockUU(m_pshift, m_pshift);
+        blockK.makeCompressed();
 
-        gsVector<index_t> nonZerosVector(m_pshift);
-        gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);
-
-        for (short_t d = 0; d < m_tarDim; d++)
-            nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
-
-        blockUU.reserve(nonZerosVector);
-        fillGlobalMat_UU(blockUU, blockUUcomp);
-
-        blockUU += m_blockUUlin_whole;
-
-        if(!linPartOnly)
-            blockUU += m_blockUUnonlin_whole;
-
-        blockUU.makeCompressed();
-
-        return blockUU;
+        return blockK;
     }
-    */
+}
+
+
+template<class T, int MatOrder>
+gsSparseMatrix<T, MatOrder> gsTMAssemblerSST<T, MatOrder>::getBlockOO(bool linPartOnly)
+{
+    if (m_isSystemReady && !linPartOnly)
+    {
+        return m_matrix.bottomRightCorner(m_kdofs[1], m_kdofs[1]);
+    }
+    else if (m_isBaseReady && linPartOnly)
+    {
+        return m_baseMatrix.bottomRightCorner(m_kdofs[1], m_kdofs[1]);
+    }
+    else
+    {
+        gsSparseMatrix<T, MatOrder> blocO = m_blockLinearO;
+
+        if(!linPartOnly)
+            blockO += m_blockNonlinearO;
+
+        blockO.makeCompressed();
+
+        return blockO;
+    }
 }
 
 
 template<class T, int MatOrder>
 gsMatrix<T> gsTMAssemblerSST<T, MatOrder>::getRhsK() const
 { 
-    /*
     if (m_isSystemReady)
-        return m_rhs.topRows(m_pshift);
+        return m_rhs.topRows(m_kdofs[0]);
     else
     {
-        gsMatrix<T> rhsUpart = (m_rhsFG + m_rhsBtB).topRows(m_pshift);
-        return (rhsUpart + m_rhsUlin + m_rhsUnonlin);
+        return (m_rhsLinearK + m_rhsNonlinearK + m_rhsTimeIterationK);
     }
-    */
+}
+
+
+template<class T, int MatOrder>
+gsMatrix<T> gsTMAssemblerSST<T, MatOrder>::getRhsO() const
+{ 
+    if (m_isSystemReady)
+        return m_rhs.bottomRows(m_kdofs[1]);
+    else
+    {
+        return (m_rhsLinearO + m_rhsNonlinearO + m_rhsTimeIterationO);
+    }
 }
 
 // --- PCD functions ---

@@ -59,7 +59,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
     gsWriteParaview<T>(pSol, filenameP.str(), plotPts);
 
     /*
-    gsField<T> turbSol = m_pTurbulenceSolver->constructSolution();
+    gsField<T> turbSol = m_TMsolverPtr->constructSolution();
     std::stringstream filenameTM;
     filenameTM << "TMsol" + fileNameSuffix + "_" << m_iterationNumber << "it";
     gsWriteParaview<T>(turbSol, filenameTM.str(), plotPts);
@@ -97,67 +97,28 @@ void gsRANSSolverUnsteady<T, MatOrder>::nextIteration()
 {
     //GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
 
-    this->updateAssembler();
-
-    if (!m_iterationNumber)
-        this->initIteration();
-
-    gsMatrix<T> tmpSolution = m_solution;
-
-    this->applySolver(tmpSolution);
-
-    this->writeSolChangeRelNorm(m_solution, tmpSolution);
-
-    index_t picardIter = 0;
-    T relNorm = this->solutionChangeRelNorm(m_solution, tmpSolution);
-
-    gsWriteOutputLine(m_outFile, "        [u, p] Picard's iterations...", m_fileOutput, m_dispOutput);
-
-    while((relNorm > m_innerTol) && (picardIter < m_innerIter))
-    {
-        gsWriteOutput(m_outFile, "         ", m_fileOutput, m_dispOutput);
-
-        gsMatrix<T> oldSol = tmpSolution;
-
-        this->updateAssembler(tmpSolution, false);
-        this->applySolver(tmpSolution);
-        this->writeSolChangeRelNorm(oldSol, tmpSolution);
-
-        relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);
-        picardIter++;
-    }
-    
-    m_solution = tmpSolution;
-
-    m_time += m_timeStepSize;
-    m_avgPicardIter += picardIter;
-    m_iterationNumber++;
-
-    /* z RANS solveru v Motoru
     if (!m_bComputeTMfirst)
-            Base::nextIteration();
+        Base::nextIteration();
 
-        gsField<T> uSol = this->constructSolution(0);
-        m_pTurbulenceSolver->updateVelocitySolution(uSol);
+    gsField<T> uSolField = this->constructSolution(0);
+    m_paramsPtr->getSSTModel().setVelocitySolution(uSolField);
 
-        gsMatrix<T> oldTMsol = m_pTurbulenceSolver->getSolution();
-        m_pTurbulenceSolver->getAssembler()->setOldSolution(oldTMsol);
+    m_clock.restart();
+    m_TMsolverPtr->nextIteration(); // update turbulence model
+    m_turbT += m_clock.stop(); // NOTE: this is not exact, because there is some assembly and solver setup in the TM nextIteration() method
 
-        m_clock.restart();
-        m_pTurbulenceSolver->nextIteration(); // update turbulence model
-        m_turbT += m_clock.stop(); // NOTE: this is not exact, because there is some assembly and solver setup in the TM nextIteration() method
-
-        ////------------------------- PLOT -------------------------
-        //std::string path = "D:/hhornik/gismo/motor/uwb-pilsen/outFiles/k-omega/";
-        //std::stringstream filename;
-        //filename << path << "k_omega_iter" << this->m_iterationNumber;
-        //gsField<T> tmSol = m_pTurbulenceSolver->constructSolution();
-        //gsWriteParaview<T>(tmSol, filename.str(), 50000);
-        ////------------------------- PLOT -------------------------
+    ////------------------------- PLOT -------------------------
+    //std::string path = "D:/hhornik/gismo/motor/uwb-pilsen/outFiles/k-omega/";
+    //std::stringstream filename;
+    //filename << path << "k_omega_iter" << this->m_iterationNumber;
+    //gsField<T> tmSol = m_pTurbulenceSolver->constructSolution();
+    //gsWriteParaview<T>(tmSol, filename.str(), 50000);
+    ////------------------------- PLOT -------------------------
         
-        if (m_bComputeTMfirst)
-            Base::nextIteration();
+    if (m_bComputeTMfirst)
+        Base::nextIteration();
 
+        /*
         if ((this->m_iterationNumber % 250) == 0)
         {
             gsFileData<> fd;
@@ -167,8 +128,8 @@ void gsRANSSolverUnsteady<T, MatOrder>::nextIteration()
             gsFileData<> fd_TM;
             fd_TM << m_pTurbulenceSolver->getSolution();
             fd_TM.save("TM_solution_iter" + std::to_string(this->m_iterationNumber) + ".xml");
-        }*/
-    
+        }
+        */
 }
 
 // upravit, melo by stacit uz jen upravit plotCurrentTimeStep()

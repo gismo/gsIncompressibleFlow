@@ -85,16 +85,6 @@ protected: // *** Member functions ***
     /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
     virtual void updateSizes();
 
-    /// @brief Update the current solution field stored in the assembler (used as convection coefficient).
-    /// @param[in] solVector    new solution vector
-    /// @param[in] updateSol    true - save solVector into m_solution (false is used in the inner nonlinear iteration for unsteady problem)
-    virtual void updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol);
-
-    /// @brief Fill the velocity-velocity block into the global saddle-point matrix.
-    /// @param globalMat[out]   global saddle-point matrix
-    /// @param sourceMat[in]    velocity-velocity block (either for one velocity component or the whole block for all components)
-    void fillGlobalMat(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat, const index_t unk);
-
 public: // *** Member functions ***
 
     /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.

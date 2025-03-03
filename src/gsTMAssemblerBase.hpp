@@ -23,6 +23,7 @@ void gsTMAssemblerBase<T, MatOrder>::initMembers()
     m_viscosity = m_paramsPtr->getPde().viscosity();
 
     m_bases = m_paramsPtr->getBasesTM();
+    numTMvars = m_bases.size();
 
     m_nnzPerRowTM = 1;
     index_t maxDeg = 0;
@@ -30,7 +31,7 @@ void gsTMAssemblerBase<T, MatOrder>::initMembers()
         for (short_t j = 0; j < numTMvars; j++)
             if (m_bases[j].maxDegree(i) > maxDeg)
                 maxDeg = m_bases[j].maxDegree(i);
-    m_nnzPerRowTM = m_tarDim * (2 * maxDeg + 1);
+    m_nnzPerRowTM = 2 * maxDeg + 1;
 
     m_bInitialized = false;
 
@@ -65,37 +66,6 @@ void gsTMAssemblerBase<T, MatOrder>::updateSizes()
     m_rhs.setZero(m_dofs, 1);
 }
 
-
-template<class T, int MatOrder>
-void gsTMAssemblerBase<T, MatOrder>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
-{
-    if (updateSol)
-        m_solution = solVector;
-
-    m_currentSolField = constructSolution(solVector, 0);
-    //m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
-}
-
-
-template<class T, int MatOrder>
-void gsTMAssemblerBase<T, MatOrder>::fillGlobalMat(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat, const index_t unk)
-{
-    if (sourceMat.rows() == m_dofs) // sourceMat is of the size of the whole globalMat matrix
-    {
-        for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
-            for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
-                globalMat.coeffRef(it.row(), it.col()) += it.value();
-    }
-    else // sourceMat is a block for one turbulent unknown
-    {
-        index_t dofs = 0;
-        for (index_t i = 0; i < unk; i++)
-            dofs += m_kdofs[i];
-        for (index_t outer = 0; outer < sourceMat.outerSize(); outer++)
-            for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(sourceMat, outer); it; ++it)
-                    globalMat.coeffRef(it.row() + dofs, it.col() + dofs) += it.value();
-    }
-}
 
 template<class T, int MatOrder>
 void gsTMAssemblerBase<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
@@ -140,7 +110,7 @@ gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& 
     {
         // Reconstruct solution coefficients on patch p
         const index_t sz = this->getBases().at(unk).piece(p).size();
-        coeffs.resize(sz, m_tarDim);
+        coeffs.resize(sz, 1);
 
         for (index_t i = 0; i < sz; ++i)
         {
@@ -166,7 +136,7 @@ index_t gsTMAssemblerBase<T, MatOrder>::numDofsUnk(size_t i)
     if ((i >= 0) && (i < m_kdofs.size()))
         return m_kdofs[i];
     else
-        GISMO_ERROR("numDofsUnk(i): i must be between 0 and the total number of turbulent variables.");
+        GISMO_ERROR("numDofsUnk(i): i must be greater than or equal to 0 and less than the total number of turbulent variables.");
 }
 
 } // namespace gismo

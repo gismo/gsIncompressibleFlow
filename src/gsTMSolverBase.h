@@ -77,6 +77,9 @@ public: // *** Member functions ***
     virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/)
     { GISMO_NO_IMPLEMENTATION }
 
+    /// @brief Perform next iteration step.
+    virtual void nextIteration();
+
     //virtual void plotTurbulentViscosity();
 
 public: // *** Getters/setters ***

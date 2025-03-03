@@ -94,9 +94,6 @@ public: // *** Member functions ***
     //virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/);
     virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes);
 
-    /// @brief Perform next iteration step.
-    virtual void nextIteration();
-
     //virtual void plotTurbulentViscosity();
 
 public: // *** Getters/setters ***
@@ -113,7 +110,11 @@ public: // *** Getters/setters ***
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsTMSolverSST"; }
 
+    SSTModel getModel() { return m_SSTModel; }
+
 };
+
+// ============================================================================================================================
 
 
 } // namespace gismo

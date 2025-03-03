@@ -82,15 +82,7 @@ public: // *** Constructor/destructor ***
     { 
         // create turbulence solver
         m_TMsolverPtr = gsTMSolverBase<T, MatOrder>::make(paramsPtr->options().getString("TM"), paramsPtr);
-        //if (m_paramsPtr->options().getString("TM.eval") == "SST") 
-        //{
-        //    m_TMsolverPtr = new gsTMSolverSST<T, MatOrder>(paramsPtr);
-        //}
-        ////elseif (m_paramsPtr->options().getSwitch("TM.eval") == "SA") 
-        ////{ }
-        //else 
-        //    gsInfo << "Undefined turbulent model!" << std::endl;
-
+        
         // create assembler
         m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr);
                         

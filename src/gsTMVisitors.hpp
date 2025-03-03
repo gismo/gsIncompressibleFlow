@@ -22,51 +22,46 @@ void gsTMVisitorVelocityAdvection<T, MatOrder>::initMembers()
 }
 */
 template<class T, int MatOrder>
-void gsTMVisitorVelocityAdvection<T, MatOrder>::initialize()
+void gsTMVisitorTimeIterationSST<T, MatOrder>::initialize()
 {
     Base::initialize();  
 }
 
-/*
 template <class T, int MatOrder>
-void gsTMVisitorVelocityAdvection<T, MatOrder>::evaluate(index_t testFunID)
+void gsTMVisitorTimeIterationSST<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
     //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
     //m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
-    gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());
+    m_USolField = m_paramsPtr->getVelocitySolution();
+
+    gsTMTerm_VecCoeffGradVal<T>* termPtr = dynamic_cast< gsTMTerm_VecCoeffGradVal<T>* > (m_terms.back());
 
     if (termPtr)
     {
-        termPtr->setViscosity(m_viscosity);
-        termPtr->setTurbulentViscosityVals(m_TurbulentViscosityVals);
+        termPtr->setCurrentSolution(m_USolField);
     } 
 }
-*/
 
-/*
 template <class T, int MatOrder>
-void gsTMVisitorVelocityAdvection<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+void gsTMVisitorTimeIterationSST<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     Base::evaluate(domIt);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    m_USolField = m_paramsPtr->getVelocitySolution();
 
-    gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());
+    gsTMTerm_VecCoeffGradVal<T>* termPtr = dynamic_cast< gsTMTerm_VecCoeffGradVal<T>* > (m_terms.back());
 
     if (termPtr)
     {
-        termPtr->setViscosity(m_viscosity);
-        termPtr->setTurbulentViscosityVals(m_TurbulentViscosityVals);
-    }  
+        termPtr->setCurrentSolution(m_USolField);
+    }   
 }
-*/
 
 template <class T, int MatOrder>
-void gsTMVisitorVelocityAdvection<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+void gsTMVisitorTimeIterationSST<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
     const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for given turbulent variable
@@ -112,47 +107,62 @@ void gsTMVisitorVelocityAdvection<T, MatOrder>::localToGlobal(const std::vector<
 // ===================================================================================================================
 
 template<class T, int MatOrder>
-void gsTMVisitorDiffusion<T, MatOrder>::initialize()
+void gsTMVisitorNonlinearSST<T, MatOrder>::initialize()
 {
     Base::initialize();  
 }
 
+
 template <class T, int MatOrder>
-void gsTMVisitorDiffusion<T, MatOrder>::evaluate(index_t testFunID)
+void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
+    //m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
-    gsTMTerm_CoeffGradGrad<T>* termPtr = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms.back());
+    //gsTMTerm_CoeffValVal<T>* termPtr = dynamic_cast< gsTMTerm_CoeffValVal<T>* > (m_terms.back());
 
-    if (termPtr)
-    {
-        termPtr->setViscosity(m_viscosity);
-        termPtr->setTurbulentViscosityVals(m_TurbulentViscosityVals);
-    } 
+    //if (termPtr)
+    //{
+    //    termPtr->setCurrentSolution(m_currentSol);
+    //} 
 }
 
 template <class T, int MatOrder>
-void gsTMVisitorDiffusion<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     Base::evaluate(domIt);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
-    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
+    //m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
-    gsTMTerm_CoeffGradGrad<T>* termPtr = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms.back());
+    //gsTMTerm_CoeffValVal<T>* termPtr = dynamic_cast< gsTMTerm_CoeffValVal<T>* > (m_terms.back());
 
-    if (termPtr)
-    {
-        termPtr->setViscosity(m_viscosity);
-        termPtr->setTurbulentViscosityVals(m_TurbulentViscosityVals);
-    }  
+    //if (termPtr)
+    //{
+    //    termPtr->setCurrentSolution(m_currentSol);
+    //}  
 }
 
 template <class T, int MatOrder>
-void gsTMVisitorDiffusion<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+void gsTMVisitorNonlinearSST<T, MatOrder>::assemble()
+{
+    m_locMatVec.resize(2);
+    for (index_t i = 0; i < 2; i++)
+        m_locMatVec[i].setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
+
+    for (size_t i = 0; i < m_numLhsTerms; i++)
+        m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_localMat[0]);
+
+    for (size_t i = 0; i < m_numRhsTerms; i++)
+        m_terms[i + m_numLhsTerms]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_localMat[1]);
+
+    m_paramsPtr->getSSTModel().setNotCurrent();
+}
+
+template <class T, int MatOrder>
+void gsTMVisitorNonlinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
     const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for given turbulent variable
@@ -181,13 +191,15 @@ void gsTMVisitorDiffusion<T, MatOrder>::localToGlobal(const std::vector<gsMatrix
 
                 if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
                 {
-                    globalMat.coeffRef(ii + m_dofshift, jj + m_dofshift) += m_localMat(i, j);
+                    globalMat.coeffRef(ii + m_dofshift, jj + m_dofshift) += m_locMatVec[0](i, j);
                 }
                 else // is_boundary_index(jj)
                 {
                     const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
 
-                    globalRhs(ii + m_dofshift, 0) -= m_localMat(i, j) * eliminatedDofs[m_shapeUnkID](bb, d);
+                    globalRhs(ii + m_dofshift, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_shapeUnkID](bb, d);
+                    // production term and blended coeff going directly to rhs
+                    globalRhs(ii + m_dofshift, 0) -= m_locMatVec[1](j, i) * m_solution(jj + m_dofshift, 0); 
                 }
             }
         }
@@ -196,89 +208,11 @@ void gsTMVisitorDiffusion<T, MatOrder>::localToGlobal(const std::vector<gsMatrix
 
 // ==================================================================================================================
 
-template<class T, int MatOrder>
-void gsTMVisitorReaction<T, MatOrder>::initialize()
-{
-    Base::initialize();  
-}
 
-template <class T, int MatOrder>
-void gsTMVisitorReaction<T, MatOrder>::evaluate(index_t testFunID)
-{
-    Base::evaluate(testFunID);
-
-    //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
-    //m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
-
-    gsTMTerm_CoeffValVal<T>* termPtr = dynamic_cast< gsTMTerm_CoeffValVal<T>* > (m_terms.back());
-
-    if (termPtr)
-    {
-        termPtr->setCurrentSolution(m_currentSol);
-    } 
-}
-
-template <class T, int MatOrder>
-void gsTMVisitorReaction<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
-{
-    Base::evaluate(domIt);
-
-    //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
-    //m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
-
-    gsTMTerm_CoeffValVal<T>* termPtr = dynamic_cast< gsTMTerm_CoeffValVal<T>* > (m_terms.back());
-
-    if (termPtr)
-    {
-        termPtr->setCurrentSolution(m_currentSol);
-    }  
-}
-
-template <class T, int MatOrder>
-void gsTMVisitorReaction<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
-{
-    index_t dim = m_paramsPtr->getPde().dim();
-    const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for given turbulent variable
-    index_t m_dofshift = 0;
-    for (short_t i = 0; i < m_unknown; i++)
-        m_dofshift += m_dofMappers[i].freeSize();
-    //index_t nComponents = globalMat.rows() / uCompSize;
-
-    //GISMO_ASSERT(nComponents == 1 || nComponents == dim, "Wrong matrix size in gsRANSVisitorUU::localToGlobal.");
-
-    m_dofMappers[m_testUnkID].localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
-    m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
-
-    index_t numActTest = m_testFunActives.rows();
-    index_t numActShape = m_shapeFunActives.rows();
-
-    for (index_t i = 0; i < numActTest; ++i)
-    {
-        const index_t ii = m_testFunActives(i);
-
-        if (m_dofMappers[m_testUnkID].is_free_index(ii))
-        {
-            for (index_t j = 0; j < numActShape; ++j)
-            {
-                const index_t jj = m_shapeFunActives(j);
-
-                if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
-                {
-                    globalMat.coeffRef(ii + m_dofshift, jj + m_dofshift) += m_localMat(i, j);
-                }
-                else // is_boundary_index(jj)
-                {
-                    const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
-
-                    globalRhs(ii + m_dofshift, 0) -= m_localMat(i, j) * eliminatedDofs[m_shapeUnkID](bb, d);
-                }
-            }
-        }
-    }
-}
 
 // ===========================================================================================================================
 
+/*
 template<class T, int MatOrder>
 void gsTMVisitorProductuionRhsSST<T, MatOrder>::initialize()
 {
@@ -380,5 +314,6 @@ void gsTMVisitorProductuionRhsSST<T, MatOrder>::localToGlobal(const std::vector<
         }
     }
 }
+*/
 
 }

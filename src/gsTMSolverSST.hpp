@@ -32,10 +32,72 @@ void gsTMSolverSST<T, MatOrder>::initMembers()
 template<class T, int MatOrder>
 void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes)
 {
+    //for (index_t i = 0; i < quNodes.cols(); i++)
+    //    m_TurbulentViscosityVals(i) = 0.01;   
+
+    real_t a1 = m_paramsPtr->getSSTModel().get_a1();
+    real_t betaStar = m_paramsPtr->getSSTModel().get_betaStar();
+    real_t visc = m_paramsPtr->getPde().viscosity();
+    index_t nQuPoints = quNodes.cols();
+    index_t dim = quNodes.rows();
+    
     m_TurbulentViscosityVals.setZero(quNodes.cols());
     
-    for (index_t i = 0; i < quNodes.cols(); i++)
-        m_TurbulentViscosityVals(i) = 0.01;   
+    gsField<T> USolField = m_paramsPtr->getVelocitySolution();
+    gsField<T> KSolField = m_paramsPtr->getKSolution();
+    gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
+    
+    // evaluate k, omega
+    gsVector<T> solKVals.resize(dim, nQuPoints);
+    solKVals = KSolField.value(mapData.points, mapData.patchId);
+    gsVector<T> solOVals.resize(dim, nQuPoints);
+    solOVals = OSolField.value(mapData.points, mapData.patchId);
+    
+            //evaluate grad(k), grad(omega)
+            //gsFunction<T> KSol = KSolField.function(mapData.patchId);
+            //std::vector< gsMatrix<T> > KSolDers = KSol.evalAllDers(mapData.points, 1);
+            //gsFunction<T> OSol = OSolField.function(mapData.patchId);
+            //std::vector< gsMatrix<T> > OSolDers = OSol.evalAllDers(mapData.points, 1);
+    
+    // evaluate strainrate tensor S
+    gsFunction<T> USol = USolField.function(mapData.patchId);
+    std::vector< gsMatrix<T> > USolDers = USol.evalAllDers(mapData.points, 1);
+    std::vector< gsMatrix<T> > StrainRateTensor;
+    gsVector<T> StrainRateMag(nQuPoints);
+    StrainRateMag.setZero();
+    real_t Sij;
+    for (index_t k = 0; k < nQuPoints; k++)
+    {
+        gsMatrix<T> SS(dim, dim);
+        SS.setZero();
+        for (index_t i = 0; i < dim; i++)
+            for (index_t j = 0; j < dim; j++)
+            {
+                Sij = 0.5 * (USolDers[1](i * dim + j, k) + USolDers[1](j * dim + i, k));
+                SS(i, j) = Sij;
+                StrainRateMag(k) += 2 * Sij * Sij;
+            }
+        StrainRateTensor.push_back(SS);
+    }
+    
+    // UPRAVIT !!! evaluate distance
+    gsVector<T> Distance(nQuPoints);
+    //Distance = DistanceField.value(mapData.points, mapData.patchId);
+    for (index_t k = 0; k < nQuPoints; k++)
+        Distance(k) = 1.0;
+    
+    // evaluate F2
+    gsVector<T> F2(nQuPoints);
+    for (index_t k = 0; k < nQuPoints; k++)
+    {
+        F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(solKVals(k)))/(betaStar * solOVals(k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * solOVals(k))), 2));
+        F2(k) = math::max(F2(k), 0.0);
+        F2(k) = math::min(F2(k), 1.0);
+    }
+    
+    // evaluate turbulent viscosity
+    for (index_t k = 0; k < nQuPoints; k++)
+        m_TurbulentViscosityVals(k) = (a1 * solKVals(k)) / (math::max(a1 * solOVals(k), StrainRateMag(k) * F2(k)));
 
     /*
     GISMO_ENSURE(m_pTMsolver != NULL, "uwbRANSBlockVisitor: No turbulent model set!");
@@ -117,49 +179,6 @@ void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes)
 
         m_bEffectiveViscSet = true;
     */
-}
-
-// upravit
-template<class T, int MatOrder>
-void gsTMSolverSST<T, MatOrder>::nextIteration()
-{
-    GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
-
-    this->updateAssembler();
-
-    if (!m_iterationNumber)
-        this->initIteration();
-
-    gsMatrix<T> tmpSolution = m_solution;
-
-    this->applySolver(tmpSolution);
-
-    this->writeSolChangeRelNorm(m_solution, tmpSolution);
-
-    index_t picardIter = 0;
-    T relNorm = this->solutionChangeRelNorm(m_solution, tmpSolution);
-
-    gsWriteOutputLine(m_outFile, "        [u, p] Picard's iterations...", m_fileOutput, m_dispOutput);
-
-    while((relNorm > m_TMinnerTol) && (picardIter < m_TMinnerIter))
-    {
-        gsWriteOutput(m_outFile, "         ", m_fileOutput, m_dispOutput);
-
-        gsMatrix<T> oldSol = tmpSolution;
-
-        this->updateAssembler(tmpSolution, false);
-        this->applySolver(tmpSolution);
-        this->writeSolChangeRelNorm(oldSol, tmpSolution);
-
-        relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);
-        picardIter++;
-    }
-    
-    m_solution = tmpSolution;
-
-    m_TMtime += m_TMtimeStepSize;
-    m_TMavgPicardIter += picardIter;
-    m_iterationNumber++;
 }
 
 

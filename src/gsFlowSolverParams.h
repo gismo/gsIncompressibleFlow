@@ -50,6 +50,11 @@ protected: // *** Class members ***
     bool m_isBndSet;
     std::vector<std::pair<int, boxSide> > m_bndIn, m_bndOut, m_bndWall;
 
+    gsField<T> m_USolField;
+    gsField<T> m_KSolField;
+    gsField<T> m_OSolField;
+    SSTModel<T> m_SST;
+    
 public: // *** Constructor/destructor ***
 
     gsFlowSolverParams() {}
@@ -134,9 +139,12 @@ public: // *** Member functions ***
     /// @brief Creates DOF mappers for velocity and pressure.
     void createDofMappers(std::vector<gsDofMapper>& mappers)
     {
-        if (m_basesTM.size() > 0)
+        if (m_bases.size() > 0)
         {
-            mappers.resize(2 + m_basesTM.size());
+            if (m_basesTM.size() > 0)
+                mappers.resize(2 + m_basesTM.size());
+            else
+                mappers.resize(2);
     
             m_bases.front().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pdePtr->bc(), mappers[0], 0);
             m_bases.back().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy,  m_pdePtr->bc(), mappers[1], 1);    
@@ -240,7 +248,131 @@ public: // *** Getters/setters ***
         return m_bndWall;
     }
 
+    gsField<T> getVelocitySolution() { return m_USolField; }
+    gsField<T> getKSolution() { return m_KSolField; }
+    gsField<T> getOmegaSolution() { return m_OSolField; }
+
+    void setVelocitySolution(gsField<T> sol) { m_USolField = sol; }
+    void setKSolution(gsField<T> sol) { m_KSolField = sol; }
+    void setOmegaSolution(gsField<T> sol) { m_OSolField = sol; }
+
+    SSTModel<T> getSSTModel() {return m_SST;}
 
 }; // class gsFlowSolverParams
+
+// ======================================================================================================================================
+
+template <class T>
+class SSTModel
+{
+
+protected: // *** Class members ***
+
+    // constants
+    real_t m_a1 = 0.31;
+    real_t m_betaStar = 0.09;
+    real_t m_sigmaK1 = 0.85;
+    real_t m_sigmaK2 = 1.0;
+    real_t m_sigmaO1 = 0.5;
+    real_t m_sigmaO2 = 0.856;
+    real_t m_beta1 = 3.0/40.0;
+    real_t m_beta2 = 0.0828;
+    real_t kappa = 0.41;
+
+    gsVector<T> m_KSolVals;
+    gsVector<T> m_OSolVals;
+    std::vector< gsMatrix<T> > m_KSolDers;
+    std::vector< gsMatrix<T> > m_OSolDers;
+    gsVector<T> m_F1;
+    gsVector<T> m_F2;
+    gsVector<T> m_TurbulentViscosityVals;
+    gsVector<T> m_StrainRateMag;
+    std::vector< gsMatrix<T> > m_StrainRateTensor;
+
+    bool m_isCurrent = false;
+
+public: // *** Constructor/destructor ***
+
+    SSTModel() {}
+
+    //gsFlowVisitor(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    //m_paramsPtr(paramsPtr)
+    //{ }
+
+    ~SSTModel() {}
+    
+public: // *** Getters/setters ***
+
+    real_t get_a1() { return m_a1; }
+    real_t get_betaStar() { return m_betaStar; }
+    real_t get_sigmaK1() { return m_sigmaK1; }
+    real_t get_sigmaK2() { return m_sigmaK2; }
+    real_t get_sigmaO1() { return m_sigmaO1; }
+    real_t get_sigmaO2() { return}
+    real_t get_beta1() { return m_beta1; }
+    real_t get_beta2() { return m_beta2; }
+    real_t get_kappa() { return m_kappa; }
+
+    gsVector<T> getKSolVals() 
+    {
+        GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
+        return m_KSolVals; 
+    }
+    gsVector<T> getOSolVals() 
+    {
+        GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
+        return m_OSolVals; 
+    }
+    std::vector< gsMatrix<T> > getKSolDers() 
+    {
+        GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
+        return m_KSolDers; 
+    }
+    std::vector< gsMatrix<T> > getOSolDers() 
+    {
+        GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
+        return m_OSolDers; 
+    }
+    gsVector<T> getF1Vals() 
+    {
+        GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
+        return m_F1; 
+    }
+    gsVector<T> getF2Vals() 
+    {
+        GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
+        return m_F2;
+    }
+    gsVector<T> getTurbulentViscosityVals()
+    {
+        GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
+        return m_TurbulentViscosityVals;
+    }
+    gsVector<T> getStrainRateMagVals()
+    {
+        GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
+        return m_StrainRateMag;
+    }
+    std::vector< gsMatrix<T> > getStrainRateTensor()
+    {
+        GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
+        return m_StrainRateTensor;
+    }
+
+    void setKSolVals(gsVector<T> vals) { m_KSolVals = vals; }
+    void setOSolVals(gsVector<T> vals) { m_OSolVals = vals; }
+    void setKSolVals(std::vector< gsMatrix<T> > vals) { m_KSolDers = vals; }
+    void setOSolVals(std::vector< gsMatrix<T> > vals) { m_OSolDers = vals; }
+    void setF1Vals(gsVector<T> vals) { m_F1 = vals; }
+    void setF2Vals(gsVector<T> vals) { m_F2 = vals; }
+    void setTurbulentViscosityVals(gsVector<T> vals) { m_TurbulentViscosityVals = vals; }
+    void setStrainRateMagVals(gsVector<T> vals) { m_StrainRateMag = vals; }
+    void StrainRateTensor(std::vector< gsMatrix<T> > vals) { m_StrainRateTensor = vals; }
+
+    bool isCurrent() { return m_isCurrent; }
+    void setCurrent() { m_isCurrent = true; }
+    void setNotCurrent() { m_isCurrent = false; }
+
+};
 
 } // namespace gismo
