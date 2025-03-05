@@ -34,6 +34,17 @@ typename gsTMSolverBase<T, MatOrder>::tmPtr gsTMSolverBase<T, MatOrder>::make(st
 
 
 template<class T, int MatOrder>
+void gsTMSolverBase<T, MatOrder>::initMembers()
+{
+    m_TMtime = 0;
+    m_TMtimeStepSize = m_paramsPtr->options().getReal("timeStep");
+    m_TMinnerIter = m_paramsPtr->options().getInt("TM.maxIt");
+    m_TMinnerTol = m_paramsPtr->options().getReal("TM.tol");
+    m_TMavgPicardIter = 0;
+}
+
+
+template<class T, int MatOrder>
 void gsTMSolverBase<T, MatOrder>::nextIteration()
 {
     GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");

@@ -39,9 +39,6 @@ public: // *** Smart pointers ***
 
 protected: // *** Class members ***
 
-    T m_TMtime, m_TMtimeStepSize;
-    T m_TMinnerIter, m_TMavgPicardIter;
-    T m_TMinnerTol;    
 
 protected: // *** Base class members ***
 
@@ -53,6 +50,7 @@ protected: // *** Base class members ***
     using Base::m_fileOutput;
     using Base::m_dispOutput;
     using Base::m_TurbulentViscosityVals;
+    using Base::m_TMavgPicardIter;
 
 public: // *** Constructor/destructor ***
 
@@ -92,7 +90,7 @@ public: // *** Member functions ***
 
     /// @brief Compute the Stokes problem and save the solution into m_solution.
     //virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/);
-    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes);
+    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId);
 
     //virtual void plotTurbulentViscosity();
 
@@ -110,7 +108,7 @@ public: // *** Getters/setters ***
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsTMSolverSST"; }
 
-    SSTModel getModel() { return m_SSTModel; }
+    //SSTModel getModel() { return m_SSTModel; }
 
 };
 

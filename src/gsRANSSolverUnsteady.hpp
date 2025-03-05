@@ -101,7 +101,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::nextIteration()
         Base::nextIteration();
 
     gsField<T> uSolField = this->constructSolution(0);
-    m_paramsPtr->getSSTModel().setVelocitySolution(uSolField);
+    m_paramsPtr->setVelocitySolution(uSolField);
 
     m_clock.restart();
     m_TMsolverPtr->nextIteration(); // update turbulence model

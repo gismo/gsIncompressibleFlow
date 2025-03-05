@@ -61,8 +61,13 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     m_visitorTimeIterationSST_K.initialize();
     m_visitorTimeIterationSST_O.initialize();
 
-    m_visitorNonlinearSST_K = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, 0);
-    m_visitorNonlinearSST_O = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, 1);
+    real_t sigmaK1 = m_paramsPtr->getSSTModel().get_sigmaK1();
+    real_t sigmaK2 = m_paramsPtr->getSSTModel().get_sigmaK2();
+    real_t sigmaO1 = m_paramsPtr->getSSTModel().get_sigmaO1();
+    real_t sigmaO2 = m_paramsPtr->getSSTModel().get_sigmaO2();
+    real_t viscosity = m_paramsPtr->getPde().viscosity();
+    m_visitorNonlinearSST_K = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, sigmaK1, sigmaK2, viscosity, 0);
+    m_visitorNonlinearSST_O = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, sigmaO1, sigmaO2, viscosity, 1);
     m_visitorNonlinearSST_K.initialize();
     m_visitorNonlinearSST_O.initialize();
     m_visitorNonlinearSST_K.setCurrentSolution(m_solution);
@@ -112,7 +117,7 @@ void gsTMAssemblerSST<T, MatOrder>::updateSizes()
     m_rhsTimeIterationK.setZero(m_kdofs[0], 1);
     m_rhsTimeIterationO.setZero(m_kdofs[1], 1);
     m_rhsNonlinearK.setZero(m_kdofs[0], 1);
-    m_rhsNonlLinearO.setZero(m_kdofs[1], 1);
+    m_rhsNonlinearO.setZero(m_kdofs[1], 1);
 
     m_currentFieldK = constructSolution(m_solution, 0);
     m_currentFieldO = constructSolution(m_solution, 1);
@@ -137,14 +142,14 @@ void gsTMAssemblerSST<T, MatOrder>::updateDofMappers()
 
 
 template<class T, int MatOrder>
-void gsTMAssemblerSST<T, MatOrder>::updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol)
+void gsTMAssemblerSST<T, MatOrder>::updateCurrentSolField(gsMatrix<T>& solVector, bool updateSol)
 {
     m_currentFieldK = constructSolution(solVector, 0);
-    m_visitorNonlinearSST_K.setCurrentSolution(m_currentFieldK);
-    m_paramsPtr->getSSTModel().setKSolution(m_currentFieldK);
+    m_visitorNonlinearSST_K.setCurrentSolution(solVector);
+    m_paramsPtr->setKSolution(m_currentFieldK);
     m_currentFieldO = constructSolution(solVector, 1);
-    m_visitorNonlinearSST_O.setCurrentSolution(m_currentFieldO);
-    m_paramsPtr->getSSTModel().setOmegaSolution(m_currentFieldO);
+    m_visitorNonlinearSST_O.setCurrentSolution(solVector);
+    m_paramsPtr->setOmegaSolution(m_currentFieldO);
 
     if (updateSol)
     {
@@ -164,8 +169,6 @@ void gsTMAssemblerSST<T, MatOrder>::assembleLinearPart()
     m_rhsLinearK.setZero();
     m_rhsLinearO.setZero();
     
-    int nnzPerOuterUP = 0;
-
     // memory allocation
     m_blockLinearK.reserve(gsVector<index_t>::Constant(m_blockLinearK.outerSize(), m_nnzPerRowTM));
     m_blockLinearO.reserve(gsVector<index_t>::Constant(m_blockLinearK.outerSize(), m_nnzPerRowTM));
@@ -333,7 +336,7 @@ void gsTMAssemblerSST<T, MatOrder>::fillSystem()
 template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::initialize()
 {
-    gsFlowAssemblerBase::initialize();
+    gsFlowAssemblerBase<T, MatOrder>::initialize();  
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillBaseSystem();
@@ -505,7 +508,7 @@ gsSparseMatrix<T, MatOrder> gsTMAssemblerSST<T, MatOrder>::getBlockOO(bool linPa
     }
     else
     {
-        gsSparseMatrix<T, MatOrder> blocO = m_blockLinearO;
+        gsSparseMatrix<T, MatOrder> blockO = m_blockLinearO;
 
         if(!linPartOnly)
             blockO += m_blockNonlinearO;

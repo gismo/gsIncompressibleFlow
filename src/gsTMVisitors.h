@@ -1,4 +1,4 @@
-/** @file gsINSVisitors.h
+/** @file gsTMVisitors.h
     
     This file is part of the G+Smo library.
 
@@ -11,18 +11,8 @@
 
 #pragma once
 
-//#include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
-//#include <gsIncompressibleFlow/src/gsINSAssembler.h>
-//#include <gsIncompressibleFlow/src/gsRANSAssemblerUnsteady.h>
 #include <gsIncompressibleFlow/src/gsFlowVisitors.h>
-//#include <gsIncompressibleFlow/src/gsINSVisitors.h>
-//#include <gsIncompressibleFlow/src/gsINSTerms.h>
-//#include <gsIncompressibleFlow/src/gsRANSTerms.h>
-//#include <gsIncompressibleFlow/src/gsTMSolverBase.h>
-//#include <gsIncompressibleFlow/src/gsTMSolverSST.h>
 #include <gsIncompressibleFlow/src/gsTMTerms.h>
-#include <gsIncompressibleFlow/src/gsTMSolverBase.h>
-
 
 namespace gismo
 {
@@ -94,7 +84,7 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorTimeIterationSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, index_t unk) :
     Base(paramsPtr), m_unknown(unk)
-    {  }
+    { gsInfo << "b" << std::endl; }
 
 
 protected: // *** Member functions ***
@@ -145,7 +135,7 @@ class gsTMVisitorNonlinearSST : public gsFlowVisitorVectorValued<T, MatOrder>
 {
 
 public:
-    typedef gsFlowVisitor<T, MatOrder> Base;
+    typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
 public:
     //gsField<T> m_velSolField;
@@ -181,8 +171,8 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorNonlinearSST() {}
 
-    gsTMVisitorNonlinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, real_t k1, real_t k2, real_t k3, real_t kk, index_t unk) :
-    Base(paramsPtr), m_unknown(unk), m_konst1(k1), m_konst2(k2), m_konst3(k3), m_konst(kk)
+    gsTMVisitorNonlinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, real_t k1, real_t k2, real_t k3, index_t unk) :
+    Base(paramsPtr), m_unknown(unk), m_konst1(k1), m_konst2(k2), m_konst3(k3)
     {  }
 
 
@@ -202,17 +192,17 @@ protected: // *** Member functions ***
         m_numRhsTerms = 2;
         
         // diffusion term with coefficient (m_konst1 * F1 + m_konst2 * (1 - F1)) * turbulent viscosity + m_konst3
-        if (m_unknown == 0)
-        {
-            m_konst1 = m_paramsPtr->getSSTModel().get_sigmaK1();
-            m_konst2 = m_paramsPtr->getSSTModel().get_sigmaK2();
-        }
-        else
-        {
-            m_konst1 = m_paramsPtr->getSSTModel().get_sigmaO1();
-            m_konst2 = m_paramsPtr->getSSTModel().get_sigmaO2();
-        }
-        m_konst3 = m_paramsPtr->getPde().viscosity();;
+        //if (m_unknown == 0)
+        //{
+        //    m_konst1 = m_paramsPtr->getSSTModel().get_sigmaK1();
+        //    m_konst2 = m_paramsPtr->getSSTModel().get_sigmaK2();
+        //}
+        //else
+        //{
+        //    m_konst1 = m_paramsPtr->getSSTModel().get_sigmaO1();
+        //    m_konst2 = m_paramsPtr->getSSTModel().get_sigmaO2();
+        //}
+        //m_konst3 = m_paramsPtr->getPde().viscosity();
         m_terms.push_back( new gsTMTerm_CoeffGradGrad<T>(m_paramsPtr, m_konst1, m_konst2, m_konst3) );
         // nonlinear reaction term
         m_terms.push_back( new gsTMTerm_CoeffValVal<T>(m_paramsPtr, m_unknown) );
@@ -254,101 +244,6 @@ public: // Getter/setters
 
 };
 
-// ===========================================================================================================================
-
-
-
-// ====================================================================================================================
-
-/*
-template <class T, int MatOrder>
-class gsTMVisitorProductuionRhsSST : public gsFlowVisitorVectorValued<T, MatOrder>
-{
-
-public:
-    typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
-
-public:
-    //gsField<T> m_velSolField;
-    //real_t m_viscosity;
-    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
-    gsVector<T> m_TurbulentViscosityVals;
-    //gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr = NULL;
-    gsMatrix<T> m_velSolCoeffs;
-    gsMatrix<T> m_KSolCoeffs;
-    gsMatrix<T> m_OmegaSolCoeffs;
-    gsMatrix<T> m_RANSsolution;
-
-protected: // *** Base class members ***
-
-    using Base::m_locMatVec;
-    using Base::m_paramsPtr;
-    using Base::m_patchID;
-    using Base::m_testUnkID;
-    using Base::m_shapeUnkID;
-    using Base::m_dofMappers;
-    using Base::m_testFunActives;
-    using Base::m_shapeFunActives;
-    using Base::m_terms;
-    using Base::m_quNodes;
-    //using Base::m_TurbulentViscosityVals;
-    //using Base::m_viscosity;
-    //using Base::m_TMsolverPtr;
-
-public: // *** Constructor/destructor ***
-
-    gsTMVisitorProductuionRhsSST() {}
-
-    gsTMVisitorProductuionRhsSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, index_t unk) :
-    Base(paramsPtr)
-    { 
-//        initMembers();
-    }
-
-
-protected: // *** Member functions ***
-
-    /// @brief Initialize all members.
-    //void initMembers();
-
-    void evaluate(index_t testFunID);
-
-    void evaluate(const gsDomainIterator<T>* domIt);
-
-    // upravit pro RANS
-    virtual void defineTerms()
-    {
-        // evaluate turbulent viscosity
-
-        m_terms.push_back( new gsTMTerm_CoeffGradGrad<T>(m_konst1, m_konst2) );
-        
-        //if(m_paramsPtr->options().getSwitch("unsteady"))
-        //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
-
-        // ... other terms, e.g. from stabilizations
-    }
-
-    virtual void defineTestShapeUnknowns()
-    {
-        m_testUnkID = 0; 
-        m_shapeUnkID = 0;
-    }
-
-public: // *** Member functions *** 
-
-    /// @brief Initialize the visitor.
-    void initialize();
-
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
-
-public: // Getter/setters
-
-    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
-
-    void setRANSsolution(gsMatrix<T> sol) { m_RANSsolution = sol;}
-
-};
-*/
 
 } // namespace gismo
 

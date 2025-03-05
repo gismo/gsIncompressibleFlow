@@ -38,6 +38,9 @@ public: // *** Smart pointers ***
 public: // *** Class members ***
 
     gsVector<T> m_TurbulentViscosityVals;
+    T m_TMtime, m_TMtimeStepSize;
+    T m_TMinnerIter, m_TMavgPicardIter;
+    T m_TMinnerTol;   
 
 protected: // *** Base class members ***
 
@@ -48,6 +51,11 @@ protected: // *** Base class members ***
     using Base::m_outFile;
     using Base::m_fileOutput;
     using Base::m_dispOutput;
+
+protected: // *** Base class function ***
+
+    using Base::getAssembler;
+
 
 public: // *** Constructor/destructor ***
 
@@ -71,10 +79,17 @@ public: // *** Static functions ***
     /// @param[in] opt a list of options for the preconditioner
     static tmPtr make(std::string turbModel, typename gsFlowSolverParams<T>::Ptr paramsPtr);
 
+
+protected: // *** Member functions ***
+
+    /// @brief Initialize members.
+    void initMembers();
+
+
 public: // *** Member functions ***
 
     /// @brief Compute the Stokes problem and save the solution into m_solution.
-    virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/)
+    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Perform next iteration step.

@@ -1,4 +1,4 @@
-/** @file gsINSAssembler.h
+/** @file gsTMAssemblerSST.h
 
     This file is part of the G+Smo library.
 
@@ -42,7 +42,8 @@ protected: // *** Class members ***
     gsSparseMatrix<T, MatOrder> m_blockLinearK, m_blockLinearO, m_blockTimeIterationK, m_blockTimeIterationO, m_blockNonlinearK, m_blockNonlinearO;
     gsMatrix<T> m_rhsLinearK, m_rhsLinearO, m_rhsTimeIterationK, m_rhsTimeIterationO, m_rhsNonlinearK, m_rhsNonlinearO;
 
-    gsField<T> m_currentFieldK, m_currentFieldO, m_oldTimeFieldK, m_oldTimeFieldO;
+    gsField<T> m_currentFieldK, m_currentFieldO;
+    gsField<T> m_oldTimeFieldK, m_oldTimeFieldO;
 
     //bool m_isMassMatReady;
     //std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;
@@ -75,6 +76,7 @@ public: // *** Base class member functions ***
     using Base::getPatches;
     using Base::getAssemblerOptions;
     using Base::getBCs;
+    using Base::constructSolution;
 
 public: // *** Constructor/destructor ***
 
@@ -101,7 +103,7 @@ protected: // *** Member functions ***
     /// @brief Update the current solution field stored in the assembler (used as convection coefficient).
     /// @param[in] solVector    new solution vector
     /// @param[in] updateSol    true - save solVector into m_solution (false is used in the inner nonlinear iteration for unsteady problem)
-    virtual void updateCurrentSolField(const gsMatrix<T> & solVector, bool updateSol);
+    virtual void updateCurrentSolField(gsMatrix<T>& solVector, bool updateSol);
 
     /// @brief Assemble the linear part of the problem.
     virtual void assembleLinearPart();

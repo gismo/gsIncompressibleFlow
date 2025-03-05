@@ -19,18 +19,12 @@ namespace gismo
 template<class T, int MatOrder>
 void gsTMSolverSST<T, MatOrder>::initMembers()
 {
-    //Base::initMembers();
-
-    m_TMtime = 0;
-    m_TMtimeStepSize = m_paramsPtr->options().getReal("timeStep");
-    m_TMinnerIter = m_paramsPtr->options().getInt("TM.maxIt");
-    m_TMinnerTol = m_paramsPtr->options().getReal("TM.tol");
-    m_TMavgPicardIter = 0;
+    Base::initMembers();
 }
 
 // upravit
 template<class T, int MatOrder>
-void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes)
+void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
 {
     //for (index_t i = 0; i < quNodes.cols(); i++)
     //    m_TurbulentViscosityVals(i) = 0.01;   
@@ -48,10 +42,10 @@ void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes)
     gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
     
     // evaluate k, omega
-    gsVector<T> solKVals.resize(dim, nQuPoints);
-    solKVals = KSolField.value(mapData.points, mapData.patchId);
-    gsVector<T> solOVals.resize(dim, nQuPoints);
-    solOVals = OSolField.value(mapData.points, mapData.patchId);
+    gsVector<T> solKVals(dim, nQuPoints);
+    solKVals = KSolField.value(quNodes, patchId);
+    gsVector<T> solOVals(dim, nQuPoints);
+    solOVals = OSolField.value(quNodes, patchId);
     
             //evaluate grad(k), grad(omega)
             //gsFunction<T> KSol = KSolField.function(mapData.patchId);
@@ -60,8 +54,7 @@ void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes)
             //std::vector< gsMatrix<T> > OSolDers = OSol.evalAllDers(mapData.points, 1);
     
     // evaluate strainrate tensor S
-    gsFunction<T> USol = USolField.function(mapData.patchId);
-    std::vector< gsMatrix<T> > USolDers = USol.evalAllDers(mapData.points, 1);
+    std::vector< gsMatrix<T> > USolDers = USolField.function(patchId).evalAllDers(quNodes, 1);
     std::vector< gsMatrix<T> > StrainRateTensor;
     gsVector<T> StrainRateMag(nQuPoints);
     StrainRateMag.setZero();

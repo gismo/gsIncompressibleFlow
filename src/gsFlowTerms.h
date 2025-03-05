@@ -274,6 +274,12 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
 
+    gsFlowTerm_rhs()
+    {
+        this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
+        this->m_testFunFlags = NEED_VALUE;
+    }
+
     gsFlowTerm_rhs(const gsFunction<T>* pRhsFun)
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE;

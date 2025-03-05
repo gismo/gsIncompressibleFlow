@@ -13,6 +13,8 @@
 #include <gismo.h>
 
 #include <gsIncompressibleFlow/src/gsFlowTerms.h>
+
+#include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
     
 namespace gismo
 {
@@ -63,6 +65,10 @@ template <class T>
 class gsTMTerm_CoeffGradGrad : public gsFlowTerm<T>
 {
 
+public: // *** Type definitions ***
+
+    typedef gsFlowTerm<T> Base;
+
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;    
@@ -70,6 +76,11 @@ protected: // *** Class members ***
     real_t m_k2;
     real_t m_k3;
     gsVector<T> m_turbViscosityVals;
+
+protected: // *** Base class members ***
+
+    //using Base::m_isCurrentSolSet;
+    using Base::m_coeff;
 
 public: // *** Constructor/destructor ***
 
@@ -84,7 +95,7 @@ public: // *** Constructor/destructor ***
 
 public: // *** Member functions ***
 
-    virtual void evalCoeff(const gsMapData<T>& mapData)
+    virtual void evalCoeff(const gsMapData<T>& mapData);
 
     //virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
 
@@ -152,13 +163,16 @@ public: // *** Getter/setters
 };
 
 // ===================================================================================================================
-// ===================================================================================================================
 
 /// @brief      A class for integrals of the form: test function value * rhs function value.
 /// @tparam T   real number type
 template <class T>
 class gsTMTerm_BlendCoeffRhs : public gsFlowTerm_rhs<T>
 {
+
+public: // *** Type definitions ***
+
+    typedef gsFlowTerm_rhs<T> Base;
 
 protected: // *** Class members ***
 
@@ -194,6 +208,10 @@ template <class T>
 class gsTMTerm_ProductionRhs : public gsFlowTerm_rhs<T>
 {
 
+public: // *** Type definitions ***
+
+    typedef gsFlowTerm_rhs<T> Base;
+
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
@@ -210,6 +228,8 @@ public: // *** Constructor/destructor ***
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
+
+        gsInfo << "b" << std::endl;
     }
 
 

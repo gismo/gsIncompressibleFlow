@@ -67,6 +67,7 @@ protected: // *** Base class members ***
     using Base::m_innerIter;
     using Base::m_avgPicardIter;
     using Base::m_innerTol;
+    using Base::m_clock;
 
 
 public: // *** Constructor/destructor ***
