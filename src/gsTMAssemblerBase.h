@@ -45,7 +45,7 @@ protected: // *** Class members ***
     std::vector<index_t> m_kdofs;
     gsField<T> m_currentSolField;
     //index_t m_TMdofsAll;
-    bool m_bInitialized;
+    //bool m_bInitialized;
     gsMatrix<T> m_RANSsolution;
 
 protected: // *** Base class members ***
@@ -58,13 +58,14 @@ protected: // *** Base class members ***
     using Base::m_solution;
     using Base::m_isBaseReady;
     using Base::m_isSystemReady;
+    using Base::m_isInitialized;
 
 public: // *** Base class member functions ***
 
-    //using Base::getBases;
+    using Base::getBases;
     using Base::getPatches;
     using Base::getAssemblerOptions;
-    //using Base::getBCs;
+    using Base::getBCs;
 
 public: // *** Constructor/destructor ***
 
@@ -110,10 +111,10 @@ public: // *** Getters/setters ***
      * 
      * There is also a const version returning a const reference.
      */
-    virtual std::vector< gsMultiBasis<T> >& getBases() { return m_bases; }
-    virtual const std::vector< gsMultiBasis<T> >& getBases() const { return m_bases; }
+    //virtual std::vector< gsMultiBasis<T> >& getBases() { return m_bases; }
+    //virtual const std::vector< gsMultiBasis<T> >& getBases() const { return m_bases; }
 
-    virtual const gsBoundaryConditions<T>& getBCs() const { return m_bc; }
+    //virtual const gsBoundaryConditions<T>& getBCsTM() const { return m_paramsPtr->getBCsTM(); }
 
     /// @brief Returns the assembled matrix.
     virtual const gsSparseMatrix<T, MatOrder>& matrix() const
@@ -138,9 +139,7 @@ public: // *** Getters/setters ***
     index_t numDofsUnk(size_t i);
 
     /// @brief Returns the total number of DOFs (the matrix size).
-    index_t numDofs() const { return m_dofs; }
-
-    bool isInitialized() { return m_bInitialized; }
+    //index_t numDofs() const { return m_dofs; }
 
 }; 
 

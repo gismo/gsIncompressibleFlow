@@ -105,6 +105,9 @@ protected: // *** Member functions ***
 
 public: // *** Member functions ***
 
+    /// @brief Initialize the solver.
+    virtual void initialize();
+
     /// @brief Perform next iteration step.
     virtual void nextIteration();
 
@@ -122,6 +125,9 @@ public: // *** Getters/setters ***
     {
         return dynamic_cast<gsRANSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
     }
+
+    /// @brief Returns the total number of DOFs (the matrix size).
+    int numDofsTM() { return (m_TMsolverPtr->getAssembler())->numDofs(); }
 
     // @brief Returns the elapsed simulation time.
     // T getSimulationTime() const { return m_time; } ... lze pouzit definici z Base

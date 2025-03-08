@@ -27,7 +27,12 @@ template<class T, int MatOrder>
 void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
 {
     //for (index_t i = 0; i < quNodes.cols(); i++)
-    //    m_TurbulentViscosityVals(i) = 0.01;   
+    //    m_TurbulentViscosityVals(i) = 0.01;
+
+    m_TurbulentViscosityVals.setZero(quNodes.cols());
+    
+    if ((getAssembler()->isInitialized()) && (m_solution.sum()))
+    {
 
     real_t a1 = m_paramsPtr->getSSTModel().get_a1();
     real_t betaStar = m_paramsPtr->getSSTModel().get_betaStar();
@@ -42,9 +47,9 @@ void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes, in
     gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
     
     // evaluate k, omega
-    gsVector<T> solKVals(dim, nQuPoints);
+    gsMatrix<T> solKVals(1, nQuPoints);
     solKVals = KSolField.value(quNodes, patchId);
-    gsVector<T> solOVals(dim, nQuPoints);
+    gsMatrix<T> solOVals(1, nQuPoints);
     solOVals = OSolField.value(quNodes, patchId);
     
             //evaluate grad(k), grad(omega)
@@ -83,14 +88,24 @@ void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes, in
     gsVector<T> F2(nQuPoints);
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(solKVals(k)))/(betaStar * solOVals(k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * solOVals(k))), 2));
+        F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(solKVals(0, k)))/(betaStar * solOVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * solOVals(0, k))), 2));
         F2(k) = math::max(F2(k), 0.0);
         F2(k) = math::min(F2(k), 1.0);
     }
     
     // evaluate turbulent viscosity
     for (index_t k = 0; k < nQuPoints; k++)
-        m_TurbulentViscosityVals(k) = (a1 * solKVals(k)) / (math::max(a1 * solOVals(k), StrainRateMag(k) * F2(k)));
+        m_TurbulentViscosityVals(k) = (a1 * solKVals(0, k)) / (math::max(a1 * solOVals(0, k), StrainRateMag(k) * F2(k)));
+
+    // TEST ONLY
+
+
+    }
+    else
+    {
+        for (index_t k = 0; k < quNodes.cols(); k++)
+            m_TurbulentViscosityVals(k) = 0.0;
+    }
 
     /*
     GISMO_ENSURE(m_pTMsolver != NULL, "uwbRANSBlockVisitor: No turbulent model set!");

@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     int leadRefine = 0; // for profile2D
 
     // problem parameters
-    real_t viscosity = 0.1;
+    real_t viscosity = 0.01;
     real_t inVelX = 1; // inlet x-velocity for profile2D
     real_t inVelY = 0; // inlet y-velocity for profile2D
     
@@ -182,6 +182,7 @@ int main(int argc, char *argv[])
     gsInfo << "Solving RANS problem with k-omega SST model in " << geoStr << " domain.\n";
     gsInfo << "viscosity = " << viscosity << "\n";
     gsInfo << patches;
+    gsInfo << patches.patch(1).coefsSize() << std::endl;
 
 
     // ========================================= Define problem and basis ========================================= 
@@ -227,8 +228,8 @@ int main(int argc, char *argv[])
         }
         default:
             GISMO_ERROR("Unknown domain.");
-    }    
-    
+    }
+        
     std::vector< gsMultiBasis<> >  discreteBases, discreteBasesTM;
     discreteBases.push_back(basis); // basis for velocity
     discreteBases.push_back(basis); // basis for pressure
@@ -237,6 +238,15 @@ int main(int argc, char *argv[])
     discreteBasesTM.push_back(basis); // basis for k
     discreteBasesTM.push_back(basis); // basis for omega
 
+    gsInfo << discreteBases[1].totalSize() << std::endl;
+    gsInfo << discreteBases[1].totalElements() << std::endl;
+    gsInfo << discreteBasesTM[0].totalSize() << std::endl;
+    gsInfo << discreteBasesTM[0].totalElements() << std::endl;
+    gsInfo << discreteBasesTM[1].totalSize() << std::endl;
+    gsInfo << discreteBasesTM[1].totalElements() << std::endl;
+    gsInfo << discreteBasesTM[0].size(0) << std::endl;
+    gsInfo << discreteBasesTM[0].size(1) << std::endl;
+    gsInfo << discreteBasesTM[0].size(2) << std::endl;
 
     // ========================================= Solve ========================================= 
 
@@ -244,6 +254,7 @@ int main(int argc, char *argv[])
     gsFlowSolverParams<real_t> params(NSpde, discreteBases, discreteBasesTM);
     params.options().setSwitch("quiet", quiet);
     params.options().setString("assemb.loop", matFormation);
+    params.setBndParts(bndIn, bndOut, bndWall);
 
     gsOptionList solveOpt;
     solveOpt.addInt("geo", "", geo);
@@ -393,7 +404,8 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     gsInfo << "\ninitialization...\n";
     NSsolver.initialize();
 
-    gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
+    gsInfo << "RANS numDofs: " << NSsolver.numDofs() << "\n";
+    gsInfo << "TM numDofs: " << NSsolver.numDofsTM() << "\n";
 
     gsRANSSolverUnsteady<real_t>* pSolver = dynamic_cast<gsRANSSolverUnsteady<real_t>* >(&NSsolver);
 

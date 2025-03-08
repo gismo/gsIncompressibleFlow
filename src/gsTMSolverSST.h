@@ -66,6 +66,7 @@ public: // *** Constructor/destructor ***
 
         initMembers();
         m_paramsPtr->options().setSwitch("unsteady", true);
+
     }
 
     virtual ~gsTMSolverSST()

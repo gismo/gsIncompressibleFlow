@@ -41,7 +41,7 @@ public: // *** Constructor/destructor ***
     gsTMTerm_VecCoeffGradVal()
     {
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
-        this->m_testFunFlags = NEED_DERIV;
+        this->m_testFunFlags = NEED_VALUE;
         this->m_shapeFunFlags = NEED_DERIV;
     }
 
@@ -62,7 +62,7 @@ public: // *** Getter/setters
 /// @brief      where coefficient = k1 * turbViscosity + k2
 /// @tparam T   real number type
 template <class T>
-class gsTMTerm_CoeffGradGrad : public gsFlowTerm<T>
+class gsTMTerm_CoeffGradGrad : public gsFlowTerm_GradGrad<T>
 {
 
 public: // *** Type definitions ***
@@ -177,6 +177,7 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
+    index_t m_unknown;
 
 protected: // *** Base class members ***
 
@@ -184,8 +185,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_BlendCoeffRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
-    m_paramsPtr(paramsPtr)
+    gsTMTerm_BlendCoeffRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr, index_t unk) :
+    m_paramsPtr(paramsPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
@@ -228,8 +229,6 @@ public: // *** Constructor/destructor ***
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
-
-        gsInfo << "b" << std::endl;
     }
 
 

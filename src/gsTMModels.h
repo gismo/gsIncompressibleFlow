@@ -1,3 +1,10 @@
+
+
+#pragma once
+
+namespace gismo
+{
+
 template <class T>
 class SSTModel
 {
@@ -15,8 +22,8 @@ protected: // *** Class members ***
     real_t m_beta2 = 0.0828;
     real_t m_kappa = 0.41;
     
-    gsVector<T> m_KSolVals;
-    gsVector<T> m_OSolVals;
+    gsMatrix<T> m_KSolVals;
+    gsMatrix<T> m_OSolVals;
     std::vector< gsMatrix<T> > m_KSolDers;
     std::vector< gsMatrix<T> > m_OSolDers;
     std::vector< gsMatrix<T> > m_USolDers;
@@ -46,12 +53,12 @@ public: // *** Getters/setters ***
     real_t get_beta2() { return m_beta2; }
     real_t get_kappa() { return m_kappa; }
     
-    gsVector<T> getKSolVals() 
+    gsMatrix<T> getKSolVals() 
     {
         GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
         return m_KSolVals; 
     }
-    gsVector<T> getOSolVals() 
+    gsMatrix<T> getOSolVals() 
     {
         GISMO_ASSERT(m_isCurrent, "Turbulent quiantities not evaluated yet.");
         return m_OSolVals; 
@@ -97,8 +104,8 @@ public: // *** Getters/setters ***
         return m_StrainRateTensor;
     }
     
-    void setKSolVals(gsVector<T> vals) { m_KSolVals = vals; }
-    void setOSolVals(gsVector<T> vals) { m_OSolVals = vals; }
+    void setKSolVals(gsMatrix<T> vals) { m_KSolVals = vals; }
+    void setOSolVals(gsMatrix<T> vals) { m_OSolVals = vals; }
     void setKSolDers(std::vector< gsMatrix<T> > vals) { m_KSolDers = vals; }
     void setOSolDers(std::vector< gsMatrix<T> > vals) { m_OSolDers = vals; }
     void setUSolDers(std::vector< gsMatrix<T> > vals) { m_USolDers = vals; }
@@ -113,3 +120,5 @@ public: // *** Getters/setters ***
     void setNotCurrent() { m_isCurrent = false; }
     
 };
+
+} // namespace gismo

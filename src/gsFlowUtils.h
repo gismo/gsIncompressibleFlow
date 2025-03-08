@@ -355,7 +355,7 @@ void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide>
         bcInfo.addCondition(bndWall[i].first, bndWall[i].second, condition_type::dirichlet, Uwall);
 }
 
-/*
+
 /// @brief Define boundary conditions for the corresponding boundary parts.
 /// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
@@ -365,7 +365,7 @@ void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide>
 /// @param[in]  Uwall    the wall velocity as gsFunctionExpr
 /// @param[in]  unk      specifies which unknown variable the boundary condition refers to
 template<class T>
-void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndWall, gsFunctionExpr<T> Uin, gsFunctionExpr<T> Uwall, short_t unk = 0)
+void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndWall, gsFunctionExpr<T> Uin, gsFunctionExpr<T> Uwall, short_t unk)
 {
     for (size_t i = 0; i < bndIn.size(); i++)
         bcInfo.addCondition(bndIn[i].first, bndIn[i].second, condition_type::dirichlet, Uin, unk);
@@ -373,7 +373,7 @@ void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide>
     for (size_t i = 0; i < bndWall.size(); i++)
         bcInfo.addCondition(bndWall[i].first, bndWall[i].second, condition_type::dirichlet, Uwall, unk);
 }
-*/
+
 
 
 /// @brief Define boundary conditions for the 2D lid-driven cavity problem.

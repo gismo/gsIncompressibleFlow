@@ -43,6 +43,7 @@ void gsTMTerm_VecCoeffGradVal<T>::assemble(const gsMapData<T>& mapData, const gs
 template<class T>
 void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
 {
+    real_t eps = math::pow(10, -15);
     real_t a1 = m_paramsPtr->getSSTModel().get_a1();
     real_t betaStar = m_paramsPtr->getSSTModel().get_betaStar();
     real_t sigmaO2 = m_paramsPtr->getSSTModel().get_sigmaO2();
@@ -59,10 +60,15 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
         gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
 
         // evaluate k, omega
-        gsVector<T> solKVals(dim, nQuPoints);
-        solKVals = KSolField.value(mapData.points, mapData.patchId);
-        gsVector<T> solOVals(dim, nQuPoints);
-        solOVals = OSolField.value(mapData.points, mapData.patchId);
+        gsMatrix<T> KSolVals(1, nQuPoints);
+        KSolVals = KSolField.value(mapData.points, mapData.patchId);
+        gsMatrix<T> OSolVals(1, nQuPoints);
+        OSolVals = OSolField.value(mapData.points, mapData.patchId);
+        for (index_t i = 0; i < nQuPoints; i++)
+        {
+            KSolVals(0, i) = math::max(KSolVals(0, i), eps);
+            OSolVals(0, i) = math::max(OSolVals(0, i), eps);
+        }
 
         //evaluate grad(k), grad(omega)
         //gsFunction<T> KSol;
@@ -98,14 +104,15 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
         gsVector<T> F2(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(solKVals(k)))/(betaStar * solOVals(k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * solOVals(k))), 2));
-            F2(k) = math::max(F2(k), 0.0);
+            F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), 2));
+            F2(k) = math::max(F2(k), eps);
             F2(k) = math::min(F2(k), 1.0);
         }
 
         // evaluate turbulent viscosity
+        m_turbViscosityVals.setZero(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
-            m_turbViscosityVals(k) = (a1 * solKVals(k)) / (math::max(a1 * solOVals(k), StrainRateMag(k) * F2(k)));
+            m_turbViscosityVals(k) = (a1 * KSolVals(0, k)) / (math::max(a1 * OSolVals(0, k), StrainRateMag(k) * F2(k)));
 
         //evaluate CDkomega
         real_t gradkdotgradomega;
@@ -115,19 +122,19 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
             gradkdotgradomega = 0.0;
             for (index_t i = 0; i < dim; i++)
                 gradkdotgradomega += KSolDers[1](i, k) * OSolDers[1](i, k);
-            CDkomega(k) = math::max(2 * sigmaO2 / solOVals(k) * gradkdotgradomega, math::pow(10, -10));
+            CDkomega(k) = math::max(2 * sigmaO2 / OSolVals(0, k) * gradkdotgradomega, math::pow(10, -10));
         }
 
         // evaluate F1
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(solKVals(k)))/(betaStar * solOVals(k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * solOVals(k))), (4 * sigmaO2 * solKVals(k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
-            F1(k) = math::max(F1(k), 0.0);
+            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
+            F1(k) = math::max(F1(k), eps);
             F1(k) = math::min(F1(k), 1.0);
         }
 
-        m_paramsPtr->getSSTModel().setKSolVals(solKVals);
-        m_paramsPtr->getSSTModel().setOSolVals(solOVals);
+        m_paramsPtr->getSSTModel().setKSolVals(KSolVals);
+        m_paramsPtr->getSSTModel().setOSolVals(OSolVals);
         m_paramsPtr->getSSTModel().setKSolDers(KSolDers);
         m_paramsPtr->getSSTModel().setKSolDers(OSolDers);
         m_paramsPtr->getSSTModel().setF1Vals(F1);
@@ -156,18 +163,24 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
 template<class T>
 void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
 {
+    real_t eps = math::pow(10, -15);
     index_t nQuPoints = mapData.points.cols();
     index_t dim = mapData.dim.first;
-    gsVector<T> m_solOVals;
-    m_solOVals.resize(nQuPoints);
+    gsMatrix<T> OSolVals(1, nQuPoints);
+    m_coeff.resize(nQuPoints);
+
     if (!(m_paramsPtr->getSSTModel().isCurrent()))
     {
         gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
-        m_solOVals = OSolField.value(mapData.points, mapData.patchId);
+        OSolVals = OSolField.value(mapData.points, mapData.patchId);
     }
     else
     {
-        m_solOVals = m_paramsPtr->getSSTModel().getOSolVals();
+        OSolVals = m_paramsPtr->getSSTModel().getOSolVals();
+    }
+    for (index_t i = 0; i < nQuPoints; i++)
+    {
+        OSolVals(0, i) = math::max(OSolVals(0, i), eps);
     }
 
     if (m_unknown == 0)
@@ -175,7 +188,7 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
         // constant coefficient betaStar
         real_t betaStar = m_paramsPtr->getSSTModel().get_betaStar();
         for (index_t k = 0; k < nQuPoints; k++)
-            m_coeff(k) = betaStar * m_solOVals(k);
+            m_coeff(k) = betaStar * OSolVals(0, k);
     }
     else
     {
@@ -192,10 +205,15 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
             gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
 
             // evaluate k, omega
-            gsVector<T> solKVals(dim, nQuPoints);
-            solKVals = KSolField.value(mapData.points, mapData.patchId);
-            gsVector<T> solOVals(dim, nQuPoints);
-            solOVals = OSolField.value(mapData.points, mapData.patchId);
+            gsMatrix<T> KSolVals(1, nQuPoints);
+            KSolVals = KSolField.value(mapData.points, mapData.patchId);
+            gsMatrix<T> OSolVals(1, nQuPoints);
+            OSolVals = OSolField.value(mapData.points, mapData.patchId);
+            for (index_t i = 0; i < nQuPoints; i++)
+            {
+                KSolVals(0, i) = math::max(KSolVals(0, i), eps);
+                OSolVals(0, i) = math::max(OSolVals(0, i), eps);
+            }
 
             //evaluate grad(k), grad(omega)
             std::vector< gsMatrix<T> > KSolDers = KSolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
@@ -234,14 +252,14 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
                 gradkdotgradomega = 0.0;
                 for (index_t i = 0; i < dim; i++)
                     gradkdotgradomega += KSolDers[1](i, k) * OSolDers[1](i, k);
-                CDkomega(k) = math::max(2 * sigmaO2 / solOVals(k) * gradkdotgradomega, math::pow(10, -10));
+                CDkomega(k) = math::max(2 * sigmaO2 / OSolVals(0, k) * gradkdotgradomega, math::pow(10, -10));
             }
 
             // evaluate F1
             for (index_t k = 0; k < nQuPoints; k++)
             {
-                F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(solKVals(k)))/(betaStar * solOVals(k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * solOVals(k))), (4 * sigmaO2 * solKVals(k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
-                F1(k) = math::max(F1(k), 0.0);
+                F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
+                F1(k) = math::max(F1(k), eps);
                 F1(k) = math::min(F1(k), 1.0);
             }
         }
@@ -253,7 +271,7 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
         real_t beta1 = m_paramsPtr->getSSTModel().get_beta1();
         real_t beta2 = m_paramsPtr->getSSTModel().get_beta2();
         for (index_t k = 0; k < nQuPoints; k++)
-            m_coeff(k) = (beta1 * F1(k) + beta2 * (1 - F1(k))) * m_solOVals(k);
+            m_coeff(k) = (beta1 * F1(k) + beta2 * (1 - F1(k))) * OSolVals(k);
     }
 }
 
@@ -262,11 +280,13 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
 template<class T>
 void gsTMTerm_BlendCoeffRhs<T>::evalCoeff(const gsMapData<T>& mapData)
 {
+    real_t eps = math::pow(10, -15);
     index_t nQuPoints = mapData.points.cols();
     index_t dim = mapData.dim.first;
     real_t sigmaO2;
     gsVector<T> F1;
-    gsVector<T> OSolVals;
+    gsMatrix<T> KSolVals;
+    gsMatrix<T> OSolVals;
     std::vector< gsMatrix<T> > KSolDers;
     std::vector< gsMatrix<T> > OSolDers;
     
@@ -280,14 +300,19 @@ void gsTMTerm_BlendCoeffRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
 
         // evaluate k, omega
-        gsVector<T> solKVals(dim, nQuPoints);
-        solKVals = KSolField.value(mapData.points, mapData.patchId);
-        gsVector<T> solOVals(dim, nQuPoints);
-        solOVals = OSolField.value(mapData.points, mapData.patchId);
+        KSolVals.resize(1, nQuPoints);
+        KSolVals = KSolField.value(mapData.points, mapData.patchId);
+        OSolVals.resize(1, nQuPoints);
+        OSolVals = OSolField.value(mapData.points, mapData.patchId);
+        for (index_t i = 0; i < nQuPoints; i++)
+        {
+            KSolVals(0, i) = math::max(KSolVals(0, i), eps);
+            OSolVals(0, i) = math::max(OSolVals(0, i), eps);
+        }
 
         //evaluate grad(k), grad(omega)
-        std::vector< gsMatrix<T> > KSolDers = KSolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
-        std::vector< gsMatrix<T> > OSolDers = OSolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
+        KSolDers = KSolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
+        OSolDers = OSolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
 
         // UPRAVIT !!! evaluate distance
         gsVector<T> Distance(nQuPoints);
@@ -303,14 +328,15 @@ void gsTMTerm_BlendCoeffRhs<T>::evalCoeff(const gsMapData<T>& mapData)
             gradkdotgradomega = 0.0;
             for (index_t i = 0; i < dim; i++)
                 gradkdotgradomega += KSolDers[1](i, k) * OSolDers[1](i, k);
-            CDkomega(k) = math::max(2 * sigmaO2 / solOVals(k) * gradkdotgradomega, math::pow(10, -10));
+            CDkomega(k) = math::max(2 * sigmaO2 / OSolVals(0, k) * gradkdotgradomega, math::pow(10, -10));
         }
 
         // evaluate F1
+        F1.resize(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(solKVals(k)))/(betaStar * solOVals(k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * solOVals(k))), (4 * sigmaO2 * solKVals(k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
-            F1(k) = math::max(F1(k), 0.0);
+            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
+            F1(k) = math::max(F1(k), eps);
             F1(k) = math::min(F1(k), 1.0);
         }
     }
@@ -326,20 +352,33 @@ void gsTMTerm_BlendCoeffRhs<T>::evalCoeff(const gsMapData<T>& mapData)
     m_rhsVals.resize(1, nQuPoints);    
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        m_rhsVals(0, k) = 2 * (1 - F1(k)) * sigmaO2 / OSolVals(k) * (KSolDers[1].col(k).dot(OSolDers[1].col(k)));
+        //m_rhsVals(0, k) = 2 * (1 - F1(k)) * sigmaO2 / OSolVals(k) * (KSolDers[1].col(k).dot(OSolDers[1].col(k)));
+        gsVector<T> u = KSolDers[1].col(k);
+        gsVector<T> v = OSolDers[1].col(k);
+        m_rhsVals(0, k) = 2 * (1 - F1(k)) * sigmaO2 / OSolVals(0, k) * (u.dot(v));
     }
 }
 
 template<class T>
 void gsTMTerm_BlendCoeffRhs<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
 { 
-    const index_t nQuPoints = quWeights.rows();
-
-    for (index_t k = 0; k < nQuPoints; k++)
+    if (m_unknown == 3)
     {
-        const T weight = quWeights(k) * mapData.measure(k);
+        const index_t nQuPoints = quWeights.rows();
+        evalCoeff(mapData);
 
-        localMat.noalias() += weight * (testFunData[0].col(k) *  m_rhsVals.col(k).transpose());
+        for (index_t k = 0; k < nQuPoints; k++)
+        {
+            const T weight = quWeights(k) * mapData.measure(k);
+
+            localMat.noalias() += weight * (testFunData[0].col(k) *  m_rhsVals(0, k));
+        }
+    }
+    else
+    {
+        gsMatrix<T> dummyRhs(testFunData[0].rows(), 1);
+        dummyRhs.setZero();
+        localMat.noalias() += dummyRhs;
     }
 }
 
@@ -348,6 +387,7 @@ void gsTMTerm_BlendCoeffRhs<T>::assemble(const gsMapData<T>& mapData, const gsVe
 template<class T>
 void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
 {
+    real_t eps = math::pow(10, -15);
     index_t nQuPoints = mapData.points.cols();
     index_t dim = mapData.dim.first;
     real_t a1 = m_paramsPtr->getSSTModel().get_a1();
@@ -359,8 +399,8 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
     real_t kappa = m_paramsPtr->getSSTModel().get_kappa();
     real_t visc = m_paramsPtr->getPde().viscosity();
     gsVector<T> turbViscosityVals;
-    gsVector<T> KSolVals;
-    gsVector<T> OSolVals;
+    gsMatrix<T> KSolVals;
+    gsMatrix<T> OSolVals;
     gsVector<T> F1;
     std::vector< gsMatrix<T> > StrainRateTensor;
     std::vector< gsMatrix<T> > USolDers;
@@ -372,17 +412,22 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
 
         // evaluate k, omega
-        gsVector<T> solKVals(dim, nQuPoints);
-        solKVals = KSolField.value(mapData.points, mapData.patchId);
-        gsVector<T> solOVals(dim, nQuPoints);
-        solOVals = OSolField.value(mapData.points, mapData.patchId);
+        KSolVals.resize(1, nQuPoints);
+        KSolVals = KSolField.value(mapData.points, mapData.patchId);
+        OSolVals.resize(1, nQuPoints);
+        OSolVals = OSolField.value(mapData.points, mapData.patchId);
+        for (index_t i = 0; i < nQuPoints; i++)
+        {
+            KSolVals(0, i) = math::max(KSolVals(0, i), eps);
+            OSolVals(0, i) = math::max(OSolVals(0, i), eps);
+        }
 
         //evaluate grad(k), grad(omega)
         std::vector< gsMatrix<T> > KSolDers = KSolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
         std::vector< gsMatrix<T> > OSolDers = OSolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
 
         // evaluate strainrate tensor S
-        std::vector< gsMatrix<T> > USolDers = USolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
+        USolDers = USolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
         gsVector<T> StrainRateMag(nQuPoints);
         StrainRateMag.setZero();
         real_t Sij;
@@ -410,14 +455,15 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         gsVector<T> F2(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(solKVals(k)))/(betaStar * solOVals(k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * solOVals(k))), 2));
-            F2(k) = math::max(F2(k), 0.0);
+            F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), 2));
+            F2(k) = math::max(F2(k), eps);
             F2(k) = math::min(F2(k), 1.0);
         }
 
         // evaluate turbulent viscosity
+        turbViscosityVals.resize(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
-            turbViscosityVals(k) = (a1 * solKVals(k)) / (math::max(a1 * solOVals(k), StrainRateMag(k) * F2(k)));
+            turbViscosityVals(k) = (a1 * KSolVals(0, k)) / (math::max(a1 * OSolVals(0, k), StrainRateMag(k) * F2(k)));
 
         //evaluate CDkomega
         real_t gradkdotgradomega;
@@ -427,21 +473,23 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
             gradkdotgradomega = 0.0;
             for (index_t i = 0; i < dim; i++)
                 gradkdotgradomega += KSolDers[1](i, k) * OSolDers[1](i, k);
-            CDkomega(k) = math::max(2 * sigmaO2 / solOVals(k) * gradkdotgradomega, math::pow(10, -10));
+            CDkomega(k) = math::max(2 * sigmaO2 / OSolVals(0, k) * gradkdotgradomega, math::pow(10, -10));
         }
 
         // evaluate F1
+        F1.resize(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(solKVals(k)))/(betaStar * solOVals(k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * solOVals(k))), (4 * sigmaO2 * solKVals(k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
-            F1(k) = math::max(F1(k), 0.0);
+            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
+            F1(k) = math::max(F1(k), eps);
             F1(k) = math::min(F1(k), 1.0);
         }
 
-        m_paramsPtr->getSSTModel().setKSolVals(solKVals);
-        m_paramsPtr->getSSTModel().setOSolVals(solOVals);
+        m_paramsPtr->getSSTModel().setKSolVals(KSolVals);
+        m_paramsPtr->getSSTModel().setOSolVals(OSolVals);
         m_paramsPtr->getSSTModel().setKSolDers(KSolDers);
         m_paramsPtr->getSSTModel().setKSolDers(OSolDers);
+        m_paramsPtr->getSSTModel().setUSolDers(USolDers);
         m_paramsPtr->getSSTModel().setF1Vals(F1);
         m_paramsPtr->getSSTModel().setF2Vals(F2);
         m_paramsPtr->getSSTModel().setTurbulentViscosityVals(turbViscosityVals);
@@ -453,6 +501,7 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
     {
         KSolVals = m_paramsPtr->getSSTModel().getKSolVals();
         OSolVals = m_paramsPtr->getSSTModel().getOSolVals();
+        USolDers = m_paramsPtr->getSSTModel().getUSolDers();
         F1 = m_paramsPtr->getSSTModel().getF1Vals();
         turbViscosityVals = m_paramsPtr->getSSTModel().getTurbulentViscosityVals();
         USolDers = m_paramsPtr->getSSTModel().getUSolDers();
@@ -479,7 +528,7 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
 
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            m_rhsVals(0, k) = ((gamma1 * F1(k) + gamma2 * (1 - F1(k))) / turbViscosityVals(k)) * m_rhsVals(0, k);
+            m_rhsVals(0, k) = ((gamma1 * F1(k) + gamma2 * (1 - F1(k))) / math::max(turbViscosityVals(k), eps)) * m_rhsVals(0, k);
         }
     }
     
@@ -489,12 +538,13 @@ template<class T>
 void gsTMTerm_ProductionRhs<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat)
 { 
     const index_t nQuPoints = quWeights.rows();
+    evalCoeff(mapData);
 
     for (index_t k = 0; k < nQuPoints; k++)
     {
         const T weight = quWeights(k) * mapData.measure(k);
 
-        localMat.noalias() += weight * (testFunData[0].col(k) *  m_rhsVals.col(k).transpose());
+        localMat.noalias() += weight * (testFunData[0].col(k) *  m_rhsVals(0, k));
     }
 }
 

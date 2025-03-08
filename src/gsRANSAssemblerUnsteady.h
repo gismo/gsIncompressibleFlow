@@ -43,6 +43,7 @@ protected: // *** Class members ***
     typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
     //gsTMSolverSST<T, MatOrder>* m_TMsolverPtr;
     bool m_bComputeTMfirst;
+    gsField<T> m_oldTimeFieldU, m_currentFieldU;
 
 protected: // *** Base class members ***
 
@@ -57,6 +58,8 @@ protected: // *** Base class members ***
     using Base::m_matrix;
     using Base::m_rhs;
     using Base::m_currentVelField;
+    using Base::m_blockTimeDiscr;
+    using Base::m_rhsTimeDiscr;
 
 public: // *** Constructor/destructor ***
 

@@ -34,8 +34,8 @@ public:
 
 protected: // *** Class members ***
 
-    gsBoundaryConditions<T> m_bc;
-    gsTMVisitorLinearSST<T, MatOrder> m_visitorLinearSST;
+    //gsBoundaryConditions<T> m_bc;
+    gsTMVisitorLinearSST<T, MatOrder> m_visitorLinearSST_K, m_visitorLinearSST_O;
     gsTMVisitorTimeIterationSST<T, MatOrder> m_visitorTimeIterationSST_K, m_visitorTimeIterationSST_O;
     gsTMVisitorNonlinearSST<T, MatOrder> m_visitorNonlinearSST_K, m_visitorNonlinearSST_O;
 
@@ -65,10 +65,11 @@ protected: // *** Base class members ***
     using Base::m_baseRhs;
     using Base::m_rhs;
     using Base::m_bases;
+    using Base::m_bc;
     using Base::m_nnzPerRowTM;
     using Base::numTMvars;
     using Base::m_kdofs;
-    using Base::m_bInitialized;
+    using Base::m_isInitialized;
 
 public: // *** Base class member functions ***
 
@@ -103,7 +104,7 @@ protected: // *** Member functions ***
     /// @brief Update the current solution field stored in the assembler (used as convection coefficient).
     /// @param[in] solVector    new solution vector
     /// @param[in] updateSol    true - save solVector into m_solution (false is used in the inner nonlinear iteration for unsteady problem)
-    virtual void updateCurrentSolField(gsMatrix<T>& solVector, bool updateSol);
+    virtual void updateCurrentSolField(const gsMatrix<T>& solVector, bool updateSol);
 
     /// @brief Assemble the linear part of the problem.
     virtual void assembleLinearPart();
@@ -114,7 +115,7 @@ protected: // *** Member functions ***
     /// @brief Fill the velocity-velocity block into the global saddle-point matrix.
     /// @param globalMat[out]   global saddle-point matrix
     /// @param sourceMat[in]    velocity-velocity block (either for one velocity component or the whole block for all components)
-    void fillGlobalMat(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat);
+    void fillGlobalMat(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat, index_t unk);
 
     /// @brief Fill the linear part of the global matrix and right-hand side.https://www.twitch.tv/mikeses
     virtual void fillBaseSystem();

@@ -44,6 +44,7 @@ protected: // *** Class members ***
     typename gsNavStokesPde<T>::Ptr m_pdePtr;
     std::vector<gsMultiBasis<T> >   m_bases;
     std::vector<gsMultiBasis<T> >   m_basesTM;
+    gsBoundaryConditions<T>         m_BC;
     gsAssemblerOptions              m_assembOpt;
     gsOptionList                    m_opt;
     gsOptionList                    m_precOpt;
@@ -63,7 +64,7 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor of the object.
     /// @param pde an incompressible Navier-Stokes problem
     /// @param bases vector of discretization bases (velocity, pressure)
-    gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases, const std::vector<gsMultiBasis<T> >& basesTM = NULL)
+    gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases, const std::vector<gsMultiBasis<T> >& basesTM = {})
         : m_pdePtr(memory::make_shared_not_owned(&pde)), m_bases(bases), m_basesTM(basesTM)
     {
         m_assembOpt.dirStrategy = dirichlet::elimination;
@@ -73,7 +74,14 @@ public: // *** Constructor/destructor ***
         m_opt = gsFlowSolverParams<T>::defaultOptions();
         m_precOpt = gsINSPreconditioner<T, RowMajor>::defaultOptions();
 
+        m_BC = m_pdePtr->bc();
         m_isBndSet = false;
+
+        if (!basesTM.empty())
+        {
+            for (size_t i = 0; i < basesTM.size(); i++)
+                m_bases.push_back(basesTM[i]);
+        }
     }
 
     ~gsFlowSolverParams()
@@ -138,7 +146,7 @@ public: // *** Static functions ***
 public: // *** Member functions ***
 
     /// @brief Creates DOF mappers for velocity and pressure.
-    void createDofMappers(std::vector<gsDofMapper>& mappers)
+    /*void createDofMappers(std::vector<gsDofMapper>& mappers)
     {
         if (m_bases.size() > 0)
         {
@@ -154,6 +162,16 @@ public: // *** Member functions ***
             {
                 m_basesTM[i].getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pdePtr->bc(), mappers[i+2], 1);
             }
+        }
+    }
+    */
+    void createDofMappers(std::vector<gsDofMapper>& mappers)
+    {
+        mappers.resize(m_bases.size());
+   
+        for (size_t i = 0; i < m_bases.size(); i++)
+        {
+            m_bases[i].getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_BC, mappers[i], i);
         }
     }
 
@@ -177,7 +195,14 @@ public: // *** Getters/setters ***
     const gsNavStokesPde<T>& getPde() const { return *m_pdePtr; }
 
     /// @brief Returns a const reference to the boundary conditions.
-    const gsBoundaryConditions<T>& getBCs() const { return m_pdePtr->bc(); }
+    //const gsBoundaryConditions<T>& getBCs() const { return m_pdePtr->bc(); }
+    const gsBoundaryConditions<T>& getBCs() const { return m_BC; }
+
+    /// @brief Returns a const reference to the boundary conditions.
+    //const gsBoundaryConditions<T>& getBCsTM() const { return m_bcTM; }
+
+    /// @brief Returns a const reference to the boundary conditions.
+    void setBCs(gsBoundaryConditions<T>& bcs) { m_BC = bcs; }
 
     /**
      * @brief Returns a reference to the discretization bases for velocity and pressure

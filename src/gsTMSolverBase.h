@@ -55,7 +55,7 @@ protected: // *** Base class members ***
 protected: // *** Base class function ***
 
     using Base::getAssembler;
-
+    //using Base::initialize;
 
 public: // *** Constructor/destructor ***
 
@@ -111,8 +111,8 @@ public: // *** Getters/setters ***
     bool isInitialized() { return getAssembler()->isInitialized(); }
 
     /// @brief Returns a pointer to the assembler.
-    //virtual gsINSAssembler<T, MatOrder>* getAssembler() const
-    //{ return dynamic_cast<gsTMAssembler<T, MatOrder>*>(m_assemblerPtr); }
+    virtual gsTMAssemblerBase<T, MatOrder>* getAssembler() const
+    { return dynamic_cast<gsTMAssemblerBase<T, MatOrder>*>(m_assemblerPtr); }
 
 };
 

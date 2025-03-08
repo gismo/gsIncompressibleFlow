@@ -30,25 +30,51 @@ protected: // *** Class members ***
     
 protected: // *** Base class members ***
     
+    using Base::m_localMat;
     using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_shapeUnkID;
+    using Base::m_dofMappers;
+    using Base::m_testFunActives;
+    using Base::m_shapeFunActives;
     using Base::m_terms;
-    
+    using Base::m_quNodes;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_shapeFunData;
+    using Base::m_geoFlags;
+
     
 public: // *** Constructor/destructor ***
     
     gsTMVisitorLinearSST() {}
     
-    gsTMVisitorLinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
-    Base(paramsPtr)
+    gsTMVisitorLinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, index_t unk) :
+    Base(paramsPtr), m_unknown(unk)
     { }
     
     
 protected: // *** Member functions ***
+
+    virtual void defineTestShapeUnknowns()
+    {
+        m_testUnkID = m_unknown;
+        m_shapeUnkID = m_unknown;
+    }
     
     virtual void defineTerms()
     {
         m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
     }
+
+public: // *** Member functions *** 
+
+    /// @brief Initialize the assembler.
+    //virtual void initialize();
+
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
     
 };
 
@@ -77,6 +103,11 @@ protected: // *** Base class members ***
     using Base::m_shapeFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_shapeFunData;
+    using Base::m_geoFlags;
 
 public: // *** Constructor/destructor ***
 
@@ -84,7 +115,7 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorTimeIterationSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, index_t unk) :
     Base(paramsPtr), m_unknown(unk)
-    { gsInfo << "b" << std::endl; }
+    { }
 
 
 protected: // *** Member functions ***
@@ -116,7 +147,7 @@ protected: // *** Member functions ***
 public: // *** Member functions *** 
 
     /// @brief Initialize the visitor.
-    void initialize();
+    //void initialize();
 
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
@@ -163,6 +194,11 @@ protected: // *** Base class members ***
     using Base::m_shapeFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_shapeFunData;
+    using Base::m_geoFlags;
     //using Base::m_TurbulentViscosityVals;
     //using Base::m_viscosity;
     //using Base::m_TMsolverPtr;
@@ -181,9 +217,9 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     //void initMembers();
 
-    void evaluate(index_t testFunID);
+    //void evaluate(index_t testFunID);
 
-    void evaluate(const gsDomainIterator<T>* domIt);
+    //void evaluate(const gsDomainIterator<T>* domIt);
 
     // upravit pro RANS
     virtual void defineTerms()
@@ -192,24 +228,13 @@ protected: // *** Member functions ***
         m_numRhsTerms = 2;
         
         // diffusion term with coefficient (m_konst1 * F1 + m_konst2 * (1 - F1)) * turbulent viscosity + m_konst3
-        //if (m_unknown == 0)
-        //{
-        //    m_konst1 = m_paramsPtr->getSSTModel().get_sigmaK1();
-        //    m_konst2 = m_paramsPtr->getSSTModel().get_sigmaK2();
-        //}
-        //else
-        //{
-        //    m_konst1 = m_paramsPtr->getSSTModel().get_sigmaO1();
-        //    m_konst2 = m_paramsPtr->getSSTModel().get_sigmaO2();
-        //}
-        //m_konst3 = m_paramsPtr->getPde().viscosity();
         m_terms.push_back( new gsTMTerm_CoeffGradGrad<T>(m_paramsPtr, m_konst1, m_konst2, m_konst3) );
         // nonlinear reaction term
         m_terms.push_back( new gsTMTerm_CoeffValVal<T>(m_paramsPtr, m_unknown) );
 
         // blended term 2 * (1 - F1) * sigma0mega2 / omega * grad(k) * grad(omega) going to rhs of omega equation
-        if (m_unknown == 1)
-            m_terms.push_back( new gsTMTerm_BlendCoeffRhs<T>(m_paramsPtr) );
+        //if (m_unknown == 3)
+        m_terms.push_back( new gsTMTerm_BlendCoeffRhs<T>(m_paramsPtr, m_unknown) );
         // production term going to rhs
         m_terms.push_back( new gsTMTerm_ProductionRhs<T>(m_paramsPtr, m_unknown) );
         
@@ -225,7 +250,7 @@ protected: // *** Member functions ***
 public: // *** Member functions *** 
 
     /// @brief Initialize the visitor.
-    void initialize();
+    //void initialize();
 
     virtual void assemble();
 
@@ -233,7 +258,7 @@ public: // *** Member functions ***
 
 public: // Getter/setters
 
-    void setCurrentSolution(gsMatrix<T>& solution)
+    void setCurrentSolution(const gsMatrix<T>& solution)
     { 
         m_solution = solution;
     }

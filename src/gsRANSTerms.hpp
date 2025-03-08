@@ -53,15 +53,15 @@ void gsRANSTerm_SymmetricGradient<T>::assemble(const gsMapData<T>& mapData, cons
         // NEMELA BY TADY A DALE U BLOKU EIJ BYT JEN TURBULENTNI VISKOZITA, BEZ KLASICKE VISKOZITY ???
         // Local blocks for symmetric gradient and corresponding diagonal blocks Eii, where Eii is stored in localMat[i], i=1,...,dim 
         for (index_t s = 0; s != dim; ++s)
-            localMat[s+1].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(s).transpose() * shapeFunPhysGrad.row(s));
+            localMat[s+1].noalias() += weight * (m_turbViscosityVals(k)/* + m_viscosity*/) * (testFunPhysGrad.row(s).transpose() * shapeFunPhysGrad.row(s));
 
         // Local blocks for symmetric gradient and corresponding off-diagonal blocks Ekl, where E12 is stored in localMat[dim+1], and, 
         // if dim=3, E13 in localMat[dim+2] and E23 in localMat[dim+3]
-        localMat[dim+1].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(1).transpose() * shapeFunPhysGrad.row(0)); 
+        localMat[dim+1].noalias() += weight * (m_turbViscosityVals(k)/* + m_viscosity*/) * (testFunPhysGrad.row(1).transpose() * shapeFunPhysGrad.row(0)); 
         if (dim == 3)
         {
-            localMat[dim+2].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad.row(0));
-            localMat[dim+3].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad.row(1));
+            localMat[dim+2].noalias() += weight * (m_turbViscosityVals(k)/* + m_viscosity*/) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad.row(0));
+            localMat[dim+3].noalias() += weight * (m_turbViscosityVals(k)/* + m_viscosity*/) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad.row(1));
         }
     }
 }    

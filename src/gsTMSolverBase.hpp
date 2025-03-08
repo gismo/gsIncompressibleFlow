@@ -36,6 +36,8 @@ typename gsTMSolverBase<T, MatOrder>::tmPtr gsTMSolverBase<T, MatOrder>::make(st
 template<class T, int MatOrder>
 void gsTMSolverBase<T, MatOrder>::initMembers()
 {
+    Base::initMembers();
+    
     m_TMtime = 0;
     m_TMtimeStepSize = m_paramsPtr->options().getReal("timeStep");
     m_TMinnerIter = m_paramsPtr->options().getInt("TM.maxIt");

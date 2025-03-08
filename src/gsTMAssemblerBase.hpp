@@ -22,9 +22,20 @@ void gsTMAssemblerBase<T, MatOrder>::initMembers()
 
     m_viscosity = m_paramsPtr->getPde().viscosity();
 
-    m_bases = m_paramsPtr->getBasesTM();
-    numTMvars = m_bases.size();
+    m_bases = m_paramsPtr->getBases();
+    numTMvars = m_bases.size() - 2;
+    m_kdofs.resize(numTMvars);
 
+    m_dofMappers.resize(numTMvars+2);
+    m_ddof.resize(numTMvars+2);
+    gsMatrix<T> ddof;
+    m_ddof[0] = ddof.setZero(1, 1);
+    m_ddof[1] = ddof.setZero(1, 1);
+    
+    //m_ddof.resize(numTMvars);
+    //for (index_t i = 0; i < numTMvars; i++)
+    //    m_bases[i+2].getMapper(getAssemblerOptions().dirStrategy, getAssemblerOptions().intStrategy, m_bc, m_dofMappers[i+2], i);
+    
     m_nnzPerRowTM = 1;
     index_t maxDeg = 0;
     for (short_t i = 0; i < m_tarDim; i++)
@@ -33,31 +44,31 @@ void gsTMAssemblerBase<T, MatOrder>::initMembers()
                 maxDeg = m_bases[j].maxDegree(i);
     m_nnzPerRowTM = 2 * maxDeg + 1;
 
-    m_bInitialized = false;
+    m_isInitialized = false;
 
-    updateSizes();
+    //updateSizes();
 }
 
 template<class T, int MatOrder>
 void gsTMAssemblerBase<T, MatOrder>::updateSizes()
 {
     m_dofs = 0;
+    gsMatrix<T> ddof;
     for (short_t i = 0; i < numTMvars; i++)
     {
-        m_kdofs[i] = m_dofMappers[i].freeSize();
+        m_kdofs[i] = m_dofMappers[i+2].freeSize();
         m_dofs += m_kdofs[i];
 
-        m_ddof[i].setZero(m_dofMappers[i].boundarySize(), 1);
+        ddof.setZero(m_dofMappers[i+2].boundarySize(), 1);
+        m_ddof[i+2] = ddof;
 
         if (this->getAssemblerOptions().dirStrategy == dirichlet::elimination)
         {
-            this->computeDirichletDofs(i, i, m_ddof[i]);
+            this->computeDirichletDofs(i+2, i+2, m_ddof[i+2]);
         }
     }
     
     m_solution.setZero(m_dofs, 1);
-
-    //m_currentSolField = constructSolution(m_solution, 0);
 
     m_baseMatrix.resize(m_dofs, m_dofs);
     m_matrix.resize(m_dofs, m_dofs);
@@ -102,9 +113,9 @@ gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& 
 
     // Point to the correct entries of the solution vector
     index_t dofs = 0;
-    for (index_t i = 0; i < unk; i++)
-        dofs += m_kdofs[i];
-    gsAsConstMatrix<T> sol(solVector.data() + dofs, m_kdofs[unk], 1);
+    for (index_t i = 2; i < unk; i++)
+        dofs += m_kdofs[i-2];
+    gsAsConstMatrix<T> sol(solVector.data() + dofs, m_kdofs[unk-2], 1);
     
     for (size_t p = 0; p < this->getPatches().nPatches(); ++p)
     {

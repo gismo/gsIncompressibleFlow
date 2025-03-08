@@ -91,6 +91,15 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
     }
 }
 
+template<class T, int MatOrder>
+void gsRANSSolverUnsteady<T, MatOrder>::initialize()
+{ 
+    Base::initialize();
+
+    m_TMsolverPtr->initialize();
+
+}
+
 // upravit
 template<class T, int MatOrder>
 void gsRANSSolverUnsteady<T, MatOrder>::nextIteration()
