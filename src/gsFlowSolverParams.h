@@ -16,6 +16,7 @@
 #include <gsIncompressibleFlow/src/gsNavStokesPde.h>
 #include <gsIncompressibleFlow/src/gsINSPreconditioners.h>
 #include <gsIncompressibleFlow/src/gsTMModels.h>
+#include <gsIncompressibleFlow/src/gsDistanceField.h>
 
 namespace gismo
 {
@@ -56,6 +57,7 @@ protected: // *** Class members ***
     gsField<T> m_KSolField;
     gsField<T> m_OSolField;
     SSTModel<T> m_SST;
+    gsField<T> m_distanceField;
     
 public: // *** Constructor/destructor ***
 
@@ -138,6 +140,7 @@ public: // *** Static functions ***
         opt.addReal("TM.uFreeStream", "Magnitude of a free-stream velocity", 1.0);
         opt.addReal("TM.turbIntensity", "Turbulent intensity", 0.05);
         opt.addReal("TM.viscosityRatio", "Specifies approximate ratio of turbulent viscosity to kinematic viscosity", 50.0);
+        opt.addInt("TM.addRefsDF", "Number of additional uniform refinements of pressure basis for distance field computation", 2);
 
         return opt;
     }
@@ -284,6 +287,10 @@ public: // *** Getters/setters ***
 
     void createSSTModel() { m_SST = SSTModel<T>(); }
     SSTModel<T> getSSTModel() { return m_SST; }
+
+    void setDistanceField(const gsField<T>& dfield) { m_distanceField = dfield; }
+
+    gsField<T> getDistanceField() { return m_distanceField; }
 
 }; // class gsFlowSolverParams
 

@@ -176,14 +176,39 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::initialize()
 }
 */
 
-/*
 template <class T, int MatOrder>
 void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
-    //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
-    //m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    gsTMTerm_CoeffGradGrad<T>* termPtr1 = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[1]);
+    termPtr1->setDistanceField();
+    gsTMTerm_CoeffValVal<T>* termPtr2 = dynamic_cast< gsTMTerm_CoeffValVal<T>* > (m_terms[2]);
+    termPtr2->setDistanceField();
+    gsTMTerm_BlendCoeffRhs<T>* termPtr3 = dynamic_cast< gsTMTerm_BlendCoeffRhs<T>* > (m_terms[3]);
+    termPtr3->setDistanceField();
+    gsTMTerm_ProductionRhs<T>* termPtr4 = dynamic_cast< gsTMTerm_ProductionRhs<T>* > (m_terms[4]);
+    termPtr4->setDistanceField();
+
+    /*
+    for (size_t i = 0; i < m_terms.size(); i++)
+    {
+        //m_terms[i]->setDistanceField(m_distanceField);
+        gsTMTerm_CoeffGradGrad<T>* termPtr1 = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[i]);
+        if (termPtr1)
+            termPtr1->setDistanceField(m_distanceField);
+        gsTMTerm_CoeffValVal<T>* termPtr2 = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[i]);
+        if (termPtr2)
+            termPtr2->setDistanceField(m_distanceField);
+        gsTMTerm_BlendCoeffRhs<T>* termPtr3 = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[i]);
+        if (termPtr3)
+            termPtr3->setDistanceField(m_distanceField);
+        gsTMTerm_ProductionRhs<T>* termPtr4 = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[i]);
+        if (termPtr4)
+            termPtr4->setDistanceField(m_distanceField);
+    }
+    */
+
 
     //gsTMTerm_CoeffValVal<T>* termPtr = dynamic_cast< gsTMTerm_CoeffValVal<T>* > (m_terms.back());
 
@@ -192,13 +217,39 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(index_t testFunID)
     //    termPtr->setCurrentSolution(m_currentSol);
     //} 
 }
-*/
 
-/*
 template <class T, int MatOrder>
 void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     Base::evaluate(domIt);
+
+    gsTMTerm_CoeffGradGrad<T>* termPtr1 = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[1]);
+    termPtr1->setDistanceField();
+    gsTMTerm_CoeffValVal<T>* termPtr2 = dynamic_cast< gsTMTerm_CoeffValVal<T>* > (m_terms[2]);
+    termPtr2->setDistanceField();
+    gsTMTerm_BlendCoeffRhs<T>* termPtr3 = dynamic_cast< gsTMTerm_BlendCoeffRhs<T>* > (m_terms[3]);
+    termPtr3->setDistanceField();
+    gsTMTerm_ProductionRhs<T>* termPtr4 = dynamic_cast< gsTMTerm_ProductionRhs<T>* > (m_terms[4]);
+    termPtr4->setDistanceField();
+
+    /*
+    for (size_t i = 0; i < m_terms.size(); i++)
+    {
+        //m_terms[i]->setDistanceField(m_distanceField);
+        gsTMTerm_CoeffGradGrad<T>* termPtr = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[i]);
+        if (termPtr)
+            termPtr->setDistanceField(m_distanceField);
+        gsTMTerm_CoeffValVal<T>* termPtr = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[i]);
+        if (termPtr)
+            termPtr->setDistanceField(m_distanceField);
+        gsTMTerm_BlendCoeffRhs<T>* termPtr = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[i]);
+        if (termPtr)
+            termPtr->setDistanceField(m_distanceField);
+        gsTMTerm_ProductionRhs<T>* termPtr = dynamic_cast< gsTMTerm_CoeffGradGrad<T>* > (m_terms[i]);
+        if (termPtr)
+            termPtr->setDistanceField(m_distanceField);
+    }
+    */
 
     //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
     //m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
@@ -210,7 +261,6 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(const gsDomainIterator<T>* d
     //    termPtr->setCurrentSolution(m_currentSol);
     //}  
 }
-*/
 
 template <class T, int MatOrder>
 void gsTMVisitorNonlinearSST<T, MatOrder>::assemble()

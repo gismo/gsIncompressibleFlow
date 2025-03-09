@@ -17,6 +17,7 @@
 #include <gsIncompressibleFlow/src/gsTMVisitors.h>
 
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
+#include <gsIncompressibleFlow/src/gsDistanceField.h>
 
 namespace gismo
 {
@@ -44,6 +45,9 @@ protected: // *** Class members ***
 
     gsField<T> m_currentFieldK, m_currentFieldO;
     gsField<T> m_oldTimeFieldK, m_oldTimeFieldO;
+
+    gsField<T> distanceField;
+    gsDistanceField<T> dField;
 
     //bool m_isMassMatReady;
     //std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;

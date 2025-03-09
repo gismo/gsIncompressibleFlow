@@ -343,6 +343,16 @@ void gsTMAssemblerSST<T, MatOrder>::initialize()
 {
     gsFlowAssemblerBase<T, MatOrder>::initialize();  
 
+    // initialization of distance field
+    gsMultiPatch<T> patches = m_paramsPtr->getPde().patches();    // multipatch representing the computational domain
+    gsMultiBasis<T> basis = m_paramsPtr->getBases()[1];           // pressure basis as base bases
+    std::vector<std::pair<int, boxSide> > bndIn = m_paramsPtr->getBndIn();
+    std::vector<std::pair<int, boxSide> > bndWall = m_paramsPtr->getBndWall();
+    index_t numRefs = m_paramsPtr->options().getInt("TM.addRefsDF");
+    dField = gsDistanceField<T>(patches, basis, numRefs, bndIn, bndWall);
+    distanceField = dField.computeDistanceField();
+    m_paramsPtr->setDistanceField(distanceField);
+
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillBaseSystem();
     

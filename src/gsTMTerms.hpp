@@ -96,9 +96,9 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
 
         // UPRAVIT !!! evaluate distance
         gsVector<T> Distance(nQuPoints);
-        //Distance = DistanceField.value(mapData.points, mapData.patchId);
-        for (index_t k = 0; k < nQuPoints; k++)
-            Distance(k) = 1.0;
+        Distance = m_distanceField.value(mapData.points, mapData.patchId);
+        //for (index_t k = 0; k < nQuPoints; k++)
+        //    Distance(k) = 1.0;
 
         // evaluate F2
         gsVector<T> F2(nQuPoints);
@@ -240,9 +240,9 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
 
             // UPRAVIT !!! evaluate distance
             gsVector<T> Distance(nQuPoints);
-            //Distance = DistanceField.value(mapData.points, mapData.patchId);
-            for (index_t k = 0; k < nQuPoints; k++)
-                Distance(k) = 1.0;
+            Distance = m_distanceField.value(mapData.points, mapData.patchId);
+            //for (index_t k = 0; k < nQuPoints; k++)
+            //    Distance(k) = 1.0;
             
             //evaluate CDkomega
             real_t gradkdotgradomega;
@@ -316,9 +316,9 @@ void gsTMTerm_BlendCoeffRhs<T>::evalCoeff(const gsMapData<T>& mapData)
 
         // UPRAVIT !!! evaluate distance
         gsVector<T> Distance(nQuPoints);
-        //Distance = DistanceField.value(mapData.points, mapData.patchId);
-        for (index_t k = 0; k < nQuPoints; k++)
-            Distance(k) = 1.0;
+        Distance = m_distanceField.value(mapData.points, mapData.patchId);
+        //for (index_t k = 0; k < nQuPoints; k++)
+        //    Distance(k) = 1.0;
 
         //evaluate CDkomega
         real_t gradkdotgradomega;
@@ -447,9 +447,9 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
 
         // UPRAVIT !!! evaluate distance
         gsVector<T> Distance(nQuPoints);
-        //Distance = DistanceField.value(mapData.points, mapData.patchId);
-        for (index_t k = 0; k < nQuPoints; k++)
-            Distance(k) = 1.0;
+        Distance = m_distanceField.value(mapData.points, mapData.patchId);
+        //for (index_t k = 0; k < nQuPoints; k++)
+        //    Distance(k) = 1.0;
 
         // evaluate F2
         gsVector<T> F2(nQuPoints);
