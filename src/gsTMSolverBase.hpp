@@ -88,4 +88,16 @@ void gsTMSolverBase<T, MatOrder>::nextIteration()
     m_iterationNumber++;
 }
 
+template<class T, int MatOrder>
+void gsTMSolverBase<T, MatOrder>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew)
+{
+    m_outStream.str("");
+    m_outStream << "     TM solution change relative norm: ";
+
+    for (int i = 0; i < solOld.cols(); i++)
+        m_outStream << solutionChangeRelNorm(solOld.col(i), solNew.col(i)) << ", ";
+
+    gsWriteOutputLine(m_outFile, m_outStream.str(), m_fileOutput, m_dispOutput);
+}
+
 } // namespace gismo

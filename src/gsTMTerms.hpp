@@ -52,6 +52,7 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
     index_t dim = mapData.dim.first;
     gsVector<T> F1(nQuPoints);
     std::vector< gsMatrix<T> > StrainRateTensor;
+    gsField<T> distanceField = m_paramsPtr->getDistanceField();
 
     if (!(m_paramsPtr->getSSTModel().isCurrent()))
     {
@@ -95,8 +96,8 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
         }
 
         // UPRAVIT !!! evaluate distance
-        gsVector<T> Distance(nQuPoints);
-        Distance = m_distanceField.value(mapData.points, mapData.patchId);
+        gsMatrix<T> Distance(1, nQuPoints);
+        Distance = distanceField.value(mapData.points, mapData.patchId);
         //for (index_t k = 0; k < nQuPoints; k++)
         //    Distance(k) = 1.0;
 
@@ -104,7 +105,7 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
         gsVector<T> F2(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), 2));
+            F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(0, k)), (500 * visc)/(math::pow(Distance(0, k), 2) * OSolVals(0, k))), 2));
             F2(k) = math::max(F2(k), eps);
             F2(k) = math::min(F2(k), 1.0);
         }
@@ -128,7 +129,7 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
         // evaluate F1
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
+            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(0, k)), (500 * visc)/(math::pow(Distance(0, k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(0, k), 2))), 4));
             F1(k) = math::max(F1(k), eps);
             F1(k) = math::min(F1(k), 1.0);
         }
@@ -198,6 +199,7 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
         real_t visc = m_paramsPtr->getPde().viscosity();
         gsVector<T> F1(nQuPoints);
         std::vector< gsMatrix<T> > StrainRateTensor;
+        gsField<T> distanceField = m_paramsPtr->getDistanceField();
         if (!(m_paramsPtr->getSSTModel().isCurrent()))
         {
             gsField<T> USolField = m_paramsPtr->getVelocitySolution();
@@ -239,8 +241,8 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
             }
 
             // UPRAVIT !!! evaluate distance
-            gsVector<T> Distance(nQuPoints);
-            Distance = m_distanceField.value(mapData.points, mapData.patchId);
+            gsMatrix<T> Distance(1, nQuPoints);
+            Distance = distanceField.value(mapData.points, mapData.patchId);
             //for (index_t k = 0; k < nQuPoints; k++)
             //    Distance(k) = 1.0;
             
@@ -258,7 +260,7 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
             // evaluate F1
             for (index_t k = 0; k < nQuPoints; k++)
             {
-                F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
+                F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(0, k)), (500 * visc)/(math::pow(Distance(0, k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(0, k), 2))), 4));
                 F1(k) = math::max(F1(k), eps);
                 F1(k) = math::min(F1(k), 1.0);
             }
@@ -289,6 +291,7 @@ void gsTMTerm_BlendCoeffRhs<T>::evalCoeff(const gsMapData<T>& mapData)
     gsMatrix<T> OSolVals;
     std::vector< gsMatrix<T> > KSolDers;
     std::vector< gsMatrix<T> > OSolDers;
+    gsField<T> distanceField = m_paramsPtr->getDistanceField();
     
     if (!(m_paramsPtr->getSSTModel().isCurrent()))
     {
@@ -315,8 +318,8 @@ void gsTMTerm_BlendCoeffRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         OSolDers = OSolField.function(mapData.patchId).evalAllDers(mapData.points, 1);
 
         // UPRAVIT !!! evaluate distance
-        gsVector<T> Distance(nQuPoints);
-        Distance = m_distanceField.value(mapData.points, mapData.patchId);
+        gsMatrix<T> Distance(1, nQuPoints);
+        Distance = distanceField.value(mapData.points, mapData.patchId);
         //for (index_t k = 0; k < nQuPoints; k++)
         //    Distance(k) = 1.0;
 
@@ -335,7 +338,7 @@ void gsTMTerm_BlendCoeffRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         F1.resize(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
+            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(0, k)), (500 * visc)/(math::pow(Distance(0, k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(0, k), 2))), 4));
             F1(k) = math::max(F1(k), eps);
             F1(k) = math::min(F1(k), 1.0);
         }
@@ -404,6 +407,7 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
     gsVector<T> F1;
     std::vector< gsMatrix<T> > StrainRateTensor;
     std::vector< gsMatrix<T> > USolDers;
+    gsField<T> distanceField = m_paramsPtr->getDistanceField();
     
     if (!(m_paramsPtr->getSSTModel().isCurrent()))
     {
@@ -446,8 +450,8 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         }
 
         // UPRAVIT !!! evaluate distance
-        gsVector<T> Distance(nQuPoints);
-        Distance = m_distanceField.value(mapData.points, mapData.patchId);
+        gsMatrix<T> Distance(1, nQuPoints);
+        Distance = distanceField.value(mapData.points, mapData.patchId);
         //for (index_t k = 0; k < nQuPoints; k++)
         //    Distance(k) = 1.0;
 
@@ -455,7 +459,7 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         gsVector<T> F2(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), 2));
+            F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(0, k)), (500 * visc)/(math::pow(Distance(0, k), 2) * OSolVals(0, k))), 2));
             F2(k) = math::max(F2(k), eps);
             F2(k) = math::min(F2(k), 1.0);
         }
@@ -480,7 +484,7 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         F1.resize(nQuPoints);
         for (index_t k = 0; k < nQuPoints; k++)
         {
-            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(k)), (500 * visc)/(math::pow(Distance(k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(k), 2))), 4));
+            F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(KSolVals(0, k)))/(betaStar * OSolVals(0, k) * Distance(0, k)), (500 * visc)/(math::pow(Distance(0, k), 2) * OSolVals(0, k))), (4 * sigmaO2 * KSolVals(0, k))/(CDkomega(k) * math::pow(Distance(0, k), 2))), 4));
             F1(k) = math::max(F1(k), eps);
             F1(k) = math::min(F1(k), 1.0);
         }

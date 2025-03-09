@@ -182,7 +182,6 @@ int main(int argc, char *argv[])
     gsInfo << "Solving RANS problem with k-omega SST model in " << geoStr << " domain.\n";
     gsInfo << "viscosity = " << viscosity << "\n";
     gsInfo << patches;
-    gsInfo << patches.patch(1).coefsSize() << std::endl;
 
 
     // ========================================= Define problem and basis ========================================= 
@@ -237,16 +236,6 @@ int main(int argc, char *argv[])
 
     discreteBasesTM.push_back(basis); // basis for k
     discreteBasesTM.push_back(basis); // basis for omega
-
-    gsInfo << discreteBases[1].totalSize() << std::endl;
-    gsInfo << discreteBases[1].totalElements() << std::endl;
-    gsInfo << discreteBasesTM[0].totalSize() << std::endl;
-    gsInfo << discreteBasesTM[0].totalElements() << std::endl;
-    gsInfo << discreteBasesTM[1].totalSize() << std::endl;
-    gsInfo << discreteBasesTM[1].totalElements() << std::endl;
-    gsInfo << discreteBasesTM[0].size(0) << std::endl;
-    gsInfo << discreteBasesTM[0].size(1) << std::endl;
-    gsInfo << discreteBasesTM[0].size(2) << std::endl;
 
     // ========================================= Solve ========================================= 
 
@@ -321,8 +310,9 @@ int main(int argc, char *argv[])
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
 
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the unsteady RANS problem with direct linear solver.\n";
+        gsInfo << "\n-----------------------------------------------------------\n";
+        gsInfo << "Solving the unsteady RANS problem with direct linear solver\n";
+        gsInfo << "-----------------------------------------------------------\n";
 
         solveProblem(NSsolver, solveOpt, geo);
     }
@@ -401,11 +391,11 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     if(geo == 2)
         markElimDof(NSsolver);
 
-    gsInfo << "\ninitialization...\n";
+    gsInfo << "\nInitialization...\n";
     NSsolver.initialize();
 
     gsInfo << "RANS numDofs: " << NSsolver.numDofs() << "\n";
-    gsInfo << "TM numDofs: " << NSsolver.numDofsTM() << "\n";
+    gsInfo << "TM numDofs: " << NSsolver.numDofsTM() << "\n\n";
 
     gsRANSSolverUnsteady<real_t>* pSolver = dynamic_cast<gsRANSSolverUnsteady<real_t>* >(&NSsolver);
 

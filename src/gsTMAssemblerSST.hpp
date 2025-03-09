@@ -29,7 +29,7 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     // boundary conditions are automatically set based on boundary conditions for RANS
     real_t kin = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
     real_t kwall = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
-    gsInfo << "kin = " << util::to_string(kin) << std::endl;
+    gsInfo << "kin = " << util::to_string(kin) << ", ";
     gsInfo << "kwall = " << util::to_string(kwall) << std::endl;
     gsFunctionExpr<T> Kin(util::to_string(kin), m_tarDim);
     gsFunctionExpr<T> Kwall(util::to_string(kwall), m_tarDim);
@@ -40,7 +40,7 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     real_t oin = kin / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at inlet
     real_t owall = kwall / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at the wall
     //real_t oBlade = 6 * viscosity / (beta * math::pow(wallDistance, 2)); // other way for prescribing this boundary condition
-    gsInfo << "oin = " << util::to_string(oin) << std::endl;
+    gsInfo << "oin = " << util::to_string(oin) << ", ";
     gsInfo << "owall = " << util::to_string(owall) << std::endl;
     gsFunctionExpr<T> Oin(util::to_string(oin), m_tarDim);
     gsFunctionExpr<T> Owall(util::to_string(owall), m_tarDim);
@@ -345,7 +345,7 @@ void gsTMAssemblerSST<T, MatOrder>::initialize()
 
     // initialization of distance field
     gsMultiPatch<T> patches = m_paramsPtr->getPde().patches();    // multipatch representing the computational domain
-    gsMultiBasis<T> basis = m_paramsPtr->getBases()[1];           // pressure basis as base bases
+    gsMultiBasis<T> basis = m_paramsPtr->getBases()[1];           // pressure basis as base basis for distance computation
     std::vector<std::pair<int, boxSide> > bndIn = m_paramsPtr->getBndIn();
     std::vector<std::pair<int, boxSide> > bndWall = m_paramsPtr->getBndWall();
     index_t numRefs = m_paramsPtr->options().getInt("TM.addRefsDF");
@@ -372,7 +372,7 @@ void gsTMAssemblerSST<T, MatOrder>::update(const gsMatrix<T> & solVector, bool u
 
     if(updateSol)
     {
-        gsInfo << "Updating time iteration terms in TM solver ... ";
+        //gsInfo << "Updating time iteration terms in TM solver ... ";
         // matrix and rhs cleaning
         m_blockTimeIterationK.resize(m_kdofs[0], m_kdofs[0]);
         m_blockTimeIterationO.resize(m_kdofs[1], m_kdofs[1]);

@@ -51,10 +51,13 @@ protected: // *** Base class members ***
     using Base::m_outFile;
     using Base::m_fileOutput;
     using Base::m_dispOutput;
+    using Base::m_outStream;
+
 
 protected: // *** Base class function ***
 
     using Base::getAssembler;
+    using Base::solutionChangeRelNorm;
     //using Base::initialize;
 
 public: // *** Constructor/destructor ***
@@ -94,6 +97,11 @@ public: // *** Member functions ***
 
     /// @brief Perform next iteration step.
     virtual void nextIteration();
+
+    /// @brief Compute and display the relative norm of the solution change given the two successive solutions.
+    /// @param[in] solOld the old solution
+    /// @param[in] solNew the new solution
+    virtual void writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew);
 
     //virtual void plotTurbulentViscosity();
 

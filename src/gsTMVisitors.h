@@ -218,9 +218,9 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     //void initMembers();
 
-    void evaluate(index_t testFunID);
+    //void evaluate(index_t testFunID);
 
-    void evaluate(const gsDomainIterator<T>* domIt);
+    //void evaluate(const gsDomainIterator<T>* domIt);
 
     // upravit pro RANS
     virtual void defineTerms()
@@ -259,15 +259,12 @@ public: // *** Member functions ***
 
 public: // Getter/setters
 
-    void setCurrentSolution(const gsMatrix<T>& solution)
-    { 
-        m_solution = solution;
-    }
+    void setCurrentSolution(const gsMatrix<T>& solution) { m_solution = solution; }
 
-    void setDistanceField(const gsField<T>& dfield)
-    { 
-        m_distanceField = dfield;
-    }
+    //void setDistanceField(const gsField<T>& dfield)
+    //{ 
+    //    m_distanceField = dfield;
+    //}
 
     //void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
 

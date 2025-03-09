@@ -76,7 +76,7 @@ protected: // *** Class members ***
     real_t m_k2;
     real_t m_k3;
     gsVector<T> m_turbViscosityVals;
-    gsField<T> m_distanceField;
+    //gsField<T> m_distanceField;
 
 protected: // *** Base class members ***
 
@@ -102,7 +102,7 @@ public: // *** Member functions ***
 
 public: // *** Getter/setters
 
-    void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
+    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
 
     //void setTurbulentViscosityVals(gsVector<T> turbViscosityVals) { m_turbViscosityVals = turbViscosityVals; }
 
@@ -124,7 +124,7 @@ protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
     index_t m_unknown;
-    gsField<T> m_distanceField;
+    //gsField<T> m_distanceField;
 
 protected: // *** Base class members ***
 
@@ -158,7 +158,7 @@ public: // *** Member functions ***
 
 public: // *** Getter/setters
 
-    void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
+    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
 
     //void setCurrentSolution(gsField<T>& solution)
     //{ 
@@ -184,7 +184,7 @@ protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
     index_t m_unknown;
-    gsField<T> m_distanceField;
+    //gsField<T> m_distanceField;
 
 protected: // *** Base class members ***
 
@@ -209,7 +209,7 @@ public: // *** Member functions ***
 
 public: // *** Getter/setters
 
-    void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
+    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
 
 };
 
@@ -229,7 +229,7 @@ protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
     index_t m_unknown;
-    gsField<T> m_distanceField;
+    //gsField<T> m_distanceField;
 
 protected: // *** Base class members ***
 
@@ -254,7 +254,7 @@ public: // *** Member functions ***
 
 public: // *** Getter/setters
 
-    void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
+    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
     
 };
 
