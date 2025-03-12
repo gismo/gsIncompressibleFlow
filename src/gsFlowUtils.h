@@ -25,10 +25,27 @@ template <class T>
 inline void pardisoSetup(typename gsSparseSolver<T>::PardisoLU& solver)
 {
     solver.setParam(7, 15);
-    solver.setParam(9, 13);
+    solver.setParam(9, 10);
     solver.setParam(12, 0);
 }
 #endif
+
+
+// forward declaration
+template<class T, int MatOrder, class LinSolver>
+class gsFlowLinSystSolver_iter;
+
+template<class T, int MatOrder, class LinSolver>
+void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr)
+{
+    std::vector<index_t> itVector = linSolverPtr->getLinIterVector();
+
+    gsInfo << "Iterations of linear solver in each Picard iteration:\n";
+    for (size_t i = 0; i < itVector.size(); i++)
+        gsInfo << itVector[i] << ", ";
+
+    gsInfo << "\nAverage number of linear solver iterations per Picard iteration: " << linSolverPtr->getAvgLinIterations() << "\n";
+}
 
 
 inline void startAnimationFile(std::ofstream& file)

@@ -200,6 +200,65 @@ protected: // *** Member functions ***
 
 // ===================================================================================================================
 
+/// @brief Visitor for the terms arising from (omega x r) in rotating frame of reference.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
+class gsINSVisitorUUrotation : public gsINSVisitorUU<T, MatOrder>
+{
+
+public:
+    typedef gsINSVisitorUU<T, MatOrder> Base;
+
+protected: // *** Class members ***
+
+    real_t m_omega;
+
+protected: // *** Base class members ***
+
+    using Base::m_paramsPtr;
+    using Base::m_terms;
+    using Base::m_dofMappers;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_testFunActives;
+    using Base::m_trialFunActives;
+    using Base::m_patchID;
+    using Base::m_localMat;
+    using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
+
+
+public: // *** Constructor/destructor ***
+
+gsINSVisitorUUrotation() {}
+
+    /// @brief Constructor.
+    /// @param[in] paramsPtr a shared pointer to the container of input parameters
+    gsINSVisitorUUrotation(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { 
+        m_omega = m_paramsPtr->options().getReal("omega");
+    }
+
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        if (m_omega != 0)
+            m_terms.push_back( new gsFlowTerm_ValVal<T>() );
+    }
+
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+};
+
+// ===================================================================================================================
+
 /// @brief Visitor for the time discretization term.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)

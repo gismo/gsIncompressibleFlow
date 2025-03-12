@@ -152,12 +152,23 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     if (hasPeriodicBC || isRotation)
     {
         index_t nnzU = m_nnzPerOuterU;
+        bool compressMat = true;
 
         if (isRotation)
-        nnzU *= 2;
-
+        {
+            nnzU *= 2;
+            compressMat = false;
+        }
+        
         m_blockUUlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUlin_whole.outerSize(), nnzU));
-        this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_whole, m_rhsUlin, false);
+        this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_whole, m_rhsUlin, compressMat);
+
+        if (isRotation)
+        {
+            gsINSVisitorUUrotation<T, MatOrder> visitorUUrot(m_paramsPtr);
+            visitorUUrot.initialize();
+            this->assembleBlock(visitorUUrot, 0, m_blockUUlin_whole, m_rhsUlin);
+        }
     }
     else
     {
@@ -169,16 +180,19 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
     this->assembleRhs(m_visitorF, 0, m_rhsF);
 
-    if(m_paramsPtr->getPde().source()) // if the continuity eqn rhs is given
+    if (m_paramsPtr->getPde().source()) // if the continuity eqn rhs is given
         this->assembleRhs(m_visitorG, 1, m_rhsG);
 
-    // velocity mass matrix (needed for preconditioners and/or rotating frame of reference)
-    if ( m_paramsPtr->options().getString("lin.solver") == "iter" || isRotation )
+    // velocity and pressure mass matrix (needed for preconditioners)
+    if ( m_paramsPtr->options().getString("lin.solver") == "iter" )
     {
         m_massMatRhs[0].setZero(m_pshift, 1);
+        m_massMatRhs[1].setZero(m_pdofs, 1);
 
         gsINSVisitorUUmass<T, MatOrder> visitorUUmass(m_paramsPtr);
+        gsINSVisitorPPmass<T, MatOrder> visitorPPmass(m_paramsPtr);
         visitorUUmass.initialize();
+        visitorPPmass.initialize();
         
         if (!hasPeriodicBC)
             m_massMatBlocks[0].resize(m_udofs, m_udofs);
@@ -186,42 +200,13 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
             m_massMatBlocks[0].resize(m_pshift, m_pshift);
 
         m_massMatBlocks[0].reserve(gsVector<index_t>::Constant(m_massMatBlocks[0].outerSize(), m_nnzPerOuterU));
-
         this->assembleBlock(visitorUUmass, 0, m_massMatBlocks[0], m_massMatRhs[0]);
         
-        m_isMassMatReady = true;
-    }
-
-    // pressure mass matrix (needed for preconditioners)
-    if ( m_paramsPtr->options().getString("lin.solver") == "iter" )
-    {
-        m_massMatRhs[1].setZero(m_pdofs, 1);
-
-        gsINSVisitorPPmass<T, MatOrder> visitorPPmass(m_paramsPtr);
-        visitorPPmass.initialize();
-
         m_massMatBlocks[1].resize(m_pdofs, m_pdofs);
         m_massMatBlocks[1].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerOuterP));
-
         this->assembleBlock(visitorPPmass, 0, m_massMatBlocks[1], m_massMatRhs[1]);
-    }
 
-    // fill the rotation part into the UU matrix
-    if (isRotation)
-    {
-        real_t omega = m_paramsPtr->options().getReal("omega");
-
-        for (index_t outer = 0; outer < m_udofs; outer++)
-            for (typename gsSparseMatrix<T,MatOrder>::InnerIterator it(m_massMatBlocks[0], outer); it; ++it)
-            {
-                m_blockUUlin_whole.coeffRef(it.row(), it.col() + m_udofs) = -omega * it.value();
-                m_blockUUlin_whole.coeffRef(it.row() + m_udofs, it.col()) = omega * it.value();
-            }
-
-        m_blockUUlin_whole.makeCompressed();
-
-        m_rhsUlin.middleRows(0, m_udofs) -= omega * m_massMatRhs[0].middleRows(m_udofs, m_udofs);
-        m_rhsUlin.middleRows(m_udofs, m_udofs) += omega * m_massMatRhs[0].middleRows(0, m_udofs);
+        m_isMassMatReady = true;
     }
 
     // linear operators needed for PCD preconditioner
@@ -697,6 +682,110 @@ void gsINSAssembler<T, MatOrder>::per2nonper_into(const gsMatrix<T>& perVector, 
 
     for (size_t i = 0; i < elimDofsP.size(); i++)
         fullVector(elimDofsP[i] + fullPshift, 0) = perVector(mapPeriodic(elimDofsP[i] + fullPshift), 0);
+}
+
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
+{
+    real_t omega = m_paramsPtr->options().getReal("omega");
+
+    gsFunctionExpr<T> omegaXr;
+    std::ostringstream s1, s2;
+
+    s1 << -omega << " * y";
+    s2 << omega << " * x";
+
+    switch (m_tarDim)
+    {
+    case 2:
+        omegaXr = gsFunctionExpr<T>(s1.str(), s2.str(), 2);
+        break;
+
+    case 3:
+        omegaXr = gsFunctionExpr<T>(s1.str(), s2.str(), "0", 3);
+        break;
+
+    default:
+        GISMO_ERROR("Wrong space dimension.");
+        break;
+    }
+
+    // TODO: use gsL2Projection?
+
+    gsDofMapper mapper;
+    getBases().front().getMapper(getAssemblerOptions().intStrategy, mapper);
+    int matSize = mapper.freeSize();
+
+    gsSparseMatrix<T, MatOrder> projMatrix(matSize, matSize);
+    gsMatrix<T> projRhs(matSize, m_tarDim);
+    projRhs.setZero();
+
+    int nnzPerOuter = 1;
+    for (int i = 0; i < m_tarDim; i++)
+    nnzPerOuter *= 2 * getBases().front().maxDegree(i) + 1;
+
+    projMatrix.reserve(gsVector<int>::Constant(matSize, nnzPerOuter));
+
+    gsMatrix<T> quNodes;
+    gsVector<T> quWeights;
+    gsQuadRule<T> QuRule;
+
+    gsMatrix<T> basisVals;
+    gsMatrix<T> rhsVals;
+    gsMatrix<index_t> globIdxAct;
+
+    gsMapData<T> mapData;
+    mapData.flags = NEED_MEASURE;
+
+    for (unsigned int p = 0; p < getPatches().nPatches(); ++p)
+    {
+        const gsBasis<T> & basis = (getBases().front()).piece(p);
+        mapData.patchId = p;
+
+        gsVector<index_t> numQuadNodes(basis.dim());
+        for (int i = 0; i < basis.dim(); ++i)
+            numQuadNodes[i] = basis.maxDegree() + 1;
+        QuRule = gsGaussRule<T>(numQuadNodes);
+
+        typename gsBasis<T>::domainIter domIt = basis.domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = basis.domain()->endAll();
+
+        while (domIt!=domItEnd)
+        {
+            QuRule.mapTo(domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights);
+            mapData.points = quNodes;
+            m_paramsPtr->getPde().patches().patch(p).computeMap(mapData);
+            rhsVals = omegaXr.eval(getPatches().patch(p).eval(quNodes));
+            basis.eval_into(quNodes, basisVals);
+            basis.active_into(quNodes.col(0), globIdxAct);
+            mapper.localToGlobal(globIdxAct, p, globIdxAct);
+
+            for (index_t k = 0; k < quNodes.cols(); k++)
+            {
+                const T weight_k = quWeights[k] * mapData.measure(k);
+
+                for (int i = 0; i < globIdxAct.size(); i++)
+                {
+                    const unsigned ii = globIdxAct(i);
+
+                    for (int j = 0; j < globIdxAct.size(); j++)
+                    {
+                        const unsigned jj = globIdxAct(j);
+
+                        projMatrix.coeffRef(ii, jj) += weight_k * basisVals(i, k) * basisVals(j, k);
+                    }
+
+                    projRhs.row(ii) += weight_k *  basisVals(i, k) * rhsVals.col(k).transpose();
+                }
+            }
+            ++domIt;
+        }
+    }
+
+    projMatrix.makeCompressed();
+    typename gsSparseSolver<T>::CGDiagonal solver;
+    m_omegaXrCoeffs = solver.compute(projMatrix).solve(projRhs);
 }
 
 

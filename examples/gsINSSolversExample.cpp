@@ -19,7 +19,6 @@
 using namespace gismo;
 
 template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
-template<class T, int MatOrder, class LinSolver> void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr);
 
 int main(int argc, char *argv[])
 {
@@ -268,7 +267,7 @@ int main(int argc, char *argv[])
 
         solveProblem(NSsolver, solveOpt, geo);
 
-        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver());
+        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver() );
         reportLinIterations(linSolverPtr);
     }
 
@@ -280,7 +279,7 @@ int main(int argc, char *argv[])
         params.options().setReal("nonlin.tol", picardTol);
         params.options().setString("lin.solver", "direct");
 
-        gsINSSolverUnsteady<real_t, RowMajor> NSsolver(params);
+        gsINSSolverUnsteady<real_t, ColMajor> NSsolver(params);
 
         gsInfo << "\n----------\n";
         gsInfo << "Solving the unsteady problem with direct linear solver.\n";
@@ -308,7 +307,7 @@ int main(int argc, char *argv[])
 
         solveProblem(NSsolver, solveOpt, geo);
         
-        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver());
+        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver() );
         reportLinIterations(linSolverPtr);
     }
 
@@ -360,7 +359,7 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 
     gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
-    gsINSSolverUnsteady<real_t>* pSolver = dynamic_cast<gsINSSolverUnsteady<real_t>* >(&NSsolver);
+    gsINSSolverUnsteady<T, MatOrder>* pSolver = dynamic_cast<gsINSSolverUnsteady<T, MatOrder>* >(&NSsolver);
 
     if (pSolver)
         if (opt.getSwitch("stokesInit"))
@@ -369,7 +368,7 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
     if (pSolver && opt.getSwitch("animation"))
         pSolver->solveWithAnimation(opt.getInt("maxIt"), opt.getInt("animStep"), geoStr + "_" + id, opt.getReal("tol"), opt.getInt("plotPts"));
     else
-        NSsolver.solve(opt.getInt("maxIt"), opt.getReal("tol"), 0);    
+        NSsolver.solve(opt.getInt("maxIt"), opt.getReal("tol"), 0); // the last argument = min. number of iterations
 
     real_t totalT = clock.stop();
 
@@ -388,22 +387,9 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 
         int plotPts = opt.getInt("plotPts");
  
-        gsInfo << "Plotting in Paraview...";
+        gsInfo << "Plotting in Paraview...\n";
         gsWriteParaview<>(velocity, geoStr + "_" + id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
         // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
-        gsInfo << " done.\n";
     }
-}
-
-template<class T, int MatOrder, class LinSolver>
-void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr)
-{
-    std::vector<index_t> itVector = linSolverPtr->getLinIterVector();
-
-    gsInfo << "Iterations of linear solver in each Picard iteration:\n";
-    for (size_t i = 0; i < itVector.size(); i++)
-        gsInfo << itVector[i] << ", ";
-
-    gsInfo << "\nAverage number of linear solver iterations per Picard iteration: " << linSolverPtr->getAvgLinIterations() << "\n";
 }

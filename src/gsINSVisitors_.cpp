@@ -8,6 +8,8 @@ namespace gismo
     CLASS_TEMPLATE_INST gsINSVisitorUU<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorUUlin<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorUUnonlin<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUUmass<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUUrotation<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorUUtimeDiscr<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPU<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPU_withUPrhs<real_t, RowMajor>;
@@ -24,6 +26,8 @@ namespace gismo
     CLASS_TEMPLATE_INST gsINSVisitorUU<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorUUlin<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorUUnonlin<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUUmass<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUUrotation<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorUUtimeDiscr<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPU<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorPU_withUPrhs<real_t, ColMajor>;
