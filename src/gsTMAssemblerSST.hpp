@@ -65,6 +65,7 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
 
     updateSizes();
 
+    //m_SSTPtr = memory::make_shared_not_owned(new SSTModel<T>(m_paramsPtr));
     
     m_visitorLinearSST_K = gsTMVisitorLinearSST<T, MatOrder>(m_paramsPtr, 2);
     m_visitorLinearSST_O = gsTMVisitorLinearSST<T, MatOrder>(m_paramsPtr, 3);
@@ -80,13 +81,10 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     m_visitorTimeIterationSST_K.updateDofMappers(m_dofMappers);
     m_visitorTimeIterationSST_O.updateDofMappers(m_dofMappers);
 
-    real_t sigmaK1 = m_paramsPtr->getSSTModel().get_sigmaK1();
-    real_t sigmaK2 = m_paramsPtr->getSSTModel().get_sigmaK2();
-    real_t sigmaO1 = m_paramsPtr->getSSTModel().get_sigmaO1();
-    real_t sigmaO2 = m_paramsPtr->getSSTModel().get_sigmaO2();
-    real_t viscosity = m_paramsPtr->getPde().viscosity();
-    m_visitorNonlinearSST_K = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, sigmaK1, sigmaK2, viscosity, 2);
-    m_visitorNonlinearSST_O = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, sigmaO1, sigmaO2, viscosity, 3);
+    m_visitorNonlinearSST_K = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 2);
+    m_visitorNonlinearSST_O = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 3);
+    //m_visitorNonlinearSST_K.setSSTModelEvaluator(m_SSTPtr);
+    //m_visitorNonlinearSST_O.setSSTModelEvaluator(m_SSTPtr);
     m_visitorNonlinearSST_K.initialize();
     m_visitorNonlinearSST_O.initialize();
     m_visitorNonlinearSST_K.setCurrentSolution(m_solution);
@@ -246,8 +244,11 @@ void gsTMAssemblerSST<T, MatOrder>::assembleNonlinearPart()
     m_blockNonlinearK.reserve(gsVector<index_t>::Constant(m_blockNonlinearK.outerSize(), m_nnzPerRowTM));
     m_blockNonlinearO.reserve(gsVector<index_t>::Constant(m_blockNonlinearO.outerSize(), m_nnzPerRowTM));
 
+    //m_visitorNonlinearSST_K.setConstants();
+    //m_visitorNonlinearSST_O.setConstants();
     this->assembleBlock(m_visitorNonlinearSST_K, 2, m_blockNonlinearK, m_rhsNonlinearK);
     this->assembleBlock(m_visitorNonlinearSST_O, 3, m_blockNonlinearO, m_rhsNonlinearO);
+    //gsInfo << m_blockNonlinearK.sum() << ", " << m_blockNonlinearO.sum() << "; " << m_rhsNonlinearK.sum() << ", " << m_rhsNonlinearO.sum() << std::endl;
     
     // linear operators needed for PCD preconditioner
     // if ( m_paramsPtr->options().getString("lin.solver") == "iter" &&  m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
@@ -341,17 +342,29 @@ void gsTMAssemblerSST<T, MatOrder>::fillSystem()
 template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::initialize()
 {
+    //m_visitorNonlinearSST_K.setSSTModelEvaluator(m_SSTPtr);
+    //m_visitorNonlinearSST_O.setSSTModelEvaluator(m_SSTPtr);
+
     gsFlowAssemblerBase<T, MatOrder>::initialize();  
 
     // initialization of distance field
     gsMultiPatch<T> patches = m_paramsPtr->getPde().patches();    // multipatch representing the computational domain
     gsMultiBasis<T> basis = m_paramsPtr->getBases()[1];           // pressure basis as base basis for distance computation
+
     std::vector<std::pair<int, boxSide> > bndIn = m_paramsPtr->getBndIn();
     std::vector<std::pair<int, boxSide> > bndWall = m_paramsPtr->getBndWall();
     index_t numRefs = m_paramsPtr->options().getInt("TM.addRefsDF");
-    dField = gsDistanceField<T>(patches, basis, numRefs, bndIn, bndWall);
-    distanceField = dField.computeDistanceField();
+
+    //gsKnotVector<T> kv = patches.patch(0).knots(0);
+
+    computeDistanceField(patches, basis, numRefs, bndIn, bndWall, distanceField);
     m_paramsPtr->setDistanceField(distanceField);
+    //if (m_paramsPtr->options().getSwitch("plot"))
+        //plotQuantityFromSolution("distance", distanceField, "distancefield", 10000);
+    //gsMultiPatch<T> mppom = m_paramsPtr->getDistanceField().patches();
+    gsInfo << m_paramsPtr->getDistanceField().nPatches() << std::endl;
+    //gsField<T> dfield = m_paramsPtr->getDistanceField();
+    //gsWriteParaview<T>(dfield, "distanceField", 10000);
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillBaseSystem();

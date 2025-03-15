@@ -179,10 +179,10 @@ T gsFlowSolverBase<T, MatOrder>::solutionChangeRelNorm(gsMatrix<T> solOld, gsMat
 
 
 template<class T, int MatOrder>
-void gsFlowSolverBase<T, MatOrder>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew)
+void gsFlowSolverBase<T, MatOrder>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew, std::string solstr)
 {
     m_outStream.str("");
-    m_outStream << "     [u, p] solution change relative norm: ";
+    m_outStream << "     " << solstr << " solution change relative norm: ";
 
     for (int i = 0; i < solOld.cols(); i++)
         m_outStream << solutionChangeRelNorm(solOld.col(i), solNew.col(i)) << ", ";

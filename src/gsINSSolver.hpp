@@ -105,7 +105,7 @@ void gsINSSolverUnsteady<T, MatOrder>::nextIteration()
 
     this->applySolver(tmpSolution);
 
-    this->writeSolChangeRelNorm(m_solution, tmpSolution);
+    this->writeSolChangeRelNorm(m_solution, tmpSolution, "[u, p]");
 
     index_t picardIter = 0;
     T relNorm = this->solutionChangeRelNorm(m_solution, tmpSolution);
@@ -120,7 +120,7 @@ void gsINSSolverUnsteady<T, MatOrder>::nextIteration()
 
         this->updateAssembler(tmpSolution, false);
         this->applySolver(tmpSolution);
-        this->writeSolChangeRelNorm(oldSol, tmpSolution);
+        this->writeSolChangeRelNorm(oldSol, tmpSolution, "[u, p]");
 
         relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);
         picardIter++;

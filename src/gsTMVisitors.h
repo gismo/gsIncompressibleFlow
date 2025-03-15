@@ -13,6 +13,7 @@
 
 #include <gsIncompressibleFlow/src/gsFlowVisitors.h>
 #include <gsIncompressibleFlow/src/gsTMTerms.h>
+#include <gsIncompressibleFlow/src/gsTMModels.h>
 
 namespace gismo
 {
@@ -166,10 +167,12 @@ class gsTMVisitorNonlinearSST : public gsFlowVisitorVectorValued<T, MatOrder>
 {
 
 public:
+
     typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
 public:
     //gsField<T> m_velSolField;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
     real_t m_konst1, m_konst2, m_konst3;
     real_t m_konst;
@@ -178,6 +181,7 @@ public:
     index_t m_numRhsTerms;
     gsMatrix<T> m_solution;
     gsField<T> m_distanceField;
+    //typename SSTModel<T>::tmePtr m_SSTPtr;
     //real_t m_viscosity;
     //typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
     //gsVector<T> m_TurbulentViscosityVals;
@@ -208,19 +212,20 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorNonlinearSST() {}
 
-    gsTMVisitorNonlinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, real_t k1, real_t k2, real_t k3, index_t unk) :
-    Base(paramsPtr), m_unknown(unk), m_konst1(k1), m_konst2(k2), m_konst3(k3)
-    {  }
-
+    gsTMVisitorNonlinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    Base(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
+    { 
+                
+    }
 
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
     //void initMembers();
 
-    //void evaluate(index_t testFunID);
+    void evaluate(index_t testFunID);
 
-    //void evaluate(const gsDomainIterator<T>* domIt);
+    void evaluate(const gsDomainIterator<T>* domIt);
 
     // upravit pro RANS
     virtual void defineTerms()
@@ -228,16 +233,16 @@ protected: // *** Member functions ***
         m_numLhsTerms = 2;
         m_numRhsTerms = 2;
         
+        // further, define all lhs terms first and all rhs terms then
         // diffusion term with coefficient (m_konst1 * F1 + m_konst2 * (1 - F1)) * turbulent viscosity + m_konst3
-        m_terms.push_back( new gsTMTerm_CoeffGradGrad<T>(m_paramsPtr, m_konst1, m_konst2, m_konst3) );
+        m_terms.push_back( new gsTMTerm_CoeffGradGrad<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         // nonlinear reaction term
-        m_terms.push_back( new gsTMTerm_CoeffValVal<T>(m_paramsPtr, m_unknown) );
-
-        // blended term 2 * (1 - F1) * sigma0mega2 / omega * grad(k) * grad(omega) going to rhs of omega equation
-        //if (m_unknown == 3)
-        m_terms.push_back( new gsTMTerm_BlendCoeffRhs<T>(m_paramsPtr, m_unknown) );
+        m_terms.push_back( new gsTMTerm_CoeffValVal<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
+        // blended term 2 * (1 - F1) * sigma0mega2 / omega * grad(k) * grad(omega) for omega equation
+        //m_terms.push_back( new gsTMTerm_BlendCoeff<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
+        m_terms.push_back( new gsTMTerm_BlendCoeffRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         // production term going to rhs
-        m_terms.push_back( new gsTMTerm_ProductionRhs<T>(m_paramsPtr, m_unknown) );
+        m_terms.push_back( new gsTMTerm_ProductionRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         
         // ... other terms, e.g. from stabilizations
     }
@@ -251,7 +256,7 @@ protected: // *** Member functions ***
 public: // *** Member functions *** 
 
     /// @brief Initialize the visitor.
-    //void initialize();
+    void initialize();
 
     virtual void assemble();
 
@@ -260,6 +265,28 @@ public: // *** Member functions ***
 public: // Getter/setters
 
     void setCurrentSolution(const gsMatrix<T>& solution) { m_solution = solution; }
+
+    //void setSSTModelEvaluator(typename SSTModel<T>::tmePtr SSTPtr)
+    //{
+    //    m_SSTPtr = SSTPtr;
+    //}
+
+    // void setConstants()
+    // {
+    //     if (m_unknown == 2)
+    //     {
+    //         m_konst1 = m_SSTPtr->get_sigmaK1();
+    //         m_konst2 = m_SSTPtr->get_sigmaK2();
+    //         m_konst3 = m_paramsPtr->getPde().viscosity();
+            
+    //     }
+    //     else
+    //     {
+    //         m_konst1 = m_SSTPtr->get_sigmaO1();
+    //         m_konst2 = m_SSTPtr->get_sigmaO2();
+    //         m_konst3 = m_paramsPtr->getPde().viscosity();
+    //     }
+    // }
 
     //void setDistanceField(const gsField<T>& dfield)
     //{ 

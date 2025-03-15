@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     
     // discretization settings
     int deg = 1;
-    int numRefine = 3;
+    int numRefine = 4;
     int wallRefine = 0;
     int leadRefine = 0; // for profile2D
 
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 
     // output settings
     bool quiet = false;
-    bool plot = false;
+    bool plot = true;
     bool plotMesh = false;
     int plotPts = 10000;
     bool animation = false;
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
         case 1:
         {
             defineBCs_step(bcInfo, bndIn, bndOut, bndWall, dim); // bcInfo, bndIn, bndOut, bndWall are defined here
-            refineBasis_step(basis, numRefine, 0, wallRefine, 0, 0, dim, a, b);
+            refineBasis_step(basis, numRefine, wallRefine, 0, 0, 0, dim, a, b);
             break;
         }
         case 2:
@@ -422,14 +422,18 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     {
         gsField<> velocity = NSsolver.constructSolution(0);
         gsField<> pressure = NSsolver.constructSolution(1);
+        gsField<> ksol = NSsolver.constructSolutionTM(2);
+        gsField<> omegasol = NSsolver.constructSolutionTM(3);
 
         int plotPts = opt.getInt("plotPts");
  
         gsInfo << "Plotting in Paraview...";
         gsWriteParaview<>(velocity, geoStr + "_" + id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
+        gsWriteParaview<>(ksol, geoStr + "_" + id + "_k", plotPts);
+        gsWriteParaview<>(omegasol, geoStr + "_" + id + "_omega", plotPts);
         // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
-        gsInfo << " done.\n";
+        gsInfo << "Done.\n";
     }
 }
 

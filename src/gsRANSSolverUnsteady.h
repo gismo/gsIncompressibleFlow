@@ -50,6 +50,7 @@ public: // *** Class members ***
 
     // nove definovane zde
     typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr = NULL;
     bool m_bComputeTMfirst;
     real_t m_turbT;
 
@@ -81,8 +82,11 @@ public: // *** Constructor/destructor ***
     gsRANSSolverUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr)
     { 
+        // create turbulence model
+        m_TMModelPtr = gsTMModelData<T>::make(paramsPtr);
+
         // create turbulence solver
-        m_TMsolverPtr = gsTMSolverBase<T, MatOrder>::make(paramsPtr->options().getString("TM"), paramsPtr);
+        m_TMsolverPtr = gsTMSolverBase<T, MatOrder>::make(paramsPtr, m_TMModelPtr);
         
         // create assembler
         m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr);
@@ -116,6 +120,9 @@ public: // *** Member functions ***
     /// @brief Solve the generalized Stokes problem.
     //virtual void solveGeneralizedStokes(const int maxIterations, const T epsilon, const int minIterations = 1)
     //{ GISMO_NO_IMPLEMENTATION }
+
+    gsField<T> constructSolutionTM(int unk) const
+    { return m_TMsolverPtr->getAssembler()->constructSolution(unk); }
 
 
 public: // *** Getters/setters ***

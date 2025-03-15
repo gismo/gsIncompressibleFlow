@@ -143,7 +143,7 @@ public: // *** Member functions ***
     /// @brief Compute and display the relative norm of the solution change given the two successive solutions.
     /// @param[in] solOld the old solution
     /// @param[in] solNew the new solution
-    virtual void writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew);
+    virtual void writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew, std::string solstr);
 
     /// @brief Compute and return the relative residual norm for the current solution.
     virtual T residualRelNorm() const 

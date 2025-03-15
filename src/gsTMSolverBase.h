@@ -15,6 +15,7 @@
 #include <gsIncompressibleFlow/src/gsTMAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsFlowLinSystSolver.h>
 
+#include <gsIncompressibleFlow/src/gsTMModels.h>
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 
@@ -37,6 +38,7 @@ public: // *** Smart pointers ***
 
 public: // *** Class members ***
 
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr;    
     gsVector<T> m_TurbulentViscosityVals;
     T m_TMtime, m_TMtimeStepSize;
     T m_TMinnerIter, m_TMavgPicardIter;
@@ -80,7 +82,7 @@ public: // *** Static functions ***
     /// @param[in] precType the reqiured preconditioner type as a string
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner (assuming the following order: NS system matrix, mass matrix (velocity, pressure or both), other matrices)
     /// @param[in] opt a list of options for the preconditioner
-    static tmPtr make(std::string turbModel, typename gsFlowSolverParams<T>::Ptr paramsPtr);
+    static tmPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr);
 
 
 protected: // *** Member functions ***
@@ -97,11 +99,6 @@ public: // *** Member functions ***
 
     /// @brief Perform next iteration step.
     virtual void nextIteration();
-
-    /// @brief Compute and display the relative norm of the solution change given the two successive solutions.
-    /// @param[in] solOld the old solution
-    /// @param[in] solNew the new solution
-    virtual void writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew);
 
     //virtual void plotTurbulentViscosity();
 

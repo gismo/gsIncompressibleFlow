@@ -93,6 +93,9 @@ public: // *** Member functions ***
     /// @param[in] unk              the considered unknown
     virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk);
 
+    gsField<T> constructSolution(int unk) const
+    { return constructSolution(m_solution, unk); }
+    
     /// @brief Construct solution from computed solution vector for unknown \a unk.
     /// @param[in]  solVector   the solution vector obtained from the linear system
     /// @param[out] result      the resulting solution as a gsMultiPatch object

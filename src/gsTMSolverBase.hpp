@@ -17,18 +17,19 @@ namespace gismo
 {
 
 template <class T, int MatOrder>
-typename gsTMSolverBase<T, MatOrder>::tmPtr gsTMSolverBase<T, MatOrder>::make(std::string turbModel, typename gsFlowSolverParams<T>::Ptr paramsPtr)
+typename gsTMSolverBase<T, MatOrder>::tmPtr gsTMSolverBase<T, MatOrder>::make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr)
 {
+    std::string turbModel = paramsPtr->options().getString("TM");
     if (turbModel == "SST") 
     {
-        return gsTMSolverSST<T, MatOrder>::make(paramsPtr);
+        return gsTMSolverSST<T, MatOrder>::make(paramsPtr, TMModelPtr);
     }
     //elseif (m_paramsPtr->options().getSwitch("TM.eval") == "SA") 
     //{ }
     else 
     {
         gsInfo << "Unknown identifier of a turbulent model entered! Using k-omega SST model." << std::endl;
-        return gsTMSolverSST<T, MatOrder>::make(paramsPtr);
+        return gsTMSolverSST<T, MatOrder>::make(paramsPtr, TMModelPtr);
     }
 }
 
@@ -60,7 +61,7 @@ void gsTMSolverBase<T, MatOrder>::nextIteration()
 
     this->applySolver(tmpSolution);
 
-    this->writeSolChangeRelNorm(m_solution, tmpSolution);
+    this->writeSolChangeRelNorm(m_solution, tmpSolution, "TM");
 
     index_t picardIter = 0;
     T relNorm = this->solutionChangeRelNorm(m_solution, tmpSolution);
@@ -75,7 +76,7 @@ void gsTMSolverBase<T, MatOrder>::nextIteration()
 
         this->updateAssembler(tmpSolution, false);
         this->applySolver(tmpSolution);
-        this->writeSolChangeRelNorm(oldSol, tmpSolution);
+        this->writeSolChangeRelNorm(oldSol, tmpSolution, "TM");
 
         relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);
         picardIter++;
@@ -88,16 +89,5 @@ void gsTMSolverBase<T, MatOrder>::nextIteration()
     m_iterationNumber++;
 }
 
-template<class T, int MatOrder>
-void gsTMSolverBase<T, MatOrder>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew)
-{
-    m_outStream.str("");
-    m_outStream << "     TM solution change relative norm: ";
-
-    for (int i = 0; i < solOld.cols(); i++)
-        m_outStream << solutionChangeRelNorm(solOld.col(i), solNew.col(i)) << ", ";
-
-    gsWriteOutputLine(m_outFile, m_outStream.str(), m_fileOutput, m_dispOutput);
-}
 
 } // namespace gismo

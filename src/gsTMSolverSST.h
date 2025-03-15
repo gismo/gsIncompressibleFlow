@@ -16,6 +16,7 @@
 #include <gsIncompressibleFlow/src/gsTMSolverBase.h>
 #include <gsIncompressibleFlow/src/gsTMAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsTMAssemblerSST.h>
+//#include <gsIncompressibleFlow/src/gsTMModels.h>
 
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
@@ -39,6 +40,9 @@ public: // *** Smart pointers ***
 
 protected: // *** Class members ***
 
+    //typename SSTModel<T>::Ptr m_SSTPtr;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr;     
+    bool m_isSSTModelSet;
 
 protected: // *** Base class members ***
 
@@ -55,18 +59,19 @@ protected: // *** Base class members ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsTMSolverSST(gsFlowSolverParams<T>& params):
-    gsTMSolverSST(memory::make_shared_not_owned(&params))
+    gsTMSolverSST(gsFlowSolverParams<T>& params, typename gsTMModelData<T>::tdPtr TMModelPtr):
+    gsTMSolverSST(memory::make_shared_not_owned(&params), TMModelPtr)
     { }
 
-    gsTMSolverSST(typename gsFlowSolverParams<T>::Ptr paramsPtr):
-    Base(paramsPtr)
+    gsTMSolverSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr):
+    Base(paramsPtr), m_TMModelPtr(TMModelPtr)
     { 
-        m_assemblerPtr = new gsTMAssemblerSST<T, MatOrder>(paramsPtr);
+        m_assemblerPtr = new gsTMAssemblerSST<T, MatOrder>(paramsPtr, TMModelPtr);
 
         initMembers();
         m_paramsPtr->options().setSwitch("unsteady", true);
 
+        m_isSSTModelSet = false;
     }
 
     virtual ~gsTMSolverSST()
@@ -82,9 +87,9 @@ public: // *** Static functions ***
     /// @brief Returns a unique pointer to a newly created instance.
     /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
     /// @param[in] opt a list of options for the preconditioner
-    static tmPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr)
+    static tmPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr)
     {
-        return memory::make_shared_not_owned(new gsTMSolverSST<T, MatOrder>(paramsPtr));
+        return memory::make_shared_not_owned(new gsTMSolverSST<T, MatOrder>(paramsPtr, TMModelPtr));
     }
 
 public: // *** Member functions ***

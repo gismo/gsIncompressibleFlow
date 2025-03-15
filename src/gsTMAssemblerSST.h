@@ -15,9 +15,9 @@
 #include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsTMAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsTMVisitors.h>
+#include <gsIncompressibleFlow/src/gsTMModels.h>
 
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
-#include <gsIncompressibleFlow/src/gsDistanceField.h>
 
 namespace gismo
 {
@@ -47,7 +47,10 @@ protected: // *** Class members ***
     gsField<T> m_oldTimeFieldK, m_oldTimeFieldO;
 
     gsField<T> distanceField;
-    gsDistanceField<T> dField;
+    //gsDistanceField<T> dField;
+
+    //typename SSTModel<T>::tmePtr m_SSTPtr;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr; 
 
     //bool m_isMassMatReady;
     //std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;
@@ -85,8 +88,8 @@ public: // *** Base class member functions ***
 
 public: // *** Constructor/destructor ***
 
-    gsTMAssemblerSST(typename gsFlowSolverParams<T>::Ptr paramsPtr):
-    Base(paramsPtr)
+    gsTMAssemblerSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr):
+    Base(paramsPtr), m_TMModelPtr(TMModelPtr)
     { 
         initMembers();
     }
@@ -178,6 +181,13 @@ public: // *** Getters/setters ***
 
     /// @brief Returns a const reference to the current computed solution.
     const gsMatrix<T>& getSolution() const { return m_solution; }
+
+    // void setSSTModelEvaluator(typename SSTModel<T>::Ptr SSTPtr)
+    // {
+    //     m_SSTPtr = SSTPtr;
+    // }
+
+    //typename SSTModel<T>::tmePtr getSSTModelEvaluator() { return m_SSTPtr; }
 
     /// @brief Returns the number of DOFs for the i-th unknown.
     /// @param[in] i    0 - velocity, 1 - pressure

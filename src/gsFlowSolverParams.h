@@ -15,8 +15,8 @@
 
 #include <gsIncompressibleFlow/src/gsNavStokesPde.h>
 #include <gsIncompressibleFlow/src/gsINSPreconditioners.h>
-#include <gsIncompressibleFlow/src/gsTMModels.h>
-#include <gsIncompressibleFlow/src/gsDistanceField.h>
+//#include <gsIncompressibleFlow/src/gsTMModels.h>
+//#include <gsIncompressibleFlow/src/gsDistanceField.h>
 
 namespace gismo
 {
@@ -56,7 +56,7 @@ protected: // *** Class members ***
     gsField<T> m_USolField;
     gsField<T> m_KSolField;
     gsField<T> m_OSolField;
-    SSTModel<T> m_SST;
+    //SSTModel<T> m_SST;
     gsField<T> m_distanceField;
     
 public: // *** Constructor/destructor ***
@@ -84,6 +84,8 @@ public: // *** Constructor/destructor ***
             for (size_t i = 0; i < basesTM.size(); i++)
                 m_bases.push_back(basesTM[i]);
         }
+
+        //m_SST = SSTModel<T>();
     }
 
     ~gsFlowSolverParams()
@@ -285,8 +287,8 @@ public: // *** Getters/setters ***
     void setKSolution(gsField<T> sol) { m_KSolField = sol; }
     void setOmegaSolution(gsField<T> sol) { m_OSolField = sol; }
 
-    void createSSTModel() { m_SST = SSTModel<T>(); }
-    SSTModel<T> getSSTModel() { return m_SST; }
+    //void createSSTModel() { m_SST = SSTModel<T>(); }
+    //SSTModel<T> getSSTModel() { return m_SST; }
 
     void setDistanceField(const gsField<T>& dfield) { m_distanceField = dfield; }
 

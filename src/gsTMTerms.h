@@ -13,6 +13,7 @@
 #include <gismo.h>
 
 #include <gsIncompressibleFlow/src/gsFlowTerms.h>
+#include <gsIncompressibleFlow/src/gsTMModels.h>
 
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
     
@@ -71,11 +72,14 @@ public: // *** Type definitions ***
 
 protected: // *** Class members ***
 
-    typename gsFlowSolverParams<T>::Ptr m_paramsPtr;    
-    real_t m_k1;
-    real_t m_k2;
-    real_t m_k3;
-    gsVector<T> m_turbViscosityVals;
+    typename gsFlowSolverParams<T>::Ptr m_paramsPtr; 
+    //typename SSTModel<T>::tmePtr m_SSTPtr;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    index_t m_unknown;
+    //real_t m_k1;
+    //real_t m_k2;
+    //real_t m_k3;
+    //gsVector<T> m_turbViscosityVals;
     //gsField<T> m_distanceField;
 
 protected: // *** Base class members ***
@@ -85,8 +89,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_CoeffGradGrad(typename gsFlowSolverParams<T>::Ptr paramsPtr, real_t k1, real_t k2, real_t k3) :
-    m_paramsPtr(paramsPtr), m_k1(k1), m_k2(k2), m_k3(k3)
+    gsTMTerm_CoeffGradGrad(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
         this->m_testFunFlags = NEED_DERIV;
@@ -123,6 +127,8 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
+    //typename SSTModel<T>::tmePtr m_SSTPtr;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
     //gsField<T> m_distanceField;
 
@@ -133,8 +139,8 @@ protected: // *** Base class members ***
     
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_CoeffValVal(typename gsFlowSolverParams<T>::Ptr paramsPtr, index_t unk) :
-    m_paramsPtr(paramsPtr), m_unknown(unk)
+    gsTMTerm_CoeffValVal(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
@@ -173,6 +179,54 @@ public: // *** Getter/setters
 /// @brief      A class for integrals of the form: test function value * rhs function value.
 /// @tparam T   real number type
 template <class T>
+class gsTMTerm_BlendCoeff : public gsFlowTerm<T>
+{
+
+public: // *** Type definitions ***
+
+    typedef gsFlowTerm<T> Base;
+
+protected: // *** Class members ***
+
+    typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
+    //typename SSTModel<T>::tmePtr m_SSTPtr;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    index_t m_unknown;
+    //gsField<T> m_distanceField;
+
+protected: // *** Base class members ***
+
+    using Base::m_coeff;
+
+public: // *** Constructor/destructor ***
+
+    gsTMTerm_BlendCoeff(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
+    {
+        this->m_geoFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;;
+        this->m_testFunFlags = NEED_VALUE;
+        this->m_shapeFunFlags = NEED_DERIV;
+    }
+
+
+public: // *** Member functions ***
+
+    virtual void evalCoeff(const gsMapData<T>& mapData);
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
+
+
+public: // *** Getter/setters
+
+    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
+
+};
+
+// ========================================================================================================================
+
+/// @brief      A class for integrals of the form: test function value * rhs function value.
+/// @tparam T   real number type
+template <class T>
 class gsTMTerm_BlendCoeffRhs : public gsFlowTerm_rhs<T>
 {
 
@@ -183,6 +237,8 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
+    //typename SSTModel<T>::tmePtr m_SSTPtr;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
     //gsField<T> m_distanceField;
 
@@ -192,8 +248,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_BlendCoeffRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr, index_t unk) :
-    m_paramsPtr(paramsPtr), m_unknown(unk)
+    gsTMTerm_BlendCoeffRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
@@ -228,6 +284,8 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
+    //typename SSTModel<T>::tmePtr m_SSTPtr;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
     //gsField<T> m_distanceField;
 
@@ -237,8 +295,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_ProductionRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr, index_t unk) :
-    m_paramsPtr(paramsPtr), m_unknown(unk)
+    gsTMTerm_ProductionRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
