@@ -290,9 +290,9 @@ public: // *** Getters/setters ***
     //void createSSTModel() { m_SST = SSTModel<T>(); }
     //SSTModel<T> getSSTModel() { return m_SST; }
 
-    void setDistanceField(const gsField<T>& dfield) { m_distanceField = dfield; }
+    void setDistanceField(gsField<T>& dfield) { m_distanceField = dfield; }
 
-    gsField<T> getDistanceField() { return m_distanceField; }
+    gsField<T>& getDistanceField() { return m_distanceField; }
 
 }; // class gsFlowSolverParams
 

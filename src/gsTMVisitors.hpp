@@ -90,17 +90,14 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
-    //m_TMsolverPtr->evalTurbulentViscosity(m_quNodes);
-    //m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
-
-    m_USolField = m_paramsPtr->getVelocitySolution();
-
+    gsField<T> USolField = m_paramsPtr->getVelocitySolution();
     gsTMTerm_VecCoeffGradVal<T>* termPtr = dynamic_cast< gsTMTerm_VecCoeffGradVal<T>* > (m_terms.back());
-
     if (termPtr)
     {
-        termPtr->setCurrentSolution(m_USolField);
+        termPtr->setCurrentSolution(USolField);
     } 
+
+    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
 }
 
 template <class T, int MatOrder>
@@ -108,14 +105,26 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::evaluate(const gsDomainIterator<T
 {
     Base::evaluate(domIt);
 
-    m_USolField = m_paramsPtr->getVelocitySolution();
-
+    gsField<T> USolField = m_paramsPtr->getVelocitySolution();
     gsTMTerm_VecCoeffGradVal<T>* termPtr = dynamic_cast< gsTMTerm_VecCoeffGradVal<T>* > (m_terms.back());
-
     if (termPtr)
     {
-        termPtr->setCurrentSolution(m_USolField);
+        termPtr->setCurrentSolution(USolField);
     }   
+
+    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
+}
+
+template <class T, int MatOrder>
+void gsTMVisitorTimeIterationSST<T, MatOrder>::assemble()
+{
+    m_locMatVec.resize(2);
+
+    m_locMatVec[0].setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
+    m_terms[0]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_locMatVec[0]);
+
+    m_locMatVec[1].setZero(m_testFunActives.rows(), 1);
+    m_terms[1]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_locMatVec[1]);
 }
 
 template <class T, int MatOrder>
@@ -142,19 +151,21 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::localToGlobal(const std::vector<g
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
+            globalRhs(ii, 0) += m_locMatVec[1](i, 0); 
+            
             for (index_t j = 0; j < numActShape; ++j)
             {
                 const index_t jj = m_shapeFunActives(j);
 
                 if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
                 {
-                    globalMat.coeffRef(ii/* + m_dofshift*/, jj/*+ m_dofshift*/) += m_localMat(i, j);
+                    globalMat.coeffRef(ii/* + m_dofshift*/, jj/*+ m_dofshift*/) += m_locMatVec[0](i, j);
                 }
                 else // is_boundary_index(jj)
                 {
                     const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
 
-                    globalRhs(ii/* + m_dofshift*/, 0) -= m_localMat(i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
+                    globalRhs(ii/* + m_dofshift*/, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
                 }
             }
         }
@@ -274,16 +285,19 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMat
         const index_t ii = m_testFunActives(i);
 
         // production term and blended coeff going directly to rhs
-        if (m_dofMappers[m_testUnkID].is_free_index(ii))
-        {
-            //globalRhs(ii, 0) += m_locMatVec[2](i);
-            for (index_t k = m_numLhsTerms; k < (m_numLhsTerms + m_numRhsTerms); k++)
-                globalRhs(ii, 0) += m_locMatVec[k](i);           
-        }
+        // if (m_dofMappers[m_testUnkID].is_free_index(ii))
+        // {
+        //     //globalRhs(ii, 0) += m_locMatVec[2](i);
+                      
+        // }
         
         // nonlinear terms going to lhs
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
+            // blended coeff going directly to rhs
+            for (index_t k = m_numLhsTerms; k < (m_numLhsTerms + m_numRhsTerms); k++)
+                globalRhs(ii, 0) += m_locMatVec[k](i, 0); 
+            
             for (index_t j = 0; j < numActShape; ++j)
             {
                 const index_t jj = m_shapeFunActives(j);
@@ -293,8 +307,12 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMat
                     // globalMat.coeffRef(ii, jj) += m_locMatVec[0](i, j);
                     // globalMat.coeffRef(ii, jj) += m_locMatVec[1](i, j);
                     // globalMat.coeffRef(ii, jj) += m_locMatVec[2](i, j);
-                    for (index_t k = 0; k < m_numLhsTerms; k++)
+                    for (index_t k = 0; k < m_numLhsTerms-1; k++)
                         globalMat.coeffRef(ii, jj) += m_locMatVec[k](i, j);
+
+                    // blended coeff matrix going to rhs
+                    globalRhs(ii, 0) -= m_locMatVec[m_numLhsTerms-1](i, j) * m_solution(jj + m_dofshift, 0); 
+            
                 }
                 else // is_boundary_index(jj)
                 {
@@ -303,10 +321,10 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMat
                     // globalRhs(ii, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
                     // globalRhs(ii, 0) -= m_locMatVec[1](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
                     // globalRhs(ii, 0) -= m_locMatVec[2](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
-                    for (index_t k = 0; k < m_numLhsTerms; k++)
+                    for (index_t k = 0; k < m_numLhsTerms-1; k++)
                         globalRhs(ii, 0) -= m_locMatVec[k](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
-                    // production term and blended coeff going directly to rhs
-                    //globalRhs(ii, 0) -= m_locMatVec[1](j, i) * m_solution(jj + m_dofshift, 0); 
+
+                    globalRhs(ii, 0) -= m_locMatVec[m_numLhsTerms-1](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
                 }
             }
         }

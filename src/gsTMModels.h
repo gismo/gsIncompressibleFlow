@@ -50,6 +50,7 @@ protected: // *** Class members ***
     std::vector< gsMatrix<T> > m_StrainRateTensor;
     gsVector<T> m_turbulentViscosityVals;
 
+    bool m_average = true;
     bool m_isInitialized = false;
 
 
@@ -80,6 +81,10 @@ public: // *** Class functions ***
 
     virtual void updateModel(gsMatrix<T>& quNodes, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
+
+protected: // *** Class functions ***
+
+    void computeAverage(gsVector<T>& turbFn);
 
 
 public: // *** Getters/setters ***
@@ -156,6 +161,7 @@ protected: // *** Base class members ***
     using Base::m_StrainRateTensor;    
     using Base::m_turbulentViscosityVals;
     using Base::m_isInitialized;
+    using Base::m_average;
 
 
 public: // *** Constructor/destructor ***
@@ -170,7 +176,7 @@ public: // *** Constructor/destructor ***
         m_sigmaK2 = 1.0;
         m_sigmaO1 = 0.5;
         m_sigmaO2 = 0.856;
-        m_beta1 = 3.0/40.0;
+        m_beta1 = 0.075;
         m_beta2 = 0.0828;
         m_kappa = 0.41;
 

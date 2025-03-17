@@ -46,11 +46,13 @@ protected: // *** Class members ***
     gsField<T> m_currentFieldK, m_currentFieldO;
     gsField<T> m_oldTimeFieldK, m_oldTimeFieldO;
 
-    gsField<T> distanceField;
+    gsField<T> m_distanceField;
     //gsDistanceField<T> dField;
 
     //typename SSTModel<T>::tmePtr m_SSTPtr;
     typename gsTMModelData<T>::tdPtr m_TMModelPtr; 
+
+    real_t m_kin, m_kwall, m_oin, m_owall;
 
     //bool m_isMassMatReady;
     //std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;

@@ -68,8 +68,6 @@ void gsTMAssemblerBase<T, MatOrder>::updateSizes()
         }
     }
     
-    m_solution.setZero(m_dofs, 1);
-
     m_baseMatrix.resize(m_dofs, m_dofs);
     m_matrix.resize(m_dofs, m_dofs);
 
@@ -115,7 +113,7 @@ gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& 
     index_t dofs = 0;
     for (index_t i = 2; i < unk; i++)
         dofs += m_kdofs[i-2];
-    gsAsConstMatrix<T> sol(solVector.data() + dofs, m_kdofs[unk-2], 1);
+    //gsAsConstMatrix<T> sol(solVector.data() + dofs, m_kdofs[unk-2], 1);
     
     for (size_t p = 0; p < this->getPatches().nPatches(); ++p)
     {
@@ -127,7 +125,7 @@ gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& 
         {
             if (mapper.is_free(i, p)) // DoF value is in the solVector
             {
-                coeffs.row(i) = sol.row(mapper.index(i, p));
+                coeffs.row(i) = solVector.row(mapper.index(i, p) + dofs);
             }
             else // eliminated DoF: fill with Dirichlet data
             {

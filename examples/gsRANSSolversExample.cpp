@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     
     // discretization settings
     int deg = 1;
-    int numRefine = 4;
+    int numRefine = 3;
     int wallRefine = 0;
     int leadRefine = 0; // for profile2D
 
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
     // ========================================= Define geometry ========================================= 
     
     gsMultiPatch<> patches;
-    real_t a, b, c;
+    real_t a, b, c, a_in;
     std::string geoStr;
 
     switch(geo)
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 
             a = 8;
             b = 2;
-            real_t a_in = 1;
+            a_in = 1;
 
             switch(dim)
             {
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
         case 1:
         {
             defineBCs_step(bcInfo, bndIn, bndOut, bndWall, dim); // bcInfo, bndIn, bndOut, bndWall are defined here
-            refineBasis_step(basis, numRefine, wallRefine, 0, 0, 0, dim, a, b);
+            refineBasis_step2(patches, basis, numRefine, wallRefine, 0, 2, 0, dim, a, b, a_in);
             break;
         }
         case 2:

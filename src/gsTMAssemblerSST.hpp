@@ -27,23 +27,23 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     real_t viscRatio = m_paramsPtr->options().getReal("TM.viscosityRatio");
 
     // boundary conditions are automatically set based on boundary conditions for RANS
-    real_t kin = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
-    real_t kwall = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
-    gsInfo << "kin = " << util::to_string(kin) << ", ";
-    gsInfo << "kwall = " << util::to_string(kwall) << std::endl;
-    gsFunctionExpr<T> Kin(util::to_string(kin), m_tarDim);
-    gsFunctionExpr<T> Kwall(util::to_string(kwall), m_tarDim);
+    m_kin = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
+    m_kwall = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
+    gsInfo << "kin = " << util::to_string(m_kin) << ", ";
+    gsInfo << "kwall = " << util::to_string(m_kwall) << std::endl;
+    gsFunctionExpr<T> Kin(util::to_string(m_kin), m_tarDim);
+    gsFunctionExpr<T> Kwall(util::to_string(m_kwall), m_tarDim);
     std::vector<std::pair<int, boxSide> > bndIn = m_paramsPtr->getBndIn();
     std::vector<std::pair<int, boxSide> > bndWall = m_paramsPtr->getBndWall();
     addBCs(m_bc, bndIn, bndWall, Kin, Kwall, 2);
 
-    real_t oin = kin / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at inlet
-    real_t owall = kwall / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at the wall
+    m_oin = m_kin / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at inlet
+    m_owall = m_kwall / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at the wall
     //real_t oBlade = 6 * viscosity / (beta * math::pow(wallDistance, 2)); // other way for prescribing this boundary condition
-    gsInfo << "oin = " << util::to_string(oin) << ", ";
-    gsInfo << "owall = " << util::to_string(owall) << std::endl;
-    gsFunctionExpr<T> Oin(util::to_string(oin), m_tarDim);
-    gsFunctionExpr<T> Owall(util::to_string(owall), m_tarDim);
+    gsInfo << "oin = " << util::to_string(m_oin) << ", ";
+    gsInfo << "owall = " << util::to_string(m_owall) << std::endl;
+    gsFunctionExpr<T> Oin(util::to_string(m_oin), m_tarDim);
+    gsFunctionExpr<T> Owall(util::to_string(m_owall), m_tarDim);
     addBCs(m_bc, bndIn, bndWall, Oin, Owall, 3);
 
     m_paramsPtr->setBCs(m_bc);
@@ -74,12 +74,15 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     m_visitorLinearSST_K.updateDofMappers(m_dofMappers);
     m_visitorLinearSST_O.updateDofMappers(m_dofMappers);
 
-    m_visitorTimeIterationSST_K = gsTMVisitorTimeIterationSST<T, MatOrder>(m_paramsPtr, 2);
-    m_visitorTimeIterationSST_O = gsTMVisitorTimeIterationSST<T, MatOrder>(m_paramsPtr, 3);
+    m_visitorTimeIterationSST_K = gsTMVisitorTimeIterationSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 2);
+    m_visitorTimeIterationSST_O = gsTMVisitorTimeIterationSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 3);
     m_visitorTimeIterationSST_K.initialize();
     m_visitorTimeIterationSST_O.initialize();
     m_visitorTimeIterationSST_K.updateDofMappers(m_dofMappers);
     m_visitorTimeIterationSST_O.updateDofMappers(m_dofMappers);
+    gsField<T> velocity = m_paramsPtr->getVelocitySolution();
+    m_visitorTimeIterationSST_K.setCurrentSolution(velocity);
+    m_visitorTimeIterationSST_O.setCurrentSolution(velocity);
 
     m_visitorNonlinearSST_K = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 2);
     m_visitorNonlinearSST_O = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 3);
@@ -101,6 +104,11 @@ template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::updateSizes()
 {
     Base:: updateSizes();
+
+    m_solution.resize(m_dofs, 1);
+    m_solution.topRows(m_kdofs[0]).setConstant(m_kwall);
+    m_solution.bottomRows(m_kdofs[1]).setConstant(m_owall);
+    gsInfo << m_solution.sum() << std::endl;
 
     m_currentFieldK = constructSolution(m_solution, 2);
     m_currentFieldO = constructSolution(m_solution, 3);
@@ -148,12 +156,15 @@ template<class T, int MatOrder>
 void gsTMAssemblerSST<T, MatOrder>::updateCurrentSolField(const gsMatrix<T>& solVector, bool updateSol)
 {
     m_currentFieldK = constructSolution(solVector, 2);
-    m_visitorNonlinearSST_K.setCurrentSolution(solVector);
+    //m_visitorNonlinearSST_K.setCurrentSolution(solVector);
     m_paramsPtr->setKSolution(m_currentFieldK);
     m_currentFieldO = constructSolution(solVector, 3);
-    m_visitorNonlinearSST_O.setCurrentSolution(solVector);
+    //m_visitorNonlinearSST_O.setCurrentSolution(solVector);
     m_paramsPtr->setOmegaSolution(m_currentFieldO);
 
+    m_visitorNonlinearSST_K.setCurrentSolution(solVector);
+    m_visitorNonlinearSST_O.setCurrentSolution(solVector);
+    
     if (updateSol)
     {
         m_solution = solVector;
@@ -179,12 +190,15 @@ void gsTMAssemblerSST<T, MatOrder>::assembleLinearPart()
     // in this case, linear blocks correspond to time discretization blocks only
     this->assembleBlock(m_visitorLinearSST_K, 2, m_blockLinearK, m_rhsLinearK);
     this->assembleBlock(m_visitorLinearSST_O, 3, m_blockLinearO, m_rhsLinearO);
+
+    //gsInfo << "LinearK mat: " << m_blockLinearK.sum() << std::endl;
+    //gsInfo << "LinearO mat: " << m_blockLinearO.sum() << std::endl;
     
     //if(m_paramsPtr->getPde().source()) // if the continuity eqn rhs is given
     //    this->assembleRhs(m_visitorG, 1, m_rhsFG);
 
-    m_rhsLinearK = m_blockLinearK * m_solution.topRows(m_kdofs[0]);
-    m_rhsLinearO = m_blockLinearO * m_solution.bottomRows(m_kdofs[1]);
+    //m_rhsLinearK = m_blockLinearK * m_solution.topRows(m_kdofs[0]);
+    //m_rhsLinearO = m_blockLinearO * m_solution.bottomRows(m_kdofs[1]);
 
     /*
     // mass matrices for velocity and pressure (needed for preconditioners)
@@ -248,6 +262,11 @@ void gsTMAssemblerSST<T, MatOrder>::assembleNonlinearPart()
     //m_visitorNonlinearSST_O.setConstants();
     this->assembleBlock(m_visitorNonlinearSST_K, 2, m_blockNonlinearK, m_rhsNonlinearK);
     this->assembleBlock(m_visitorNonlinearSST_O, 3, m_blockNonlinearO, m_rhsNonlinearO);
+    
+    //gsInfo << "NonlinearK mat: " << m_blockNonlinearK.sum() << std::endl;
+    //gsInfo << "NonlinearO mat: " << m_blockNonlinearO.sum() << std::endl;
+    //gsInfo << "NonlinearK rhs: " << m_rhsNonlinearK.sum() << std::endl;
+    gsInfo << "NonlinearO rhs: " << m_rhsNonlinearO.sum() << std::endl;
     //gsInfo << m_blockNonlinearK.sum() << ", " << m_blockNonlinearO.sum() << "; " << m_rhsNonlinearK.sum() << ", " << m_rhsNonlinearO.sum() << std::endl;
     
     // linear operators needed for PCD preconditioner
@@ -307,8 +326,9 @@ void gsTMAssemblerSST<T, MatOrder>::fillBaseSystem()
     fillGlobalMat(m_baseMatrix, m_blockLinearK, 2);
     fillGlobalMat(m_baseMatrix, m_blockLinearO, 3);
     
-    m_baseRhs.topRows(m_kdofs[0]) = m_rhsLinearK;
-    m_baseRhs.bottomRows(m_kdofs[1]) = m_rhsLinearO;
+    //m_baseRhs.topRows(m_kdofs[0]) = m_rhsLinearK;
+    //m_baseRhs.bottomRows(m_kdofs[1]) = m_rhsLinearO;
+    m_baseRhs.resize(m_dofs, 1);
 
     m_isBaseReady = true;
     m_isSystemReady = false;
@@ -323,15 +343,17 @@ void gsTMAssemblerSST<T, MatOrder>::fillSystem()
     fillGlobalMat(m_matrix, m_blockNonlinearK, 2);
     fillGlobalMat(m_matrix, m_blockNonlinearO, 3);
 
+    fillGlobalMat(m_matrix, m_blockTimeIterationK, 2);
+    fillGlobalMat(m_matrix, m_blockTimeIterationO, 3);
+
     if (!m_matrix.isCompressed())
         m_matrix.makeCompressed();
 
     m_rhs = m_baseRhs;
+    m_rhs.topRows(m_kdofs[0]) += m_rhsLinearK;
+    m_rhs.bottomRows(m_kdofs[1]) += m_rhsLinearO;
     m_rhs.topRows(m_kdofs[0]) += m_rhsNonlinearK;
     m_rhs.bottomRows(m_kdofs[1]) += m_rhsNonlinearO;
-
-    this->fillGlobalMat(m_matrix, m_blockTimeIterationK, 2);
-    this->fillGlobalMat(m_matrix, m_blockTimeIterationO, 3);
     m_rhs.topRows(m_kdofs[0]) += m_rhsTimeIterationK;
     m_rhs.bottomRows(m_kdofs[1]) += m_rhsTimeIterationO;
 
@@ -348,21 +370,29 @@ void gsTMAssemblerSST<T, MatOrder>::initialize()
     gsFlowAssemblerBase<T, MatOrder>::initialize();  
 
     // initialization of distance field
-    gsMultiPatch<T> patches = m_paramsPtr->getPde().patches();    // multipatch representing the computational domain
-    gsMultiBasis<T> basis = m_paramsPtr->getBases()[1];           // pressure basis as base basis for distance computation
+    //gsMultiPatch<T> patches = m_paramsPtr->getPde().patches();    // multipatch representing the computational domain
+    //gsMultiBasis<T> basis = m_paramsPtr->getBases()[1];           // pressure basis as base basis for distance computation
 
-    std::vector<std::pair<int, boxSide> > bndIn = m_paramsPtr->getBndIn();
-    std::vector<std::pair<int, boxSide> > bndWall = m_paramsPtr->getBndWall();
-    index_t numRefs = m_paramsPtr->options().getInt("TM.addRefsDF");
+    //std::vector<std::pair<int, boxSide> > bndIn = m_paramsPtr->getBndIn();
+    //std::vector<std::pair<int, boxSide> > bndWall = m_paramsPtr->getBndWall();
+    //index_t numRefs = m_paramsPtr->options().getInt("TM.addRefsDF");
 
     //gsKnotVector<T> kv = patches.patch(0).knots(0);
 
-    computeDistanceField(patches, basis, numRefs, bndIn, bndWall, distanceField);
-    m_paramsPtr->setDistanceField(distanceField);
+    //computeDistanceField(patches, basis, numRefs, bndIn, bndWall, distanceField);
+    //computeDistanceField(m_paramsPtr, distanceField);
+    gsField<T> distfield = computeDistanceField<T>(m_paramsPtr);
+    gsMatrix<T> mat(2, 2);
+    mat << 0.2, 0.4, 0.6, 0.8;
+    gsInfo << distfield.value(mat, 0) << ", " << distfield.value(mat, 1) << ", " << distfield.value(mat, 2) << std::endl;
+    //gsInfo << distfield.nPatches() << std::endl;
+    //gsMultiPatch<T> mppom = distfield.patches();
+    m_paramsPtr->setDistanceField(distfield);
     //if (m_paramsPtr->options().getSwitch("plot"))
         //plotQuantityFromSolution("distance", distanceField, "distancefield", 10000);
     //gsMultiPatch<T> mppom = m_paramsPtr->getDistanceField().patches();
-    gsInfo << m_paramsPtr->getDistanceField().nPatches() << std::endl;
+    gsInfo << m_paramsPtr->getDistanceField().value(mat, 0) << ", " << m_paramsPtr->getDistanceField().value(mat, 1) << ", " << m_paramsPtr->getDistanceField().value(mat, 2) << std::endl;
+    //gsInfo << m_paramsPtr->getDistanceField().nPatches() << std::endl;
     //gsField<T> dfield = m_paramsPtr->getDistanceField();
     //gsWriteParaview<T>(dfield, "distanceField", 10000);
 
@@ -379,9 +409,9 @@ void gsTMAssemblerSST<T, MatOrder>::update(const gsMatrix<T> & solVector, bool u
     GISMO_ASSERT(m_isInitialized, "Assembler must be initialized first, call initialize()");
 
     updateCurrentSolField(solVector, updateSol);
-
-    if (m_solution.sum() != 0)
-        Base::updateAssembly();
+    
+    //if (m_solution.sum() != 0)
+    Base::updateAssembly();
 
     if(updateSol)
     {
@@ -396,8 +426,17 @@ void gsTMAssemblerSST<T, MatOrder>::update(const gsMatrix<T> & solVector, bool u
         m_blockTimeIterationK.reserve(gsVector<index_t>::Constant(m_blockTimeIterationK.outerSize(), m_nnzPerRowTM));
         m_blockTimeIterationO.reserve(gsVector<index_t>::Constant(m_blockTimeIterationO.outerSize(), m_nnzPerRowTM));
 
+        gsField<T> velocity = m_paramsPtr->getVelocitySolution();
+        m_visitorTimeIterationSST_K.setCurrentSolution(velocity);
+        m_visitorTimeIterationSST_O.setCurrentSolution(velocity);
+
         this->assembleBlock(m_visitorTimeIterationSST_K, 2, m_blockTimeIterationK, m_rhsTimeIterationK);
         this->assembleBlock(m_visitorTimeIterationSST_O, 3, m_blockTimeIterationO, m_rhsTimeIterationO);
+
+        //gsInfo << "TimeiterationK mat: " << m_blockTimeIterationK.sum() << std::endl;
+        //gsInfo << "TimeiterationO mat: " << m_blockTimeIterationO.sum() << std::endl;
+        gsInfo << "TimeiterationK rhs: " << m_rhsTimeIterationK.sum() << std::endl;
+        gsInfo << "TimeiterationO rhs: " << m_rhsTimeIterationO.sum() << std::endl;
 
         m_rhsLinearK = m_blockLinearK * m_solution.topRows(m_kdofs[0]);
         m_rhsLinearO = m_blockLinearO * m_solution.bottomRows(m_kdofs[1]);

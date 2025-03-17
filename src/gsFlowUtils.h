@@ -15,8 +15,13 @@
 
 #include <gismo.h>
 
+//#include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
+
 namespace gismo
 {
+
+template<class T>
+class gsFlowSolverParams;
 
 #ifdef GISMO_WITH_PARDISO
 /// @brief Setup the pardiso solver.
@@ -753,16 +758,23 @@ void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int numRefineC
 template<class T>
 void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t c = 0.0)
 {
-    gsInfo << basis.piece(0).component(0).detail() << std::endl;
+    gsInfo << basis.piece(0).detail() << std::endl;
 
     gsMatrix<T> box(dim, 2);
 
     int uRefine = math::floor(std::log2(a / b)) + 1 + numRefineU;
     box.setZero();
-    box(0, 1) = 1; 
+    //box(0, 1) = 1; 
+    box << 0, 1, 0, 0;
     for (int i = 0; i < uRefine; i++)
         for (int p = 0; p < 2; p++)
+        {
             basis.refine(p, box);
+            gsInfo << basis.piece(0).detail() << std::endl;
+            gsInfo << basis.piece(1).detail() << std::endl;
+        }
+
+    gsInfo << basis.piece(0).detail() << std::endl;
 
     if (dim == 3)
     {
@@ -779,6 +791,8 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
     for (int p = 0; p < 2; p++)
         basis.refine(p, box);
 
+    gsInfo << basis.piece(0).detail() << std::endl;
+
     switch (dim)
     {
     case 2:
@@ -792,8 +806,42 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
         break;
     }
 
+    gsInfo << basis.piece(0).detail() << std::endl;
+
     for (int i = 0; i < numRefine; ++i)
         basis.uniformRefine();
+
+    gsInfo << basis.piece(0).detail() << std::endl;
+}
+
+
+template<class T>
+void refineBasis_step2(gsMultiPatch<T>& patches, gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t a_in, real_t c = 0.0)
+{
+    for (index_t p = 0; p < 2; p++)
+    {
+        for (index_t i = 1; i < a; i++)
+            patches.patch(p).insertKnot((real_t) i/a, 0);
+
+        for (index_t i = 1; i < b/2; i++)
+            patches.patch(p).insertKnot((real_t) 2 * i/b, 1);
+    }
+
+    for (index_t i = 1; i < a_in; i++)
+        patches.patch(2).insertKnot((real_t) i/a_in, 0);
+    
+    for (index_t i = 1; i < b/2; i++)
+        patches.patch(2).insertKnot((real_t) 2* i/b, 1);
+
+    gsMultiBasis<T> basis2(patches);
+    basis = basis2;
+
+    gsInfo << "Basis before uniform refinement ... \n" << basis.piece(0).detail() << std::endl;
+
+    for (int i = 0; i < numRefine; ++i)
+        basis.uniformRefine();
+
+    gsInfo << "Basis after uniform refinement ... \n" << basis.piece(0).detail() << std::endl;
 }
 
 
@@ -879,9 +927,16 @@ void plotQuantityFromSolution(std::string quantity, const gsField<T>& solField, 
 
 
 template<class T>    
-void computeDistanceField(gsMultiPatch<T>& patches, gsMultiBasis<T>& basis, index_t numRefs, std::vector<std::pair<int, boxSide> > bndIn, std::vector<std::pair<int, boxSide> > bndWall, gsField<T>& result)
+gsField<T> computeDistanceField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
 {
     gsInfo << "Computing required distance field ... ";
+
+    gsMultiPatch<T> patches = paramsPtr->getPde().patches();    // multipatch representing the computational domain
+    gsMultiBasis<T> basis = paramsPtr->getBases()[1];           // pressure basis as base basis for distance computation
+
+    std::vector<std::pair<int, boxSide> > bndIn = paramsPtr->getBndIn();
+    std::vector<std::pair<int, boxSide> > bndWall = paramsPtr->getBndWall();
+    index_t numRefs = paramsPtr->options().getInt("TM.addRefsDF");
 
     for (int i = 0; i < numRefs; ++i)       // additional refinements for distance computation
         basis.uniformRefine();
@@ -891,7 +946,7 @@ void computeDistanceField(gsMultiPatch<T>& patches, gsMultiBasis<T>& basis, inde
     gsFunctionExpr<real_t> wallw("0.0", "0.0", "0.0", patches.targetDim());
 
     // boundary conditions for related Poisson problem
-    gsBoundaryConditions<> bcDF;
+    gsBoundaryConditions<T> bcDF;
     addBCs(bcDF, bndIn, bndWall, gw, wallw, 0);
 
     // solving Poisson problem
@@ -918,10 +973,10 @@ void computeDistanceField(gsMultiPatch<T>& patches, gsMultiBasis<T>& basis, inde
     // evaluating distance values at a grid of points
     size_t np = patches.nPatches();
     gsMultiPatch<T>* wallDistanceMP = new gsMultiPatch<T>;
-    //gsMultiPatch<T> wallDistanceMP;
     for (size_t i = 0; i < np; i++)
     {
-        const gsBasis<T> & basisp = basis.piece(i);
+        index_t patchId = i;
+        const gsBasis<T> & basisp = basis.piece(patchId);
 
         std::vector< gsVector<T> > rr;
         rr.reserve(patches.parDim());
@@ -929,69 +984,70 @@ void computeDistanceField(gsMultiPatch<T>& patches, gsMultiBasis<T>& basis, inde
         for (short_t j = 0; j < patches.parDim(); ++j)            // computing grid of point
         {
             rr.push_back(basisp.component(j).anchors().transpose());
-            //gsInfo << basisp.component(j).detail() << std::endl;
         }
         gsMatrix<T> gridPts = gsPointGrid<T>(rr);
 
-        //gsWriteParaviewPoints<T>(gridPts, "gridPoints" + util::to_string(i));
+        gsMapData<T> mapData;
+        unsigned geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        mapData.flags = geoFlags;
+        mapData.patchId = patchId;
+        mapData.points = gridPts;
+        paramsPtr->getPde().patches().patch(patchId).computeMap(mapData);
 
-        //typename gsGeometryEvaluator<T>::uPtr geoEval(getEvaluator(evFlags, *m_patches.patch(i)));
-    
-        /*
         gsMatrix<index_t> actives;
         gsMatrix<T> parGrads, physGrad;
-        basis.deriv_into(gridPts, parGrads);
-        //geoEval->evaluateAt(gridPts);
-
+        basisp.deriv_into(gridPts, parGrads);
+        
+        gsMatrix<T> solPoissonCoeffVec = solPoisson.coefficientVector(patchId);
+        std::vector<gsMatrix<T> > solPoissonGrads(gridPts.cols());
         for (index_t k = 0; k < gridPts.cols(); k++)
         {
             // eval solPoissonGrads at all pts
-            basis.active_into(gridPts.col(k), actives);
+            basisp.active_into(gridPts.col(k), actives);
             int numActP = actives.rows();
             gsMatrix<T> solActPoissonCoeffs(1, numActP);
             for (int j = 0; j < numActP; j++)
-                solActPoissonCoeffs.col(j) = solPoisson.coefficientVector(i).row(actives(j)).transpose();
+                solActPoissonCoeffs(0, j) = solPoissonCoeffVec(actives(j, 0), 0);
 
             transformGradients(mapData, k, parGrads, physGrad);
             solPoissonGrads[k].noalias() = solActPoissonCoeffs * physGrad.transpose();
         }
-        */
 
-        gsMatrix<T> solPoissonVals = solPoisson.value(gridPts, i);
-        gsMatrix<T> solPoissonGrads = solPoisson.function(i).deriv(gridPts);
+        gsMatrix<T> solPoissonVals = solPoisson.value(gridPts, patchId);
         
         // Evaluate wall distance at pts
         gsMatrix<T> wallDistanceVals(1, gridPts.cols());
-        real_t grgr;
         for (index_t k = 0; k < gridPts.cols(); k++)
         {
-            grgr = solPoissonGrads.col(k).dot(solPoissonGrads.col(k));
-            wallDistanceVals(0, k) = math::sqrt(grgr + 2 * solPoissonVals(0, k)) - math::sqrt(grgr);
-            //wallDistanceVals(0, k) = math::sqrt(math::pow(solPoissonGrads.col(k).norm(), 2) + 2 * solPoissonVals(0, k)) - solPoissonGrads.col(k).norm();
+            wallDistanceVals(0, k) = math::sqrt(math::pow(solPoissonGrads[k].norm(), 2) + 2 * solPoissonVals(0, k)) - solPoissonGrads[k].norm();
             if (math::isnan(wallDistanceVals(0, k)))
             {
                 wallDistanceVals(0, k) = 0.;
             }
         }
 
-        //gsMatrix<T> patchPts = patches.patch(i).eval(gridPts);
-              
-        //gsWriteParaviewPoints<T>(patchPts.row(0), patchPts.row(1), wallDistanceVals, "walldistancepoints" + util::to_string(i));
-        
         typename gsGeometry<T>::uPtr geo = basisp.interpolateAtAnchors(wallDistanceVals);    // interpolating distances at grid points 
         const gsMatrix<T> & distanceCoeffs = geo->coefs();
         wallDistanceMP->addPatch(basisp.makeGeometry(distanceCoeffs));
     }
     
     gsInfo << "Done" << std::endl;
-    typename gsFunctionSet<T>::Ptr wd = typename gsFunctionSet<T>::Ptr(wallDistanceMP);
+    //typename gsFunctionSet<T>::Ptr wd = typename gsFunctionSet<T>::Ptr(wallDistanceMP);
     //gsInfo << wd->size() << ", " << wd->nPieces() << std::endl;
-    result = gsField<T>(patches, typename gsFunctionSet<T>::Ptr(wallDistanceMP), true);
+    gsField<T> result = gsField<T>(patches, typename gsFunctionSet<T>::Ptr(wallDistanceMP), true);
+    gsInfo << result.nPatches() << std::endl;
+    gsMultiPatch<T> mppom = result.patches();
+    gsMatrix<T> mat(2, 2);
+    mat << 0.2, 0.4, 0.6, 0.8;
+    gsInfo << result.value(mat, 0) << ", " << result.value(mat, 1) << ", " << result.value(mat, 2) << std::endl;
+    return result;
     //gsField<T> result = gsField<T>(m_patches, wallDistanceMP);
     //gsMultiPatch<T> mppom = result.patches();
-    gsInfo << result.nPatches() << std::endl;
-    gsWriteParaview<T>(result, "distanceField", 10000);
-
+    //paramsPtr->setDistanceField(result);
+    //gsInfo << result.nPatches() << std::endl;
+    //gsWriteParaview<T>(result, "distanceField", 10000);
+    //gsInfo << result.nPatches() << std::endl;
+    //gsInfo << paramsPtr->getDistanceField().nPatches() << std::endl;
     //return result;
 }
 

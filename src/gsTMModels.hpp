@@ -32,6 +32,17 @@ typename gsTMModelData<T>::tdPtr gsTMModelData<T>::make(typename gsFlowSolverPar
     }
 }
 
+template <class T>
+void gsTMModelData<T>::computeAverage(gsVector<T>& vec)
+{
+    index_t vecSize = vec.rows();
+    T vecSumTmp = 0.0;
+    for (int k = 0; k < vecSize; k++)
+        vecSumTmp += vec(k);
+    vecSumTmp = vecSumTmp / vecSize;
+    vec.setConstant(vecSize, vecSumTmp);
+}
+
 // ============================================================================================================================
 
 template <class T>
@@ -40,7 +51,7 @@ void gsTMModelData_SST<T>::evalDistance(gsMatrix<T>& quNodes, index_t patchId)
     index_t nQuPoints = quNodes.cols();
     gsField<T> distanceField; 
     distanceField = m_paramsPtr->getDistanceField();
-    gsInfo << distanceField.nPatches() << std::endl;
+    //gsInfo << distanceField.nPatches() << std::endl;
     gsMatrix<T> Distance(1, nQuPoints);
     Distance = distanceField.value(quNodes, patchId);
     m_distance.setZero(nQuPoints);
@@ -53,8 +64,35 @@ void gsTMModelData_SST<T>::evalVelocityQuantities(gsMatrix<T>& quNodes, index_t 
 {
     index_t nQuPoints = quNodes.cols();
     index_t dim = quNodes.rows();
+    gsMultiBasis<T> basis = m_paramsPtr->getBases()[0];
     gsField<T> USolField = m_paramsPtr->getVelocitySolution();
-    std::vector< gsMatrix<T> > USolDers = USolField.function(patchId).evalAllDers(quNodes, 1);
+    //std::vector< gsMatrix<T> > USolDers = USolField.function(patchId).evalAllDers(quNodes, 1);
+
+    gsMapData<T> mapData;
+    unsigned geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+    mapData.flags = geoFlags;
+    mapData.patchId = patchId;
+    mapData.points = quNodes;
+    m_paramsPtr->getPde().patches().patch(patchId).computeMap(mapData);
+
+    gsMatrix<index_t> actives;
+    gsMatrix<T> parGrads, physGrad;
+    basis.piece(patchId).deriv_into(quNodes, parGrads);
+        
+    gsMatrix<T> USolCoeffVec = USolField.coefficientVector(patchId);
+    std::vector<gsMatrix<T> > USolDers(nQuPoints);
+    for (index_t k = 0; k < nQuPoints; k++)
+    {
+        basis.piece(patchId).active_into(quNodes.col(k), actives);
+        int numAct = actives.rows();
+        gsMatrix<T> USolActCoeffs(dim, numAct);
+        for (int j = 0; j < numAct; j++)
+            USolActCoeffs.col(j) = USolCoeffVec.row(actives(j, 0)).transpose();
+
+        transformGradients(mapData, k, parGrads, physGrad);
+        USolDers[k].noalias() = USolActCoeffs * physGrad.transpose();
+    }
+
     gsVector<T> StrainRateMag(nQuPoints);
     StrainRateMag.setZero();
     std::vector< gsMatrix<T> > StrainRateTensor;
@@ -69,7 +107,7 @@ void gsTMModelData_SST<T>::evalVelocityQuantities(gsMatrix<T>& quNodes, index_t 
         for (index_t i = 0; i < dim; i++)
             for (index_t j = 0; j < dim; j++)
             {
-                Sij = 0.5 * (USolDers[1](i * dim + j, k) + USolDers[1](j * dim + i, k));
+                Sij = 0.5 * (USolDers[k](i, j) + USolDers[k](j, i));
                 SS(i, j) = Sij;
                 StrainRateMag(k) += 2 * Sij * Sij;
             }
@@ -85,31 +123,92 @@ template <class T>
 void gsTMModelData_SST<T>::evalKSol(gsMatrix<T>& quNodes, index_t patchId, index_t der)
 {
     index_t nQuPoints = quNodes.cols();
+    gsMultiBasis<T> basis = m_paramsPtr->getBases()[2];
     gsField<T> KSolField = m_paramsPtr->getKSolution();
-    std::vector< gsMatrix<T> > KSolDers = KSolField.function(patchId).evalAllDers(quNodes, der);
+    
     m_KSolVals.resize(1, nQuPoints);
+    m_KSolVals = KSolField.function(patchId).eval(quNodes);
     for (index_t i = 0; i < nQuPoints; i++)
     {
-        m_KSolVals(0, i) = math::max(KSolDers[0](0, i), m_eps);
+        m_KSolVals(0, i) = math::max(m_KSolVals(0, i), m_eps);
     }
+    
+    //std::vector< gsMatrix<T> > KSolDers = KSolField.function(patchId).evalAllDers(quNodes, der);
     if (der > 0)
+    {
+        gsMapData<T> mapData;
+        unsigned geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        mapData.flags = geoFlags;
+        mapData.patchId = patchId;
+        mapData.points = quNodes;
+        m_paramsPtr->getPde().patches().patch(patchId).computeMap(mapData);
+
+        gsMatrix<index_t> actives;
+        gsMatrix<T> parGrads, physGrad;
+        basis.piece(patchId).deriv_into(quNodes, parGrads);
+            
+        gsMatrix<T> KSolCoeffVec = KSolField.coefficientVector(patchId);
+        std::vector<gsMatrix<T> > KSolDers(nQuPoints);
+        for (index_t k = 0; k < nQuPoints; k++)
+        {
+            basis.piece(patchId).active_into(quNodes.col(k), actives);
+            int numAct = actives.rows();
+            gsMatrix<T> KSolActCoeffs(1, numAct);
+            for (int j = 0; j < numAct; j++)
+                KSolActCoeffs(0, j) = KSolCoeffVec(actives(j, 0), 0);
+
+            transformGradients(mapData, k, parGrads, physGrad);
+            KSolDers[k].noalias() = KSolActCoeffs * physGrad.transpose();
+        }
+
         m_KSolDers = KSolDers;
+    }   
 }
 
 template <class T>
 void gsTMModelData_SST<T>::evalOSol(gsMatrix<T>& quNodes, index_t patchId, index_t der)
 {
     index_t nQuPoints = quNodes.cols();
+    gsMultiBasis<T> basis = m_paramsPtr->getBases()[3];
     gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
-    std::vector< gsMatrix<T> > OSolDers = OSolField.function(patchId).evalAllDers(quNodes, 1);
+    
     m_OSolVals.resize(1, nQuPoints);
+    m_OSolVals = OSolField.function(patchId).eval(quNodes);
     for (index_t i = 0; i < nQuPoints; i++)
     {
-        m_OSolVals(0, i) = math::max(OSolDers[0](0, i), m_eps);
+        m_OSolVals(0, i) = math::max(m_OSolVals(0, i), m_eps);
     }
-    m_OSolVals = OSolDers[0];
+    
+    //std::vector< gsMatrix<T> > KSolDers = KSolField.function(patchId).evalAllDers(quNodes, der);
     if (der > 0)
+    {
+        gsMapData<T> mapData;
+        unsigned geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        mapData.flags = geoFlags;
+        mapData.patchId = patchId;
+        mapData.points = quNodes;
+        m_paramsPtr->getPde().patches().patch(patchId).computeMap(mapData);
+
+        gsMatrix<index_t> actives;
+        gsMatrix<T> parGrads, physGrad;
+        basis.piece(patchId).deriv_into(quNodes, parGrads);
+            
+        gsMatrix<T> OSolCoeffVec = OSolField.coefficientVector(patchId);
+        std::vector<gsMatrix<T> > OSolDers(nQuPoints);
+        for (index_t k = 0; k < nQuPoints; k++)
+        {
+            basis.piece(patchId).active_into(quNodes.col(k), actives);
+            int numAct = actives.rows();
+            gsMatrix<T> OSolActCoeffs(1, numAct);
+            for (int j = 0; j < numAct; j++)
+                OSolActCoeffs(0, j) = OSolCoeffVec(actives(j, 0), 0);
+
+            transformGradients(mapData, k, parGrads, physGrad);
+            OSolDers[k].noalias() = OSolActCoeffs * physGrad.transpose();
+        }
+
         m_OSolDers = OSolDers;
+    }   
 }
 
 template <class T>
@@ -124,7 +223,7 @@ void gsTMModelData_SST<T>::evalF1(gsMatrix<T>& quNodes, index_t patchId)
     {
         gradkdotgradomega = 0.0;
         for (index_t i = 0; i < dim; i++)
-            gradkdotgradomega += m_KSolDers[1](i, k) * m_OSolDers[1](i, k);
+            gradkdotgradomega += m_KSolDers[k](i) * m_OSolDers[k](i);
         CDkomega(k) = math::max(2 * m_sigmaO2 / m_OSolVals(0, k) * gradkdotgradomega, math::pow(10, -10));
     }
 
@@ -165,6 +264,10 @@ void gsTMModelData_SST<T>::evalTurbViscFromData(gsMatrix<T>& quNodes, index_t pa
         TurbulentViscosityVals(k) = (m_a1 * m_KSolVals(0, k)) / (math::max(m_a1 * m_OSolVals(0, k), m_StrainRateMag(k) * m_F2(k)));
         TurbulentViscosityVals(k) = math::max(TurbulentViscosityVals(k), m_eps);
     }
+
+    if (m_average)
+            this->computeAverage(TurbulentViscosityVals);
+
     m_turbulentViscosityVals = TurbulentViscosityVals;
 }
 

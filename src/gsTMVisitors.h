@@ -82,19 +82,20 @@ public: // *** Member functions ***
 // ==============================================================================================================================
 
 template <class T, int MatOrder>
-class gsTMVisitorTimeIterationSST : public gsFlowVisitor<T, MatOrder>
+class gsTMVisitorTimeIterationSST : public gsFlowVisitorVectorValued<T, MatOrder>
 {
 
 public:
-    typedef gsFlowVisitor<T, MatOrder> Base;
+    typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
 public:
-    gsField<T> m_USolField;
+    //gsField<T> m_USolField;
+    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
 
 protected: // *** Base class members ***
 
-    using Base::m_localMat;
+    using Base::m_locMatVec;
     using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
@@ -114,8 +115,8 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorTimeIterationSST() {}
 
-    gsTMVisitorTimeIterationSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, index_t unk) :
-    Base(paramsPtr), m_unknown(unk)
+    gsTMVisitorTimeIterationSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    Base(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     { }
 
 
@@ -132,7 +133,10 @@ protected: // *** Member functions ***
     virtual void defineTerms()
     {
         m_terms.push_back( new gsTMTerm_VecCoeffGradVal<T>() );
-        
+
+        // production term going to rhs
+        m_terms.push_back( new gsTMTerm_ProductionRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
+                
         //if(m_paramsPtr->options().getSwitch("unsteady"))
         //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
 
@@ -149,6 +153,8 @@ public: // *** Member functions ***
 
     /// @brief Initialize the visitor.
     //void initialize();
+
+    virtual void assemble();
 
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
@@ -176,11 +182,11 @@ public:
     index_t m_unknown;
     real_t m_konst1, m_konst2, m_konst3;
     real_t m_konst;
-    gsField<T> m_currentSol;
+    //gsField<T> m_currentSol;
     index_t m_numLhsTerms;
     index_t m_numRhsTerms;
     gsMatrix<T> m_solution;
-    gsField<T> m_distanceField;
+    //gsField<T> m_distanceField;
     //typename SSTModel<T>::tmePtr m_SSTPtr;
     //real_t m_viscosity;
     //typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
@@ -230,8 +236,8 @@ protected: // *** Member functions ***
     // upravit pro RANS
     virtual void defineTerms()
     {
-        m_numLhsTerms = 2;
-        m_numRhsTerms = 2;
+        m_numLhsTerms = 3;
+        m_numRhsTerms = 1;
         
         // further, define all lhs terms first and all rhs terms then
         // diffusion term with coefficient (m_konst1 * F1 + m_konst2 * (1 - F1)) * turbulent viscosity + m_konst3
@@ -239,10 +245,8 @@ protected: // *** Member functions ***
         // nonlinear reaction term
         m_terms.push_back( new gsTMTerm_CoeffValVal<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         // blended term 2 * (1 - F1) * sigma0mega2 / omega * grad(k) * grad(omega) for omega equation
-        //m_terms.push_back( new gsTMTerm_BlendCoeff<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
+        m_terms.push_back( new gsTMTerm_BlendCoeff<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         m_terms.push_back( new gsTMTerm_BlendCoeffRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
-        // production term going to rhs
-        m_terms.push_back( new gsTMTerm_ProductionRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         
         // ... other terms, e.g. from stabilizations
     }
