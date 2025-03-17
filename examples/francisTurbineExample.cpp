@@ -144,12 +144,17 @@ int main(int argc, char *argv[])
     bcInfo.addPeriodic(0, boundary::west, 0, boundary::east, 3);
     bcInfo.addPeriodic(2, boundary::west, 2, boundary::east, 3);
     bcInfo.setTransformMatrix(transformMatrix);
+    // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, Uwall, 0);
+    // bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, Uwall, 0);
+    // bcInfo.addCondition(2, boundary::west, condition_type::dirichlet, Uwall, 0);
+    // bcInfo.addCondition(2, boundary::east, condition_type::dirichlet, Uwall, 0);
 
     gsInfo << "Solving Navier-Stokes problem in the Francis turbine runner wheel.\n";
     gsInfo << mp;
     gsInfo << "viscosity = " << viscosity << "\n";
+    gsInfo << "omega = " << omega << "\n";
     gsInfo << "source function = " << f << "\n";
-    gsInfo << "rotation velocity: " << Ublade << "\n";
+    gsInfo << "blade velocity: " << Ublade << "\n";
 
     // ========================================= Define basis ========================================= 
 
@@ -196,7 +201,7 @@ int main(int argc, char *argv[])
     {
         solveOpt.setString("id", "steady");
 
-        gsINSSolverSteady<real_t> solver(params);
+        gsINSSolverSteady<real_t, ColMajor> solver(params);
 
         gsInfo << "\n----------\n";
         gsInfo << "Solving the steady problem with preconditioned GMRES as linear solver.\n";
@@ -211,7 +216,7 @@ int main(int argc, char *argv[])
         params.options().setInt("nonlin.maxIt", picardIt);
         params.options().setReal("nonlin.tol", picardTol);
 
-        gsINSSolverUnsteady<real_t> solver(params);
+        gsINSSolverUnsteady<real_t, ColMajor> solver(params);
 
         gsInfo << "\n----------\n";
         gsInfo << "Solving the unsteady problem with preconditioned GMRES as linear solver.\n";
@@ -240,7 +245,7 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt)
 
     gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
 
-    gsINSSolverUnsteady<T, MatOrder>* pSolver = dynamic_cast<gsINSSolverUnsteady<real_t>* >(&NSsolver);
+    gsINSSolverUnsteady<T, MatOrder>* pSolver = dynamic_cast<gsINSSolverUnsteady<T, MatOrder>* >(&NSsolver);
 
     if (pSolver && opt.getSwitch("stokesInit"))
         pSolver->solveStokes();
