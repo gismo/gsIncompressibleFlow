@@ -270,9 +270,8 @@ void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofsL2Proj(const index_t 
 template<class T, int MatOrder>
 void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
 {
-
-    // Todo: iteration over all patches at once
-    //typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().domain()->beginAll();
+    // TODO: iteration over all patches at once
+    // typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().domain()->beginAll();
 
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
@@ -294,10 +293,8 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
             if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
                 gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
 
-            //typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).makeDomainIterator(boundary::none);
             typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).domain()->beginAll();
             typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBases().front().piece(p).domain()->endAll();
-
 
             while (domIt!=domItEnd)
             {

@@ -12,7 +12,6 @@
 #pragma once
 
 #include <gsCore/gsField.h>
-#include <gsUtils/gsL2Projection.h>
 #include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsINSVisitors.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
