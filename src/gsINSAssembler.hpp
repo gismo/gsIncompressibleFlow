@@ -720,9 +720,6 @@ void gsINSAssembler<T, MatOrder>::per2nonper_into(const gsMatrix<T>& perVector, 
 template<class T, int MatOrder>
 void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
 {
-    gsStopwatch clock1, clock2;
-    clock1.restart();
-
     real_t omega = m_paramsPtr->options().getReal("omega");
 
     gsFunctionExpr<T> omegaXr;
@@ -746,32 +743,28 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
         break;
     }
 
-    // TODO: use gsL2Projection?
-
-    // -----------------
-
-    clock2.restart();
-
     gsDofMapper mapperOxR;
-    getBases().front().getMapper(getAssemblerOptions().intStrategy, mapperOxR);
+    getBases().at(0).getMapper(getAssemblerOptions().intStrategy, mapperOxR);
     int ndofsOxR = mapperOxR.freeSize();
 
-    gsBoundaryConditions<T> bc;
-    gsNavStokesPde<real_t> pde(this->getPatches(), bc, &omegaXr, m_viscosity);
-    gsFlowSolverParams<real_t> params(pde, m_paramsPtr->getBases());
-
-    gsSparseMatrix<T, MatOrder> projMatrix1(ndofsOxR, ndofsOxR);
-    projMatrix1.reserve(gsVector<int>::Constant(ndofsOxR, m_nnzPerOuterU));
-    gsMatrix<T> projRhs1(ndofsOxR * m_tarDim, 1);
-
+    gsBoundaryConditions<T> dummyBC;
     std::vector<gsMatrix<T> > dummyDirichletDofs;
     gsMatrix<T> dummyRhs;
-    
+
+    gsNavStokesPde<real_t> pde(this->getPatches(), dummyBC, &omegaXr, m_viscosity);
+    gsFlowSolverParams<real_t> params(pde, m_paramsPtr->getBases());
+
+    gsSparseMatrix<T, MatOrder> projMatrix(ndofsOxR, ndofsOxR);
+    projMatrix.reserve(gsVector<int>::Constant(ndofsOxR, m_nnzPerOuterU));
+    gsMatrix<T> projRhs(ndofsOxR * m_tarDim, 1);
+    projRhs.setZero();
+
     gsINSVisitorUUmass<T, MatOrder> visitorMass(memory::make_shared_not_owned(&params));
     gsINSVisitorRhsU<T, MatOrder> visitorRhs(memory::make_shared_not_owned(&params));
     visitorMass.initialize();
     visitorRhs.initialize();
 
+    // TODO: parallelize
     for(size_t p = 0; p < this->getPatches().nPatches() ; p++)
     {
         visitorMass.initOnPatch(p);
@@ -784,17 +777,17 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
         {
             visitorMass.evaluate(domIt.get());
             visitorMass.assemble();
-            visitorMass.localToGlobal(dummyDirichletDofs, projMatrix1, dummyRhs);
+            visitorMass.localToGlobal(dummyDirichletDofs, projMatrix, dummyRhs);
 
             visitorRhs.evaluate(domIt.get());
             visitorRhs.assemble();
-            visitorRhs.localToGlobal(projRhs1);
+            visitorRhs.localToGlobal(projRhs);
 
             ++domIt;
         }
     }
 
-    projMatrix1.makeCompressed();
+    projMatrix.makeCompressed();
 
     #ifdef GISMO_WITH_PARDISO
     typename gsSparseSolver<T>::PardisoLDLT linSolver;
@@ -802,121 +795,14 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
     typename gsSparseSolver<T>::SimplicialLDLT linSolver;
     #endif
 
-    linSolver.analyzePattern(projMatrix1);
-    linSolver.factorize(projMatrix1);
+    linSolver.analyzePattern(projMatrix);
+    linSolver.factorize(projMatrix);
 
-    gsMatrix<T> coeffsOxR(ndofsOxR, m_tarDim);
+    m_omegaXrCoeffs.resize(ndofsOxR, m_tarDim);
 
     for (short_t i = 0; i < m_tarDim; i++)
-        coeffsOxR.col(i) = linSolver.solve(projRhs1.middleRows(i*ndofsOxR, ndofsOxR));
+        m_omegaXrCoeffs.col(i) = linSolver.solve(projRhs.middleRows(i*ndofsOxR, ndofsOxR));
 
-    real_t visitorT = clock2.stop();
-    gsInfo << "computation via visitors time = " << visitorT << "\n";
-
-    // -----------------
-
-    gsDofMapper mapper;
-    getBases().front().getMapper(getAssemblerOptions().intStrategy, mapper);
-    int matSize = mapper.freeSize();
-
-    gsSparseMatrix<T, MatOrder> projMatrix(matSize, matSize);
-    gsMatrix<T> projRhs(matSize, m_tarDim);
-    projRhs.setZero();
-
-    int nnzPerOuter = 1;
-    for (int i = 0; i < m_tarDim; i++)
-    nnzPerOuter *= 2 * getBases().front().maxDegree(i) + 1;
-
-    projMatrix.reserve(gsVector<int>::Constant(matSize, nnzPerOuter));
-
-    gsInfo << "projMatrix:\n";
-    gsInfo << "reserved space = " << projMatrix.data().size() << "\n";
-
-    gsMatrix<T> quNodes;
-    gsVector<T> quWeights;
-    gsQuadRule<T> QuRule;
-
-    gsMatrix<T> basisVals;
-    gsMatrix<T> rhsVals;
-    gsMatrix<index_t> globIdxAct;
-
-    gsMapData<T> mapData;
-    mapData.flags = NEED_MEASURE;
-
-    clock2.restart();
-
-    for (unsigned int p = 0; p < getPatches().nPatches(); ++p)
-    {
-        const gsBasis<T> & basis = (getBases().front()).piece(p);
-        mapData.patchId = p;
-
-        gsVector<index_t> numQuadNodes(basis.dim());
-        for (int i = 0; i < basis.dim(); ++i)
-            numQuadNodes[i] = basis.maxDegree() + 1;
-        QuRule = gsGaussRule<T>(numQuadNodes);
-
-        typename gsBasis<T>::domainIter domIt = basis.domain()->beginAll();
-        typename gsBasis<T>::domainIter domItEnd = basis.domain()->endAll();
-
-        while (domIt!=domItEnd)
-        {
-            QuRule.mapTo(domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights);
-            mapData.points = quNodes;
-            m_paramsPtr->getPde().patches().patch(p).computeMap(mapData);
-            rhsVals = omegaXr.eval(getPatches().patch(p).eval(quNodes));
-            basis.eval_into(quNodes, basisVals);
-            basis.active_into(quNodes.col(0), globIdxAct);
-            mapper.localToGlobal(globIdxAct, p, globIdxAct);
-
-            for (index_t k = 0; k < quNodes.cols(); k++)
-            {
-                const T weight_k = quWeights[k] * mapData.measure(k);
-
-                for (int i = 0; i < globIdxAct.size(); i++)
-                {
-                    const unsigned ii = globIdxAct(i);
-
-                    for (int j = 0; j < globIdxAct.size(); j++)
-                    {
-                        const unsigned jj = globIdxAct(j);
-
-                        projMatrix.coeffRef(ii, jj) += weight_k * basisVals(i, k) * basisVals(j, k);
-                    }
-
-                    projRhs.row(ii) += weight_k *  basisVals(i, k) * rhsVals.col(k).transpose();
-                }
-            }
-            ++domIt;
-        }
-    }
-
-    projMatrix.makeCompressed();
-
-    real_t matFillT = clock2.stop();
-    gsInfo << "nonzeros = " << projMatrix.nonZeros() << "\n";
-    gsInfo << "time of matrix assembly = " << matFillT << "\n";
-
-    clock2.restart();
-    typename gsSparseSolver<T>::CGDiagonal solver;
-    m_omegaXrCoeffs = solver.compute(projMatrix).solve(projRhs);
-
-    real_t solveT = clock2.stop();
-    real_t totalT = clock1.stop();
-    gsInfo << "solve time = " << solveT << "\n";
-    gsInfo << "omega x r total time = " << totalT << "\n";
-
-    gsInfo << "projMat diff norm = " << (projMatrix - projMatrix1).norm() << "\n";
-    gsInfo << "projRhs diff max coeff (1) = " << (projRhs.col(0) - projRhs1.topRows(matSize)).maxCoeff() << "\n";
-    gsInfo << "projRhs diff max coeff (2) = " << (projRhs.col(1) - projRhs1.middleRows(matSize, matSize)).maxCoeff() << "\n";
-    gsInfo << "projRhs diff max coeff (3) = " << (projRhs.col(2) - projRhs1.middleRows(2*matSize, matSize)).maxCoeff() << "\n";
-    gsInfo << "sol diff max coeff = " << (coeffsOxR - m_omegaXrCoeffs).maxCoeff() << "\n";
-    gsInfo << "sol diff max coeff (1) = " << (coeffsOxR.col(0) - m_omegaXrCoeffs.col(0)).maxCoeff() << "\n";
-    gsInfo << "sol diff max coeff (2) = " << (coeffsOxR.col(1) - m_omegaXrCoeffs.col(1)).maxCoeff() << "\n";
-    gsInfo << "sol diff max coeff (3) = " << (coeffsOxR.col(2) - m_omegaXrCoeffs.col(2)).maxCoeff() << "\n";
-
-    gsInfo << "\nm_omegaXrCoeffs max coef = " << m_omegaXrCoeffs.maxCoeff()  << "\n";
-    gsInfo << "coeffsOxR max coef = " << coeffsOxR.maxCoeff() << "\n";
-    gsInfo << "projMat1 cond num estimate = " << projMatrix1.diagonal().maxCoeff() / projMatrix1.diagonal().minCoeff()<< "\n";
 }
 
 
