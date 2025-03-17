@@ -41,7 +41,7 @@ protected: // *** Class members ***
     index_t m_udofs;
     index_t m_pdofs;
     index_t m_pshift;
-    index_t m_nnzPerOuterU, m_nnzPerOuterP;
+    index_t m_nnzPerOuterU, m_nnzPerOuterP, m_nnzPerOuterUP;
     gsINSVisitorUUlin<T, MatOrder> m_visitorUUlin;
     gsINSVisitorUUnonlin<T, MatOrder> m_visitorUUnonlin;
     gsINSVisitorPU_withUPrhs<T, MatOrder> m_visitorUP;

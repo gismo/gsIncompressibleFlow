@@ -143,6 +143,25 @@ gsVector<index_t> getNnzVectorPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
 }
 
 
+template <class T, int MatOrder>
+int getMaxNnzPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
+{
+    int maxNnzInOuter = 0;
+
+    for (index_t outer = 0; outer < mat.outerSize(); outer++)
+    {
+        int nnzInOuter = 0;
+
+        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(mat, outer); it; ++it)
+            nnzInOuter++;
+
+        maxNnzInOuter = math::max(maxNnzInOuter, nnzInOuter);
+    }
+
+    return maxNnzInOuter;
+}
+
+
 /// @brief Fill a diagonal approximation of an inverse matrix.
 /// @tparam T           real number type
 /// @tparam MatOrder    matrix storage order (RowMajor/ColMajor)
@@ -896,6 +915,5 @@ inline index_t mapTensorID(index_t i, index_t j, index_t k, size_t size1, size_t
     index_t result = (k*size1*size2)+(j*size1)+i;
     return result;
 }
-
 
 } //namespace gismo

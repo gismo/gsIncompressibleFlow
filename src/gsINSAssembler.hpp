@@ -27,11 +27,22 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 
     m_nnzPerOuterU = 1;
     for (short_t i = 0; i < m_tarDim; i++)
-        m_nnzPerOuterU *= 2 * getBases().front().maxDegree(i) + 1;
+        m_nnzPerOuterU *= 2 * getBases().at(0).maxDegree(i) + 1;
 
     m_nnzPerOuterP = 1;
     for (short_t i = 0; i < m_tarDim; i++)
-        m_nnzPerOuterP *= 2 * getBases().back().maxDegree(i) + 1;
+        m_nnzPerOuterP *= 2 * getBases().at(1).maxDegree(i) + 1;
+
+    if (MatOrder == RowMajor)
+        m_nnzPerOuterUP = m_nnzPerOuterP;
+    else 
+    {
+        m_nnzPerOuterUP = 1;
+        for (short_t i = 0; i < m_tarDim; i++)
+            m_nnzPerOuterUP *= 3 * getBases().at(0).maxDegree(i) - 1;
+
+        m_nnzPerOuterUP *= m_tarDim;
+    }
 
     m_visitorUUlin = gsINSVisitorUUlin<T, MatOrder>(m_paramsPtr);
     m_visitorUUlin.initialize();
@@ -67,8 +78,8 @@ void gsINSAssembler<T, MatOrder>::updateSizes()
     }
     else
     {
-        m_udofs = m_dofMappers.front().freeSize();
-        m_pdofs = m_dofMappers.back().freeSize();
+        m_udofs = m_dofMappers[0].freeSize();
+        m_pdofs = m_dofMappers[1].freeSize();
     }
 
     m_pshift = m_tarDim * m_udofs;
@@ -139,30 +150,37 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     m_rhsF.setZero();
     m_rhsG.setZero();
 
-    int nnzPerOuterUP = 0;
-
-    if (MatOrder == RowMajor)
-        nnzPerOuterUP = m_nnzPerOuterP;
-    else 
-        nnzPerOuterUP = m_tarDim * m_nnzPerOuterU;
-
     bool hasPeriodicBC = m_paramsPtr->hasPeriodicBC();
     bool isRotation = m_paramsPtr->isRotation();
 
     if (hasPeriodicBC || isRotation)
     {
-        index_t nnzU = m_nnzPerOuterU;
-        bool compressMat = true;
+        // nnz multiplication:
+        // rotation: velocity mass matrix is added into two off-diagonal blocks
+        // periodic: a row/column of a diag. block is added into (some) rows/columns of (some) zero off-diagonal blocks
+        // assuming periodicity/rotation wrt one of the coordinate axes
 
-        if (isRotation)
-        {
-            nnzU *= 2;
-            compressMat = false;
-        }
-        
-        m_blockUUlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUlin_whole.outerSize(), nnzU));
+        gsVector<index_t> nnzVectorU = gsVector<index_t>::Constant(m_blockUUlin_whole.outerSize(), m_nnzPerOuterU);
+
+        // if (isRotation)
+        //     nnzVectorU *= 2;
+        // else
+        // {
+        //     // this is not correct, TODO fix:
+        //     std::vector<index_t> freePerDofsU = m_paramsPtr->getPerHelperPtr(0)->getFreePeriodicDofs();
+        //     for (size_t i = 0; i < freePerDofsU.size(); i++)
+        //         for (short_t d = 0; d < m_tarDim; d++)
+        //             nnzVectorU(m_paramsPtr->getPerHelperPtr(0)->map(freePerDofsU[i]) + d*m_udofs) *=2;
+        // }
+
+        // TODO: improve
+        nnzVectorU *= 2; // this is a lot more than needed for most of the rows/columns
+
+        m_blockUUlin_whole.reserve(nnzVectorU);
+        bool compressMat = isRotation ? false : true;
+
         this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_whole, m_rhsUlin, compressMat);
-
+    
         if (isRotation)
         {
             gsINSVisitorUUrotation<T, MatOrder> visitorUUrot(m_paramsPtr);
@@ -176,7 +194,7 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
         this->assembleBlock(m_visitorUUlin, 0, m_blockUUlin_comp, m_rhsUlin);
     }
 
-    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.outerSize(), nnzPerOuterUP));
+    m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.outerSize(), m_nnzPerOuterUP));
     this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
     this->assembleRhs(m_visitorF, 0, m_rhsF);
 
@@ -194,16 +212,25 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
         visitorUUmass.initialize();
         visitorPPmass.initialize();
         
-        if (!hasPeriodicBC)
-            m_massMatBlocks[0].resize(m_udofs, m_udofs);
-        else
+        index_t nnzU = m_nnzPerOuterU;
+        index_t nnzP = m_nnzPerOuterP;
+
+        if (hasPeriodicBC)
+        {
             m_massMatBlocks[0].resize(m_pshift, m_pshift);
 
-        m_massMatBlocks[0].reserve(gsVector<index_t>::Constant(m_massMatBlocks[0].outerSize(), m_nnzPerOuterU));
+            // this is a lot more than needed for most of the rows / columns:
+            nnzU *= 2; // TODO: improve
+            nnzP *= 2; // TODO: improve
+        }
+        else
+            m_massMatBlocks[0].resize(m_udofs, m_udofs);
+
+        m_massMatBlocks[0].reserve(gsVector<index_t>::Constant(m_massMatBlocks[0].outerSize(), nnzU));
         this->assembleBlock(visitorUUmass, 0, m_massMatBlocks[0], m_massMatRhs[0]);
         
         m_massMatBlocks[1].resize(m_pdofs, m_pdofs);
-        m_massMatBlocks[1].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerOuterP));
+        m_massMatBlocks[1].reserve(gsVector<index_t>::Constant(m_pdofs, nnzP));
         this->assembleBlock(visitorPPmass, 0, m_massMatBlocks[1], m_massMatRhs[1]);
 
         m_isMassMatReady = true;
@@ -243,7 +270,8 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
     }
     else
     {
-        m_blockUUnonlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_whole.outerSize(), m_nnzPerOuterU));
+        // TODO: improve nnz
+        m_blockUUnonlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_whole.outerSize(), 2 * m_nnzPerOuterU));
         this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_whole, m_rhsUnonlin);
     }
 
@@ -575,22 +603,26 @@ gsSparseMatrix<T, MatOrder> gsINSAssembler<T, MatOrder>::getBlockUU(bool linPart
     }
     else
     {
-        gsSparseMatrix<T, MatOrder> blockUUcomp = m_blockUUlin_comp;
-
-        if(!linPartOnly)
-            blockUUcomp += m_blockUUnonlin_comp;
-
         gsSparseMatrix<T, MatOrder> blockUU(m_pshift, m_pshift);
 
-        gsVector<index_t> nonZerosVector(m_pshift);
-        gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);
+        if (m_blockUUlin_comp.nonZeros() > 0)
+        {
+            gsSparseMatrix<T, MatOrder> blockUUcomp = m_blockUUlin_comp;
 
-        for (short_t d = 0; d < m_tarDim; d++)
-            nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
-
-        blockUU.reserve(nonZerosVector);
-        fillGlobalMat_UU(blockUU, blockUUcomp);
-
+            if(!linPartOnly)
+                blockUUcomp += m_blockUUnonlin_comp;
+    
+    
+            gsVector<index_t> nonZerosVector(m_pshift);
+            gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);
+    
+            for (short_t d = 0; d < m_tarDim; d++)
+                nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
+    
+            blockUU.reserve(nonZerosVector);
+            fillGlobalMat_UU(blockUU, blockUUcomp);
+        }
+        
         blockUU += m_blockUUlin_whole;
 
         if(!linPartOnly)
@@ -688,6 +720,9 @@ void gsINSAssembler<T, MatOrder>::per2nonper_into(const gsMatrix<T>& perVector, 
 template<class T, int MatOrder>
 void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
 {
+    gsStopwatch clock1, clock2;
+    clock1.restart();
+
     real_t omega = m_paramsPtr->options().getReal("omega");
 
     gsFunctionExpr<T> omegaXr;
@@ -713,6 +748,73 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
 
     // TODO: use gsL2Projection?
 
+    // -----------------
+
+    clock2.restart();
+
+    gsDofMapper mapperOxR;
+    getBases().front().getMapper(getAssemblerOptions().intStrategy, mapperOxR);
+    int ndofsOxR = mapperOxR.freeSize();
+
+    gsBoundaryConditions<T> bc;
+    gsNavStokesPde<real_t> pde(this->getPatches(), bc, &omegaXr, m_viscosity);
+    gsFlowSolverParams<real_t> params(pde, m_paramsPtr->getBases());
+
+    gsSparseMatrix<T, MatOrder> projMatrix1(ndofsOxR, ndofsOxR);
+    projMatrix1.reserve(gsVector<int>::Constant(ndofsOxR, m_nnzPerOuterU));
+    gsMatrix<T> projRhs1(ndofsOxR * m_tarDim, 1);
+
+    std::vector<gsMatrix<T> > dummyDirichletDofs;
+    gsMatrix<T> dummyRhs;
+    
+    gsINSVisitorUUmass<T, MatOrder> visitorMass(memory::make_shared_not_owned(&params));
+    gsINSVisitorRhsU<T, MatOrder> visitorRhs(memory::make_shared_not_owned(&params));
+    visitorMass.initialize();
+    visitorRhs.initialize();
+
+    for(size_t p = 0; p < this->getPatches().nPatches() ; p++)
+    {
+        visitorMass.initOnPatch(p);
+        visitorRhs.initOnPatch(p);
+
+        typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBases().front().piece(p).domain()->endAll();
+
+        while (domIt!=domItEnd)
+        {
+            visitorMass.evaluate(domIt.get());
+            visitorMass.assemble();
+            visitorMass.localToGlobal(dummyDirichletDofs, projMatrix1, dummyRhs);
+
+            visitorRhs.evaluate(domIt.get());
+            visitorRhs.assemble();
+            visitorRhs.localToGlobal(projRhs1);
+
+            ++domIt;
+        }
+    }
+
+    projMatrix1.makeCompressed();
+
+    #ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<T>::PardisoLDLT linSolver;
+    #else
+    typename gsSparseSolver<T>::SimplicialLDLT linSolver;
+    #endif
+
+    linSolver.analyzePattern(projMatrix1);
+    linSolver.factorize(projMatrix1);
+
+    gsMatrix<T> coeffsOxR(ndofsOxR, m_tarDim);
+
+    for (short_t i = 0; i < m_tarDim; i++)
+        coeffsOxR.col(i) = linSolver.solve(projRhs1.middleRows(i*ndofsOxR, ndofsOxR));
+
+    real_t visitorT = clock2.stop();
+    gsInfo << "computation via visitors time = " << visitorT << "\n";
+
+    // -----------------
+
     gsDofMapper mapper;
     getBases().front().getMapper(getAssemblerOptions().intStrategy, mapper);
     int matSize = mapper.freeSize();
@@ -727,6 +829,9 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
 
     projMatrix.reserve(gsVector<int>::Constant(matSize, nnzPerOuter));
 
+    gsInfo << "projMatrix:\n";
+    gsInfo << "reserved space = " << projMatrix.data().size() << "\n";
+
     gsMatrix<T> quNodes;
     gsVector<T> quWeights;
     gsQuadRule<T> QuRule;
@@ -737,6 +842,8 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
 
     gsMapData<T> mapData;
     mapData.flags = NEED_MEASURE;
+
+    clock2.restart();
 
     for (unsigned int p = 0; p < getPatches().nPatches(); ++p)
     {
@@ -784,8 +891,32 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
     }
 
     projMatrix.makeCompressed();
+
+    real_t matFillT = clock2.stop();
+    gsInfo << "nonzeros = " << projMatrix.nonZeros() << "\n";
+    gsInfo << "time of matrix assembly = " << matFillT << "\n";
+
+    clock2.restart();
     typename gsSparseSolver<T>::CGDiagonal solver;
     m_omegaXrCoeffs = solver.compute(projMatrix).solve(projRhs);
+
+    real_t solveT = clock2.stop();
+    real_t totalT = clock1.stop();
+    gsInfo << "solve time = " << solveT << "\n";
+    gsInfo << "omega x r total time = " << totalT << "\n";
+
+    gsInfo << "projMat diff norm = " << (projMatrix - projMatrix1).norm() << "\n";
+    gsInfo << "projRhs diff max coeff (1) = " << (projRhs.col(0) - projRhs1.topRows(matSize)).maxCoeff() << "\n";
+    gsInfo << "projRhs diff max coeff (2) = " << (projRhs.col(1) - projRhs1.middleRows(matSize, matSize)).maxCoeff() << "\n";
+    gsInfo << "projRhs diff max coeff (3) = " << (projRhs.col(2) - projRhs1.middleRows(2*matSize, matSize)).maxCoeff() << "\n";
+    gsInfo << "sol diff max coeff = " << (coeffsOxR - m_omegaXrCoeffs).maxCoeff() << "\n";
+    gsInfo << "sol diff max coeff (1) = " << (coeffsOxR.col(0) - m_omegaXrCoeffs.col(0)).maxCoeff() << "\n";
+    gsInfo << "sol diff max coeff (2) = " << (coeffsOxR.col(1) - m_omegaXrCoeffs.col(1)).maxCoeff() << "\n";
+    gsInfo << "sol diff max coeff (3) = " << (coeffsOxR.col(2) - m_omegaXrCoeffs.col(2)).maxCoeff() << "\n";
+
+    gsInfo << "\nm_omegaXrCoeffs max coef = " << m_omegaXrCoeffs.maxCoeff()  << "\n";
+    gsInfo << "coeffsOxR max coef = " << coeffsOxR.maxCoeff() << "\n";
+    gsInfo << "projMat1 cond num estimate = " << projMatrix1.diagonal().maxCoeff() / projMatrix1.diagonal().minCoeff()<< "\n";
 }
 
 

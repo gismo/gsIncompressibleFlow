@@ -821,7 +821,7 @@ public: // *** Constructor/destructor ***
     gsINSVisitorRhsU(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr), m_pRhsFun(paramsPtr->getPde().force())
     {
-        GISMO_ASSERT(m_pRhsFun->targetDim() == m_paramsPtr->getPde().dim(), "Wrong RHS function passed into gsINSRhsU.");
+        GISMO_ASSERT(m_pRhsFun->targetDim() == m_paramsPtr->getPde().dim(), "Wrong RHS function passed into gsINSVisitorRhsU.");
     }
         
 
