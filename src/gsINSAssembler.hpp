@@ -481,7 +481,7 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
         solution = solVector;
     }
 
-    gsMultiPatch<T>* result = new gsMultiPatch<T>;
+    typename gsMultiPatch<T>::Ptr result(new gsMultiPatch<T>);
 
     const gsDofMapper& mapper = m_dofMappers[unk];
     gsDofMapper rotMapper; // mapper for omega x r coeffs
@@ -519,7 +519,7 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
         result->addPatch(this->getBases().at(unk).piece(p).makeGeometry(coeffs));
     }
 
-    return gsField<T>(this->getPatches(), typename gsFunctionSet<T>::Ptr(result), true);
+    return gsField<T>(this->getPatches(), result, true);
 }
 
 
