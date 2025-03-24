@@ -32,6 +32,44 @@ typename gsTMModelData<T>::tdPtr gsTMModelData<T>::make(typename gsFlowSolverPar
     }
 }
 
+
+template <class T>
+void gsTMModelData<T>::plotTurbulentViscosity(typename gsFlowSolverParams<T>::Ptr paramsPtr, std::string str)
+{
+    gsMultiPatch<T> patches = paramsPtr->getPde().patches();    // multipatch representing the computational domain
+    gsMultiBasis<T> basis = paramsPtr->getBases()[1];
+    
+    size_t np = patches.nPatches();
+    gsMultiPatch<T>* turbViscMP = new gsMultiPatch<T>;
+    for (size_t i = 0; i < np; i++)
+    {
+        index_t patchId = i;
+        const gsBasis<T> & basisp = basis.piece(patchId);
+
+        std::vector< gsVector<T> > rr;
+        rr.reserve(patches.parDim());
+
+        for (short_t j = 0; j < patches.parDim(); ++j)            // computing grid of point
+        {
+            rr.push_back(basisp.component(j).anchors().transpose());
+        }
+        gsMatrix<T> gridPts = gsPointGrid<T>(rr);
+
+        evalTurbulentViscosity(gridPts, patchId);
+        gsVector<T> turbViscVals = getTurbulentViscosityVals();
+
+        typename gsGeometry<T>::uPtr geo = basisp.interpolateAtAnchors(turbViscVals.transpose());    // interpolating distances at grid points 
+        const gsMatrix<T> & turbViscCoeffs = geo->coefs();
+        turbViscMP->addPatch(basisp.makeGeometry(turbViscCoeffs));
+    }
+
+    gsInfo << "Done" << std::endl;
+    gsField<T> result = gsField<T>(paramsPtr->getPde().patches(), typename gsFunctionSet<T>::Ptr(turbViscMP), true);
+    gsWriteParaview<T>(result, str, 10000);
+}
+
+
+
 template <class T>
 void gsTMModelData<T>::computeAverage(gsVector<T>& vec)
 {
@@ -113,6 +151,7 @@ void gsTMModelData_SST<T>::evalVelocityQuantities(gsMatrix<T>& quNodes, index_t 
             }
         //StrainRateTensor.push_back(SS);
         StrainRateTensor[k] = SS;
+        StrainRateMag(k) = math::sqrt(StrainRateMag(k));
     }
     m_USolDers = USolDers;
     m_StrainRateMag = StrainRateMag;
@@ -128,10 +167,10 @@ void gsTMModelData_SST<T>::evalKSol(gsMatrix<T>& quNodes, index_t patchId, index
     
     m_KSolVals.resize(1, nQuPoints);
     m_KSolVals = KSolField.function(patchId).eval(quNodes);
-    for (index_t i = 0; i < nQuPoints; i++)
-    {
-        m_KSolVals(0, i) = math::max(m_KSolVals(0, i), m_eps);
-    }
+    // for (index_t i = 0; i < nQuPoints; i++)
+    // {
+    //     m_KSolVals(0, i) = math::max(m_KSolVals(0, i), m_eps);
+    // }
     
     //std::vector< gsMatrix<T> > KSolDers = KSolField.function(patchId).evalAllDers(quNodes, der);
     if (der > 0)
@@ -174,10 +213,10 @@ void gsTMModelData_SST<T>::evalOSol(gsMatrix<T>& quNodes, index_t patchId, index
     
     m_OSolVals.resize(1, nQuPoints);
     m_OSolVals = OSolField.function(patchId).eval(quNodes);
-    for (index_t i = 0; i < nQuPoints; i++)
-    {
-        m_OSolVals(0, i) = math::max(m_OSolVals(0, i), m_eps);
-    }
+    // for (index_t i = 0; i < nQuPoints; i++)
+    // {
+    //     m_OSolVals(0, i) = math::max(m_OSolVals(0, i), m_eps);
+    // }
     
     //std::vector< gsMatrix<T> > KSolDers = KSolField.function(patchId).evalAllDers(quNodes, der);
     if (der > 0)
@@ -224,14 +263,14 @@ void gsTMModelData_SST<T>::evalF1(gsMatrix<T>& quNodes, index_t patchId)
         gradkdotgradomega = 0.0;
         for (index_t i = 0; i < dim; i++)
             gradkdotgradomega += m_KSolDers[k](i) * m_OSolDers[k](i);
-        CDkomega(k) = math::max(2 * m_sigmaO2 / m_OSolVals(0, k) * gradkdotgradomega, math::pow(10, -10));
+        CDkomega(k) = math::max(2 * m_sigmaO2 / math::max(m_OSolVals(0, k), m_eps) * gradkdotgradomega, math::pow(10, -10));
     }
 
     gsVector<T> F1(nQuPoints);
     F1.setZero();
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(m_KSolVals(0, k)))/(m_betaStar * m_OSolVals(0, k) * m_distance(k)), (500 * m_visc)/(math::pow(m_distance(k), 2) * m_OSolVals(0, k))), (4 * m_sigmaO2 * m_KSolVals(0, k))/(CDkomega(k) * math::pow(m_distance(k), 2))), 4));
+        F1(k) = math::tanh(math::pow(math::min(math::max((math::sqrt(math::max(m_KSolVals(0, k), m_eps)))/(m_betaStar * math::max(m_OSolVals(0, k), m_eps) * m_distance(k)), (500 * m_visc)/(math::pow(m_distance(k), 2) * math::max(m_OSolVals(0, k), m_eps))), (4 * m_sigmaO2 * m_KSolVals(0, k))/(CDkomega(k) * math::pow(m_distance(k), 2))), 4));
         F1(k) = math::max(F1(k), 0.0);
         F1(k) = math::min(F1(k), 1.0);
     }
@@ -246,7 +285,7 @@ void gsTMModelData_SST<T>::evalF2(gsMatrix<T>& quNodes, index_t patchId)
     F2.setZero();
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(m_KSolVals(0, k)))/(m_betaStar * m_OSolVals(0, k) * m_distance(k)), (500 * m_visc)/(math::pow(m_distance(k), 2) * m_OSolVals(0, k))), 2));
+        F2(k) = math::tanh(math::pow(math::max((2 * math::sqrt(math::max(m_KSolVals(0, k), m_eps)))/(m_betaStar * math::max(m_OSolVals(0, k), m_eps) * m_distance(k)), (500 * m_visc)/(math::pow(m_distance(k), 2) * math::max(m_OSolVals(0, k), m_eps))), 2));
         F2(k) = math::max(F2(k), 0.0);
         F2(k) = math::min(F2(k), 1.0);
     }

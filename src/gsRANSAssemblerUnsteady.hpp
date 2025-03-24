@@ -87,13 +87,15 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::fillSystem()
 {
     Base::fillSystem();
 
-    real_t sum = 0.0;
-    for (index_t outer = 0; outer < m_matRANSsymgrad.outerSize(); outer++)
-        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(m_matRANSsymgrad, outer); it; ++it)
-            sum += it.value();
-    
+    //real_t sum = 0.0;
+    //for (index_t outer = 0; outer < m_matRANSsymgrad.outerSize(); outer++)
+    //    for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(m_matRANSsymgrad, outer); it; ++it)
+    //        sum += it.value();
+    //gsInfo << "m_matRANSsymgrad sum = " << m_matRANSsymgrad.sum() << std::endl;
+    //gsInfo << "m_rhsRANS sum = " << m_rhsRANS.sum() << std::endl;
+
     this->fillGlobalMat_UU(m_matrix, m_matRANSsymgrad);
-    //m_rhs.topRows(m_pshift) += m_rhsRANS;
+    m_rhs.topRows(m_pshift) += m_rhsRANS;
 }
 
 template<class T, int MatOrder>
@@ -109,7 +111,7 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
 
         //gsInfo << "Updating symmetric gradient terms ... ";
         m_visitorRANSsymgrad.setTurbulenceSolver(m_TMsolverPtr);
-        m_visitorRANSsymgrad.setRANSsolution(m_solution);
+        m_visitorRANSsymgrad.setRANSsolution(solVector);
         m_matRANSsymgrad.resize(m_pshift, m_pshift);
         m_matRANSsymgrad.reserve(gsVector<index_t>::Constant(m_matRANSsymgrad.outerSize(), m_tarDim * m_nnzPerRowU));
         m_rhsRANS.setZero(m_pshift, 1);

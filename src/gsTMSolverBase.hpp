@@ -76,7 +76,7 @@ void gsTMSolverBase<T, MatOrder>::nextIteration()
         gsWriteOutput(m_outFile, "         ", m_fileOutput, m_dispOutput);
 
         gsMatrix<T> oldSol = tmpSolution;
-        gsInfo << "Current solution sum: " << tmpSolution.sum() << std::endl;
+        //gsInfo << "Current solution sum: " << tmpSolution.sum() << std::endl;
 
         this->updateAssembler(tmpSolution, false);
         this->applySolver(tmpSolution);

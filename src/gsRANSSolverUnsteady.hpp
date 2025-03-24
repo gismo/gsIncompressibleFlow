@@ -44,7 +44,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::initMembers()
 
 // doplnit vykreslovani turbulentni viskozity a promennych turbulentniho modelu
 template<class T, int MatOrder>
-void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileN, std::ofstream& fileTM, std::string fileNameSuffix, unsigned plotPts)
+void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileK, std::ofstream& fileO, std::ofstream& fileTV, std::string fileNameSuffix, unsigned plotPts)
 {
     int numPatches = m_paramsPtr->getPde().patches().nPatches();
 
@@ -58,17 +58,20 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
     filenameP << "pressure" + fileNameSuffix + "_" << m_iterationNumber << "it";
     gsWriteParaview<T>(pSol, filenameP.str(), plotPts);
 
-    /*
-    gsField<T> turbSol = m_TMsolverPtr->constructSolution();
-    std::stringstream filenameTM;
-    filenameTM << "TMsol" + fileNameSuffix + "_" << m_iterationNumber << "it";
-    gsWriteParaview<T>(turbSol, filenameTM.str(), plotPts);
+    gsField<T> kSol = constructSolutionTM(2);
+    std::stringstream filenameK;
+    filenameK << "Ksol" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    gsWriteParaview<T>(kSol, filenameK.str(), plotPts);
 
-    std::stringstream filenameN;
-    filenameN << "nuT_" + fileNameSuffix + "_" << m_iterationNumber << "it";
-    plotTurbulentViscosity(filenameN.str(), plotPts);
-    */
-
+    gsField<T> oSol = constructSolutionTM(3);
+    std::stringstream filenameO;
+    filenameO << "Osol_" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    gsWriteParaview<T>(oSol, filenameO.str(), plotPts);
+    
+    std::stringstream filenameTV;
+    filenameTV << "turbViscosity" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    m_TMModelPtr->plotTurbulentViscosity(m_paramsPtr, filenameTV.str());
+        
     for (int p = 0; p < numPatches; p++)
     {
         std::stringstream fnU;
@@ -79,15 +82,17 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
         fnP << filenameP.str() << p << ".vts";
         fileP << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnP.str() << "\"/>\n";
 
-        /*
-        std::stringstream fnTM;
-        fnTM << filenameTM.str() << p << ".vts";
-        fileTM << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnTM.str() << "\"/>\n";
+        std::stringstream fnK;
+        fnK << filenameK.str() << p << ".vts";
+        fileK << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnK.str() << "\"/>\n";
 
-        std::stringstream fnN;
-        fnN << filenameN.str() << p << ".vts";
-        fileN << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnN.str() << "\"/>\n";
-        */
+        std::stringstream fnO;
+        fnO << filenameO.str() << p << ".vts";
+        fileO << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnO.str() << "\"/>\n";
+
+        std::stringstream fnTV;
+        fnTV << filenameTV.str() << p << ".vts";
+        fileTV << "<DataSet timestep = \"" << m_iterationNumber << "\" part = \"" << p << "\" file = \"" << fnTV.str() << "\"/>\n";
     }
 }
 
@@ -115,7 +120,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::initialize()
     std::vector<gsMultiBasis<T> > discbases;
     discbases.push_back(m_paramsPtr->getBases().at(0));
     discbases.push_back(m_paramsPtr->getBases().at(1));
-    gsNavStokesPde<real_t> NSSteadyPde(m_paramsPtr->getPde().patches(), m_paramsPtr->getPde().bc(), &f, 0.01);
+    gsNavStokesPde<real_t> NSSteadyPde(m_paramsPtr->getPde().patches(), m_paramsPtr->getPde().bc(), &f, 0.1);
     gsFlowSolverParams<real_t> paramsSteady(NSSteadyPde, discbases);
     gsINSSolverSteady<real_t, ColMajor> NSSteadySolver(paramsSteady);
 
@@ -159,9 +164,10 @@ void gsRANSSolverUnsteady<T, MatOrder>::initialize()
     gsWriteParaview<T>(pressure, "NS_steady_pressure", plotPts);
     // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
     gsInfo << " Done.\n";
-    gsInfo << "\n-------------------------------------------------------------------------------\n";
+    gsInfo << "-------------------------------------------------------------------------------\n";
 
     m_solution = NSSteadySolver.getSolution();
+    //m_solution.setZero();
 }
 
 // upravit
@@ -222,32 +228,38 @@ void gsRANSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, 
         std::ofstream fileP(fileNameP.c_str());
         GISMO_ASSERT(fileP.is_open(), "Error creating " << fileNameP);
 
-        std::string fileNameN = "nuT" + fileNameSuffix + "_animation.pvd";
-        std::ofstream fileN(fileNameN.c_str());
-        GISMO_ASSERT(fileN.is_open(), "Error creating " << fileNameN);
+        std::string fileNameK = "Ksol" + fileNameSuffix + "_animation.pvd";
+        std::ofstream fileK(fileNameK.c_str());
+        GISMO_ASSERT(fileK.is_open(), "Error creating " << fileNameK);
 
-        std::string fileNameTM = "TMsol" + fileNameSuffix + "_animation.pvd";
-        std::ofstream fileTM(fileNameTM.c_str());
-        GISMO_ASSERT(fileTM.is_open(), "Error creating " << fileNameTM);
+        std::string fileNameO = "Osol" + fileNameSuffix + "_animation.pvd";
+        std::ofstream fileO(fileNameO.c_str());
+        GISMO_ASSERT(fileO.is_open(), "Error creating " << fileNameO);
+
+        std::string fileNameTV = "turbViscosity" + fileNameSuffix + "_animation.pvd";
+        std::ofstream fileTV(fileNameTV.c_str());
+        GISMO_ASSERT(fileTV.is_open(), "Error creating " << fileNameTV);
 
         startAnimationFile(fileU);
         startAnimationFile(fileP);
-        startAnimationFile(fileN);
-        startAnimationFile(fileTM);
+        startAnimationFile(fileK);
+        startAnimationFile(fileO);
+        startAnimationFile(fileTV);
 
-        plotCurrentTimeStep(fileU, fileP, fileN, fileTM, fileNameSuffix, plotPts);
+        plotCurrentTimeStep(fileU, fileP, fileK, fileO, fileTV, fileNameSuffix, plotPts);
 
         for (int i = 0; i < totalIter; i += iterStep)
         {
             this->solve(math::min(iterStep, totalIter), epsilon, minIterations);
 
-            plotCurrentTimeStep(fileU, fileP, fileN, fileTM, fileNameSuffix, plotPts);
+            plotCurrentTimeStep(fileU, fileP, fileK, fileO, fileTV, fileNameSuffix, plotPts);
         }
 
         endAnimationFile(fileU);
         endAnimationFile(fileP);
-        endAnimationFile(fileN);
-        endAnimationFile(fileTM);
+        endAnimationFile(fileK);
+        endAnimationFile(fileO);
+        endAnimationFile(fileTV);
     }
 }
 

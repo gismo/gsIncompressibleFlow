@@ -284,13 +284,6 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMat
     {
         const index_t ii = m_testFunActives(i);
 
-        // production term and blended coeff going directly to rhs
-        // if (m_dofMappers[m_testUnkID].is_free_index(ii))
-        // {
-        //     //globalRhs(ii, 0) += m_locMatVec[2](i);
-                      
-        // }
-        
         // nonlinear terms going to lhs
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
@@ -304,27 +297,21 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMat
 
                 if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
                 {
-                    // globalMat.coeffRef(ii, jj) += m_locMatVec[0](i, j);
-                    // globalMat.coeffRef(ii, jj) += m_locMatVec[1](i, j);
-                    // globalMat.coeffRef(ii, jj) += m_locMatVec[2](i, j);
-                    for (index_t k = 0; k < m_numLhsTerms-1; k++)
+                    for (index_t k = 0; k < m_numLhsTerms; k++)
                         globalMat.coeffRef(ii, jj) += m_locMatVec[k](i, j);
 
                     // blended coeff matrix going to rhs
-                    globalRhs(ii, 0) -= m_locMatVec[m_numLhsTerms-1](i, j) * m_solution(jj + m_dofshift, 0); 
+                    //globalRhs(ii, 0) -= m_locMatVec[m_numLhsTerms-1](i, j) * m_solution(jj + m_dofshift, 0); 
             
                 }
                 else // is_boundary_index(jj)
                 {
                     const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
 
-                    // globalRhs(ii, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
-                    // globalRhs(ii, 0) -= m_locMatVec[1](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
-                    // globalRhs(ii, 0) -= m_locMatVec[2](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
-                    for (index_t k = 0; k < m_numLhsTerms-1; k++)
+                    for (index_t k = 0; k < m_numLhsTerms; k++)
                         globalRhs(ii, 0) -= m_locMatVec[k](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
 
-                    globalRhs(ii, 0) -= m_locMatVec[m_numLhsTerms-1](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
+                    //globalRhs(ii, 0) -= m_locMatVec[m_numLhsTerms-1](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
                 }
             }
         }

@@ -17,6 +17,7 @@
 #include <gsIncompressibleFlow/src/gsTMSolverBase.h>
 //#include <gsIncompressibleFlow/src/gsTMSolverSST.h>
 
+#include <gsIncompressibleFlow/src/gsTMModels.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 
@@ -104,7 +105,7 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     virtual void initMembers();
 
-    void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileN, std::ofstream& fileTM, std::string fileNameSuffix, unsigned plotPts);
+    void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileK, std::ofstream& fileO, std::ofstream& fileTV, std::string fileNameSuffix, unsigned plotPts);
 
 
 public: // *** Member functions ***

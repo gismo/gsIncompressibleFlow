@@ -1034,12 +1034,12 @@ gsField<T> computeDistanceField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
     gsInfo << "Done" << std::endl;
     //typename gsFunctionSet<T>::Ptr wd = typename gsFunctionSet<T>::Ptr(wallDistanceMP);
     //gsInfo << wd->size() << ", " << wd->nPieces() << std::endl;
-    gsField<T> result = gsField<T>(patches, typename gsFunctionSet<T>::Ptr(wallDistanceMP), true);
-    gsInfo << result.nPatches() << std::endl;
-    gsMultiPatch<T> mppom = result.patches();
-    gsMatrix<T> mat(2, 2);
-    mat << 0.2, 0.4, 0.6, 0.8;
-    gsInfo << result.value(mat, 0) << ", " << result.value(mat, 1) << ", " << result.value(mat, 2) << std::endl;
+    gsField<T> result = gsField<T>(paramsPtr->getPde().patches(), typename gsFunctionSet<T>::Ptr(wallDistanceMP), true);
+    //gsInfo << result.nPatches() << std::endl;
+    //gsMultiPatch<T> mppom = result.patches();
+    //gsMatrix<T> mat(2, 2);
+    //mat << 0.2, 0.4, 0.6, 0.8;
+    //gsInfo << result.value(mat, 0) << ", " << result.value(mat, 1) << ", " << result.value(mat, 2) << std::endl;
     return result;
     //gsField<T> result = gsField<T>(m_patches, wallDistanceMP);
     //gsMultiPatch<T> mppom = result.patches();

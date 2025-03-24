@@ -50,7 +50,7 @@ protected: // *** Class members ***
     std::vector< gsMatrix<T> > m_StrainRateTensor;
     gsVector<T> m_turbulentViscosityVals;
 
-    bool m_average = true;
+    bool m_average = false;
     bool m_isInitialized = false;
 
 
@@ -78,6 +78,8 @@ public: // *** Class functions ***
 
     virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
+
+    virtual void plotTurbulentViscosity(typename gsFlowSolverParams<T>::Ptr paramsPtr, std::string str = "turbVisc");
 
     virtual void updateModel(gsMatrix<T>& quNodes, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }

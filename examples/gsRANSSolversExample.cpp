@@ -40,20 +40,20 @@ int main(int argc, char *argv[])
     
     // discretization settings
     int deg = 1;
-    int numRefine = 3;
+    int numRefine = 4;
     int wallRefine = 0;
     int leadRefine = 0; // for profile2D
 
     // problem parameters
-    real_t viscosity = 0.01;
+    real_t viscosity = 0.0001;
     real_t inVelX = 1; // inlet x-velocity for profile2D
     real_t inVelY = 0; // inlet y-velocity for profile2D
     
     // solver settings
-    int maxIt = 10;
+    int maxIt = 50;
     int picardIt = 5;
     int linIt = 50;
-    real_t timeStep = 0.1;
+    real_t timeStep = 0.005;
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
     real_t linTol = 1e-6;
@@ -66,8 +66,8 @@ int main(int argc, char *argv[])
     bool plot = true;
     bool plotMesh = false;
     int plotPts = 10000;
-    bool animation = false;
-    int animStep = 5;
+    bool animation = true;
+    int animStep = 1;
 
     // ---------------------------------------------------------------------------------
 
@@ -124,9 +124,9 @@ int main(int argc, char *argv[])
         {
             geoStr = util::to_string(dim) + "D backward-facing step";
 
-            a = 8;
+            a = 16;
             b = 2;
-            a_in = 1;
+            a_in = 3;
 
             switch(dim)
             {
@@ -403,9 +403,9 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
         if (opt.getSwitch("stokesInit"))
             pSolver->solveStokes();
 
-    //if (pSolver && opt.getSwitch("animation"))
-    //    pSolver->solveWithAnimation(opt.getInt("maxIt"), opt.getInt("animStep"), geoStr + "_" + id, opt.getReal("tol"), opt.getInt("plotPts"), false, 1);
-    //else
+    if (pSolver && opt.getSwitch("animation"))
+        pSolver->solveWithAnimation(opt.getInt("maxIt"), opt.getInt("animStep"), geoStr + "_" + id, opt.getReal("tol"), opt.getInt("plotPts"), true, 1);
+    else
         NSsolver.solve(opt.getInt("maxIt"), opt.getReal("tol"), 0);    
 
     real_t totalT = clock.stop();

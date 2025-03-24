@@ -108,7 +108,7 @@ void gsTMAssemblerSST<T, MatOrder>::updateSizes()
     m_solution.resize(m_dofs, 1);
     m_solution.topRows(m_kdofs[0]).setConstant(m_kwall);
     m_solution.bottomRows(m_kdofs[1]).setConstant(m_owall);
-    gsInfo << m_solution.sum() << std::endl;
+    //gsInfo << m_solution.sum() << std::endl;
 
     m_currentFieldK = constructSolution(m_solution, 2);
     m_currentFieldO = constructSolution(m_solution, 3);
@@ -266,7 +266,7 @@ void gsTMAssemblerSST<T, MatOrder>::assembleNonlinearPart()
     //gsInfo << "NonlinearK mat: " << m_blockNonlinearK.sum() << std::endl;
     //gsInfo << "NonlinearO mat: " << m_blockNonlinearO.sum() << std::endl;
     //gsInfo << "NonlinearK rhs: " << m_rhsNonlinearK.sum() << std::endl;
-    gsInfo << "NonlinearO rhs: " << m_rhsNonlinearO.sum() << std::endl;
+    //gsInfo << "NonlinearO rhs: " << m_rhsNonlinearO.sum() << std::endl;
     //gsInfo << m_blockNonlinearK.sum() << ", " << m_blockNonlinearO.sum() << "; " << m_rhsNonlinearK.sum() << ", " << m_rhsNonlinearO.sum() << std::endl;
     
     // linear operators needed for PCD preconditioner
@@ -382,19 +382,19 @@ void gsTMAssemblerSST<T, MatOrder>::initialize()
     //computeDistanceField(patches, basis, numRefs, bndIn, bndWall, distanceField);
     //computeDistanceField(m_paramsPtr, distanceField);
     gsField<T> distfield = computeDistanceField<T>(m_paramsPtr);
-    gsMatrix<T> mat(2, 2);
-    mat << 0.2, 0.4, 0.6, 0.8;
-    gsInfo << distfield.value(mat, 0) << ", " << distfield.value(mat, 1) << ", " << distfield.value(mat, 2) << std::endl;
+    //gsMatrix<T> mat(2, 2);
+    //mat << 0.2, 0.4, 0.6, 0.8;
+    //gsInfo << distfield.value(mat, 0) << ", " << distfield.value(mat, 1) << ", " << distfield.value(mat, 2) << std::endl;
     //gsInfo << distfield.nPatches() << std::endl;
     //gsMultiPatch<T> mppom = distfield.patches();
     m_paramsPtr->setDistanceField(distfield);
     //if (m_paramsPtr->options().getSwitch("plot"))
         //plotQuantityFromSolution("distance", distanceField, "distancefield", 10000);
     //gsMultiPatch<T> mppom = m_paramsPtr->getDistanceField().patches();
-    gsInfo << m_paramsPtr->getDistanceField().value(mat, 0) << ", " << m_paramsPtr->getDistanceField().value(mat, 1) << ", " << m_paramsPtr->getDistanceField().value(mat, 2) << std::endl;
+    //gsInfo << m_paramsPtr->getDistanceField().value(mat, 0) << ", " << m_paramsPtr->getDistanceField().value(mat, 1) << ", " << m_paramsPtr->getDistanceField().value(mat, 2) << std::endl;
     //gsInfo << m_paramsPtr->getDistanceField().nPatches() << std::endl;
     //gsField<T> dfield = m_paramsPtr->getDistanceField();
-    //gsWriteParaview<T>(dfield, "distanceField", 10000);
+    gsWriteParaview<T>(distfield, "distanceField", 10000);
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillBaseSystem();
@@ -435,8 +435,8 @@ void gsTMAssemblerSST<T, MatOrder>::update(const gsMatrix<T> & solVector, bool u
 
         //gsInfo << "TimeiterationK mat: " << m_blockTimeIterationK.sum() << std::endl;
         //gsInfo << "TimeiterationO mat: " << m_blockTimeIterationO.sum() << std::endl;
-        gsInfo << "TimeiterationK rhs: " << m_rhsTimeIterationK.sum() << std::endl;
-        gsInfo << "TimeiterationO rhs: " << m_rhsTimeIterationO.sum() << std::endl;
+        //gsInfo << "TimeiterationK rhs: " << m_rhsTimeIterationK.sum() << std::endl;
+        //gsInfo << "TimeiterationO rhs: " << m_rhsTimeIterationO.sum() << std::endl;
 
         m_rhsLinearK = m_blockLinearK * m_solution.topRows(m_kdofs[0]);
         m_rhsLinearO = m_blockLinearO * m_solution.bottomRows(m_kdofs[1]);
