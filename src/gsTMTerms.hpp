@@ -73,8 +73,8 @@ void gsTMTerm_CoeffGradGrad<T>::evalCoeff(const gsMapData<T>& mapData)
     m_coeff.resize(nQuPoints);    
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        //m_coeff(k) = math::max((k1 * F1(k) + k2 * (1 - F1(k))) * turbViscosityVals(k) + k3, eps);
-        m_coeff(k) = (k1 * F1(k) + k2 * (1 - F1(k))) * turbViscosityVals(k) + k3;
+        m_coeff(k) = math::max((k1 * F1(k) + k2 * (1 - F1(k))) * turbViscosityVals(k) + k3, eps);
+        //m_coeff(k) = (k1 * F1(k) + k2 * (1 - F1(k))) * turbViscosityVals(k) + k3;
     }
 }
 
@@ -141,7 +141,7 @@ void gsTMTerm_BlendCoeff<T>::evalCoeff(const gsMapData<T>& mapData)
         //if (math::abs(OSolVals(0, k)) <= eps)
         //    m_coeff(k) = 1.0;
         //else
-            m_coeff(k) = (-1) * math::max(2 * (1 - F1(k)) * sigmaO2 / math::pow(OSolVals(0, k), 2) * (u.row(0).dot(v.row(0))), 0.);
+            m_coeff(k) = math::max((-1) * 2 * (1 - F1(k)) * sigmaO2 / math::pow(OSolVals(0, k), 2) * (u.row(0).dot(v.row(0))), 0.);
         //m_coeff(k) = (-1) * math::max(2 * (1 - F1(k)) * sigmaO2 / OSolVals(0, k), 0.);
         pom += (u.row(0).dot(v.row(0)));
         //if (math::abs(m_coeff(k)) > eps)
@@ -249,7 +249,7 @@ void gsTMTerm_BlendCoeffRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         //if (pom < 0.0)
         //    m_rhsVals(0, k) = 0.0;
         //else
-            m_rhsVals(0, k) = math::max(2 * (1 - F1(k)) * sigmaO2 / OSolVals(0, k) * (u.row(0).dot(v.row(0))), 0.);
+            m_rhsVals(0, k) = math::max(2 * (1 - F1(k)) * sigmaO2 / math::max(OSolVals(0, k), eps) * (u.row(0).dot(v.row(0))), 0.);
         //pom += (u.row(0).dot(v.row(0)));
         //gsInfo << m_rhsVals(0, k) << ": " << F1(k) << ", " << OSolVals(0, k) << ", " << (u.dot(v)) << "; ";
         //if (math::abs(m_rhsVals(0, k)) > eps)

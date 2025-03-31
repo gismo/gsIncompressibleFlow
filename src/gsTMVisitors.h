@@ -237,7 +237,7 @@ protected: // *** Member functions ***
     virtual void defineTerms()
     {
         m_numLhsTerms = 3;
-        m_numRhsTerms = 0;
+        m_numRhsTerms = 1;
         
         // further, define all lhs terms first and all rhs terms then
         // diffusion term with coefficient (m_konst1 * F1 + m_konst2 * (1 - F1)) * turbulent viscosity + m_konst3
@@ -247,7 +247,7 @@ protected: // *** Member functions ***
         // blended term 2 * (1 - F1) * sigma0mega2 / omega * grad(k) * grad(omega) for omega equation
         m_terms.push_back( new gsTMTerm_BlendCoeff<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         
-        //m_terms.push_back( new gsTMTerm_BlendCoeffRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
+        m_terms.push_back( new gsTMTerm_BlendCoeffRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         
         // ... other terms, e.g. from stabilizations
     }

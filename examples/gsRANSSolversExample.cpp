@@ -35,25 +35,25 @@ int main(int argc, char *argv[])
     bool unsteadyIt = false;
 
     // domain definition
-    int geo = 1; // 1 - step, 2 - cavity, 3 - blade profile 2D
-    int dim = 2;
+    index_t geo = 1; // 1 - step, 2 - cavity, 3 - blade profile 2D
+    index_t dim = 2;
     
     // discretization settings
-    int deg = 1;
-    int numRefine = 4;
-    int wallRefine = 0;
-    int leadRefine = 0; // for profile2D
+    index_t deg = 1;
+    index_t numRefine = 4;
+    index_t wallRefine = 0;
+    index_t leadRefine = 0; // for profile2D
 
     // problem parameters
-    real_t viscosity = 0.0001;
+    real_t viscosity = 0.00001;
     real_t inVelX = 1; // inlet x-velocity for profile2D
     real_t inVelY = 0; // inlet y-velocity for profile2D
     
     // solver settings
-    int maxIt = 50;
-    int picardIt = 5;
-    int linIt = 50;
-    real_t timeStep = 0.005;
+    index_t maxIt = 400;
+    index_t picardIt = 5;
+    index_t linIt = 50;
+    real_t timeStep = 0.05;
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
     real_t linTol = 1e-6;
@@ -65,9 +65,9 @@ int main(int argc, char *argv[])
     bool quiet = false;
     bool plot = true;
     bool plotMesh = false;
-    int plotPts = 10000;
+    index_t plotPts = 10000;
     bool animation = true;
-    int animStep = 1;
+    index_t animStep = 1;
 
     // ---------------------------------------------------------------------------------
 

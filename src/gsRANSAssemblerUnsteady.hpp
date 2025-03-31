@@ -122,6 +122,11 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
         //this->assembleBlock(m_visitorRANSsymgradoffdiag, 0, m_matRANSsymgradoffdiag, dummyRhs);
         //m_rhsRANSsymgradoffdiag = m_matRANSsymgradoffdiag * m_solution.topRows(m_pshift);
         //gsInfo << "Done " << m_solution.rows() << ", " << m_solution.cols() << std::endl;
+
+        //gsInfo << "RANSsymgrad sum: " << m_matRANSsymgrad.sum() << std::endl;
+        //index_t nnzmatRANSsymgrad = m_matRANSsymgrad.nonZeros();
+        //gsInfo << "RANSsymgrad per nnz member: " << m_matRANSsymgrad.sum()/nnzmatRANSsymgrad << std::endl;
+
     }
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))

@@ -205,6 +205,23 @@ gsTensorBSpline<2, T> BSplineRectangle(int deg, const T llx, const T lly, const 
     return gsTensorBSpline<2, T>(kv, kv, coef);
 }
 
+template<class T>
+gsTensorBSpline<2, T> BSplineRectangle2(int deg, const T llx, const T lly, const T a, const T b, int numSep = 0)
+{
+    gsKnotVector<T> kv1(0, 1, a-1, deg + 1, 1); // first, last, num_inter, mult_end, mult_inter
+    gsKnotVector<T> kv2(0, 1, b-1, deg + 1, 1); // first, last, num_inter, mult_end, mult_inter
+
+    int m = kv1.size() - deg - 1;
+    int n = kv2.size() - deg - 1;
+    gsMatrix<T> coef(m*n, 2);
+
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < n; j++)
+            coef.row(i + j*n) << llx + (i*a) / (deg+a-1), lly + (j*b) / (deg+b-1);
+
+    return gsTensorBSpline<2, T>(kv1, kv2, coef);
+}
+
 
 /// @brief Returns a B-spline parametrization of a 3D block of a given degree in all directions.
 /// @tparam T       real number type
@@ -331,12 +348,12 @@ gsMultiPatch<T> BSplineStep3D(int deg, const T a, const T b, const T c, const T 
     mp.addInterface(0, boundary::north, 1, boundary::south);
     mp.addInterface(2, boundary::east, 1, boundary::west);
 
-    if (periodic)
-    {
-        mp.addInterface(0, boundary::front, (size_t)0, boundary::back);
-        mp.addInterface(1, boundary::front, 1, boundary::back);
-        mp.addInterface(2, boundary::front, 2, boundary::back);
-    }
+    // if (periodic)
+    // {
+    //     mp.addInterface(0, boundary::front, 0, boundary::back);
+    //     mp.addInterface(1, boundary::front, 1, boundary::back);
+    //     mp.addInterface(2, boundary::front, 2, boundary::back);
+    // }
     
     mp.addAutoBoundaries();
 
@@ -955,7 +972,7 @@ gsField<T> computeDistanceField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
 
     #ifdef GISMO_WITH_PARDISO
     typename gsSparseSolver<T>::PardisoLU solver;
-    pardisoSetup(solver);
+    pardisoSetup<T>(solver);
     #else
     typename gsSparseSolver<T>::LU solver;
     #endif 
