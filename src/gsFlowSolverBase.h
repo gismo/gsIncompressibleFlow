@@ -211,6 +211,17 @@ public: // *** Getters/setters ***
     /// @brief Returns the total time spent on solving of the linear systems.
     virtual const T getSolveTime() const { return getLinSolver()->getSolveTime(); }
 
+    /// @brief Get solution coefficients for a specific unknown
+    /// @param[in] unk index of the unknown
+    /// @return matrix of coefficients for the specified unknown
+    virtual gsMatrix<T> solutionCoefs(index_t unk) const
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// @brief Set solution coefficients for a specific unknown
+    /// @param[in] coefs coefficient matrix to set
+    /// @param[in] unk index of the unknown
+    virtual void setSolutionCoefs(const gsMatrix<T>& coefs, index_t unk)
+    { GISMO_NO_IMPLEMENTATION }
 
 }; // gsFlowSolverBase
 
