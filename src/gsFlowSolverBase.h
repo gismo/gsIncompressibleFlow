@@ -156,7 +156,7 @@ public: // *** Member functions ***
     /// @brief Construct solution field for the unknown \a unk for the current solution vector.
     /// @param unk the considered unknown (0 - velocity, 1 - pressure)
     /// @return 
-    gsField<T> constructSolution(int unk) const
+    virtual gsField<T> constructSolution(int unk) const
     { return getAssembler()->constructSolution(m_solution, unk); }
 
     /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.

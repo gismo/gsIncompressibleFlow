@@ -1,4 +1,4 @@
-/** @file gsINSAssembler.hpp
+/** @file gsTMAssemblerBase.hpp
 
     This file is part of the G+Smo library.
 
@@ -32,21 +32,25 @@ void gsTMAssemblerBase<T, MatOrder>::initMembers()
     m_ddof[0] = ddof.setZero(1, 1);
     m_ddof[1] = ddof.setZero(1, 1);
     
-    //m_ddof.resize(numTMvars);
-    //for (index_t i = 0; i < numTMvars; i++)
-    //    m_bases[i+2].getMapper(getAssemblerOptions().dirStrategy, getAssemblerOptions().intStrategy, m_bc, m_dofMappers[i+2], i);
-    
     m_nnzPerRowTM = 1;
-    index_t maxDeg = 0;
+    index_t maxDeg;
+    // for (short_t i = 0; i < m_tarDim; i++)
+    //     for (short_t j = 0; j < numTMvars; j++)
+    //         if (m_bases[j].maxDegree(i) > maxDeg)
+    //             maxDeg = m_bases[j].maxDegree(i);
+    // m_nnzPerRowTM = 2 * maxDeg + 1;
+    // m_nnzPerRowTM = 2 * m_nnzPerRowTM;
     for (short_t i = 0; i < m_tarDim; i++)
-        for (short_t j = 0; j < numTMvars; j++)
+    {
+        maxDeg = 0;
+        for (size_t j = 2; j < m_bases.size(); j++)
             if (m_bases[j].maxDegree(i) > maxDeg)
                 maxDeg = m_bases[j].maxDegree(i);
-    m_nnzPerRowTM = 2 * maxDeg + 1;
-
+        m_nnzPerRowTM *= 2 * maxDeg + 1;
+    }
+    
     m_isInitialized = false;
 
-    //updateSizes();
 }
 
 template<class T, int MatOrder>
@@ -106,14 +110,12 @@ gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& 
 
     const gsDofMapper& mapper = m_dofMappers[unk];
 
-    //const index_t dim = (unk == 0 ? m_tarDim : 1);
     gsMatrix<T> coeffs;
 
     // Point to the correct entries of the solution vector
     index_t dofs = 0;
     for (index_t i = 2; i < unk; i++)
         dofs += m_kdofs[i-2];
-    //gsAsConstMatrix<T> sol(solVector.data() + dofs, m_kdofs[unk-2], 1);
     
     for (size_t p = 0; p < this->getPatches().nPatches(); ++p)
     {

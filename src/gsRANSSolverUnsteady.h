@@ -15,7 +15,6 @@
 #include <gsIncompressibleFlow/src/gsINSSolver.h>
 #include <gsIncompressibleFlow/src/gsRANSAssemblerUnsteady.h>
 #include <gsIncompressibleFlow/src/gsTMSolverBase.h>
-//#include <gsIncompressibleFlow/src/gsTMSolverSST.h>
 
 #include <gsIncompressibleFlow/src/gsTMModels.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
@@ -36,20 +35,11 @@ class gsRANSSolverUnsteady : public gsINSSolverUnsteady<T, MatOrder>
 {
 
 public:
+    
     typedef gsINSSolverUnsteady<T, MatOrder> Base;
-
-//public: // *** Smart pointers ***
-
-    //typedef memory::shared_ptr<gsTMSolverBase> Ptr;    
-
 
 public: // *** Class members ***
 
-    //T m_time, m_timeStepSize;
-    //T m_innerIter, m_avgPicardIter;
-    //T m_innerTol;
-
-    // nove definovane zde
     typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
     typename gsTMModelData<T>::tdPtr m_TMModelPtr = NULL;
     bool m_bComputeTMfirst;
@@ -118,12 +108,16 @@ public: // *** Member functions ***
 
     void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, bool plotTurb = false, const int minIterations = 1);
 
-    /// @brief Solve the generalized Stokes problem.
-    //virtual void solveGeneralizedStokes(const int maxIterations, const T epsilon, const int minIterations = 1)
-    //{ GISMO_NO_IMPLEMENTATION }
-
-    gsField<T> constructSolutionTM(int unk) const
-    { return m_TMsolverPtr->getAssembler()->constructSolution(unk); }
+    /// @brief Construct solution field for the unknown \a unk for the current solution vector.
+    /// @param unk the considered unknown (0 - velocity, 1 - pressure, >=2 - turbulent variables)
+    /// @return 
+    gsField<T> constructSolution(int unk) const
+    { 
+        if (unk < 2)
+            return Base::constructSolution(unk);
+        else
+            return m_TMsolverPtr->getAssembler()->constructSolution(unk); 
+    }
 
 
 public: // *** Getters/setters ***
@@ -134,14 +128,8 @@ public: // *** Getters/setters ***
         return dynamic_cast<gsRANSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
     }
 
-    /// @brief Returns the total number of DOFs (the matrix size).
+    /// @brief Returns the total number of DOFs for turbulent model (the matrix size).
     int numDofsTM() { return (m_TMsolverPtr->getAssembler())->numDofs(); }
-
-    // @brief Returns the elapsed simulation time.
-    // T getSimulationTime() const { return m_time; } ... lze pouzit definici z Base
-
-    /// @brief Returns the average number of Picard iterations per time step.
-    //T getAvgPicardIterations() const { return m_avgPicardIter / m_iterationNumber; } .. lze pouzit definici z Base
 
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsRANSSolverUnsteady"; }

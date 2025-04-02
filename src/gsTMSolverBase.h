@@ -22,7 +22,7 @@
 namespace gismo
 {
 
-/// @brief              A base class for all flow solvers in gsIncompressibleFlow.
+/// @brief              A base class for all turbulent models solvers in gsIncompressibleFlow.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
 template<class T, int MatOrder>
@@ -60,8 +60,7 @@ protected: // *** Base class function ***
 
     using Base::getAssembler;
     using Base::solutionChangeRelNorm;
-    //using Base::initialize;
-
+    
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
@@ -69,6 +68,7 @@ public: // *** Constructor/destructor ***
     Base(params)
     { }
 
+    /// @brief Constructor.
     gsTMSolverBase(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr)
     { }
@@ -78,10 +78,9 @@ public: // *** Constructor/destructor ***
 
 public: // *** Static functions ***
 
-    /// @brief Returns a unique pointer to a newly created instance of the given preconditioner type.
-    /// @param[in] precType the reqiured preconditioner type as a string
-    /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner (assuming the following order: NS system matrix, mass matrix (velocity, pressure or both), other matrices)
-    /// @param[in] opt a list of options for the preconditioner
+    /// @brief Returns a shared pointer to a newly created instance of the turbulence solver.
+    /// @param[in] paramsPtr        a shared point to the instance of an object holding all parameters of the solver
+    /// @param[in] TMModelPtr       a shared pointer to the chosen turbulence model
     static tmPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr);
 
 
@@ -93,20 +92,22 @@ protected: // *** Member functions ***
 
 public: // *** Member functions ***
 
-    /// @brief Compute the Stokes problem and save the solution into m_solution.
+    /// @brief Evaluates the turbulent viscosity.
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] patchId          an index of the patch
     virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Perform next iteration step.
     virtual void nextIteration();
 
-    //virtual void plotTurbulentViscosity();
 
 public: // *** Getters/setters ***
 
-    /// @brief Retrurns the name of the class as a string.
+    /// @brief Returns the name of the class as a string.
     virtual std::string getName() { return "gsTMSolverBase"; }
 
+    /// @brief Returns the turbulent viscosity values.
     gsVector<T> getTurbulentViscosity() 
     { 
         GISMO_ASSERT(m_TurbulentViscosityVals.rows() > 0, "Turbulent viscosity not evaluated yet.");    

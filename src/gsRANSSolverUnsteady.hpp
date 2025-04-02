@@ -25,24 +25,9 @@ void gsRANSSolverUnsteady<T, MatOrder>::initMembers()
     m_bComputeTMfirst = false;
     m_turbT = 0;
 
-    // inicializace turbulentniho solveru
-    //m_TMsolverPtr = new gsTMSolverSST<T, MatOrder>(m_paramsPtr);
-
-    // initialize turbulence solver
-    /*if (!(m_pTurbulenceSolver->isInitialized()))
-        {
-            gsField<T> uSol = this->constructSolution(0);
-
-            m_clock.restart();
-            m_pTurbulenceSolver->initialize(uSol);
-            m_turbT += m_clock.stop();
-        }
-    */
-    
-    //m_timeStepSize = m_params.options().getReal("timeStep");
 }
 
-// doplnit vykreslovani turbulentni viskozity a promennych turbulentniho modelu
+
 template<class T, int MatOrder>
 void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileK, std::ofstream& fileO, std::ofstream& fileTV, std::string fileNameSuffix, unsigned plotPts)
 {
@@ -58,12 +43,12 @@ void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU
     filenameP << "pressure" + fileNameSuffix + "_" << m_iterationNumber << "it";
     gsWriteParaview<T>(pSol, filenameP.str(), plotPts);
 
-    gsField<T> kSol = constructSolutionTM(2);
+    gsField<T> kSol = constructSolution(2);
     std::stringstream filenameK;
     filenameK << "Ksol" + fileNameSuffix + "_" << m_iterationNumber << "it";
     gsWriteParaview<T>(kSol, filenameK.str(), plotPts);
 
-    gsField<T> oSol = constructSolutionTM(3);
+    gsField<T> oSol = constructSolution(3);
     std::stringstream filenameO;
     filenameO << "Osol_" + fileNameSuffix + "_" << m_iterationNumber << "it";
     gsWriteParaview<T>(oSol, filenameO.str(), plotPts);
@@ -162,12 +147,10 @@ void gsRANSSolverUnsteady<T, MatOrder>::initialize()
     gsInfo << "Plotting solution of steady N-S problem in Paraview...";
     gsWriteParaview<T>(velocity, "NS_steady_velocity", plotPts, false);
     gsWriteParaview<T>(pressure, "NS_steady_pressure", plotPts);
-    // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
     gsInfo << " Done.\n";
     gsInfo << "-------------------------------------------------------------------------------\n";
 
     m_solution = NSSteadySolver.getSolution();
-    //m_solution.setZero();
 }
 
 // upravit
@@ -186,14 +169,6 @@ void gsRANSSolverUnsteady<T, MatOrder>::nextIteration()
     m_TMsolverPtr->nextIteration(); // update turbulence model
     m_turbT += m_clock.stop(); // NOTE: this is not exact, because there is some assembly and solver setup in the TM nextIteration() method
 
-    ////------------------------- PLOT -------------------------
-    //std::string path = "D:/hhornik/gismo/motor/uwb-pilsen/outFiles/k-omega/";
-    //std::stringstream filename;
-    //filename << path << "k_omega_iter" << this->m_iterationNumber;
-    //gsField<T> tmSol = m_pTurbulenceSolver->constructSolution();
-    //gsWriteParaview<T>(tmSol, filename.str(), 50000);
-    ////------------------------- PLOT -------------------------
-        
     if (m_bComputeTMfirst)
         Base::nextIteration();
 
@@ -211,7 +186,7 @@ void gsRANSSolverUnsteady<T, MatOrder>::nextIteration()
         */
 }
 
-// upravit, melo by stacit uz jen upravit plotCurrentTimeStep()
+
 template<class T, int MatOrder>
 void gsRANSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix, const T epsilon, unsigned plotPts, bool plotTurb, const int minIterations)
 {

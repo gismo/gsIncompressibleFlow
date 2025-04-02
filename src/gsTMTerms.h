@@ -1,4 +1,4 @@
-/** @file gsFlowTerms.h
+/** @file gsTMTerms.h
     
     This file is part of the G+Smo library.
 
@@ -20,7 +20,7 @@
 namespace gismo
 {
 
-/// @brief      A class for integrals of the form: vector coefficient * shape function gradient * test function value
+/// @brief      A class for integrals of the form: velocity * test function gradient * shape function gradient
 /// @tparam T   real number type
 template <class T>
 class gsTMTerm_VecCoeffGradVal : public gsFlowTermNonlin<T>
@@ -51,10 +51,6 @@ public: // *** Member functions ***
 
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
 
-public: // *** Getter/setters
-
-    //void setTurbulentViscosityVals(gsVector<T> turbViscosityVals) { m_turbViscosityVals = turbViscosityVals; }
-
 };
 
 // ===========================================================================================================================
@@ -73,18 +69,11 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr; 
-    //typename SSTModel<T>::tmePtr m_SSTPtr;
     typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
-    //real_t m_k1;
-    //real_t m_k2;
-    //real_t m_k3;
-    //gsVector<T> m_turbViscosityVals;
-    //gsField<T> m_distanceField;
 
 protected: // *** Base class members ***
 
-    //using Base::m_isCurrentSolSet;
     using Base::m_coeff;
 
 public: // *** Constructor/destructor ***
@@ -102,19 +91,12 @@ public: // *** Member functions ***
 
     virtual void evalCoeff(const gsMapData<T>& mapData);
 
-    //virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
-
-public: // *** Getter/setters
-
-    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
-
-    //void setTurbulentViscosityVals(gsVector<T> turbViscosityVals) { m_turbViscosityVals = turbViscosityVals; }
 
 };
 
 // ===========================================================================================================================
 
-/// @brief      A class for integrals of the form: vector coefficient * shape function gradient * test function value
+/// @brief      A class for integrals of the form: vector coefficient * test function value * shape function value
 /// @tparam T   real number type
 template <class T>
 class gsTMTerm_CoeffValVal : public gsFlowTerm_ValVal<T>
@@ -127,14 +109,11 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
-    //typename SSTModel<T>::tmePtr m_SSTPtr;
     typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
-    //gsField<T> m_distanceField;
-
+    
 protected: // *** Base class members ***
 
-    //using Base::m_isCurrentSolSet;
     using Base::m_coeff;
     
 public: // *** Constructor/destructor ***
@@ -152,31 +131,12 @@ public: // *** Member functions ***
 
     virtual void evalCoeff(const gsMapData<T>& mapData);
 
-    //virtual void computeCoeffSolU(const gsMapData<T>& mapData)
-    //{ 
-    //    GISMO_ASSERT(m_isCurrentSolSet, "No solution set in gsTMTerm_CoeffValVal.");
-    //
-    //    m_solVals.resize(mapData.dim.first, mapData.points.cols());
-    //    m_solVals = m_currentSol.value(mapData.points, mapData.patchId);
-    //}
-
-    //virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
-
-public: // *** Getter/setters
-
-    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
-
-    //void setCurrentSolution(gsField<T>& solution)
-    //{ 
-    //    m_currentSol = solution;
-    //    m_isCurrentSolSet = true;
-    //}
-
 };
 
 // ===================================================================================================================
 
-/// @brief      A class for integrals of the form: test function value * rhs function value.
+/// @brief      A class for integrals of the form: coefficient * test function value * shape function gradient.
+/// @brief      where coefficient = - 2 * (1 - F1) / omega^2 grad(k) * grad(omega)
 /// @tparam T   real number type
 template <class T>
 class gsTMTerm_BlendCoeff : public gsFlowTerm<T>
@@ -189,11 +149,9 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
-    //typename SSTModel<T>::tmePtr m_SSTPtr;
     typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
-    //gsField<T> m_distanceField;
-
+    
 protected: // *** Base class members ***
 
     using Base::m_coeff;
@@ -215,11 +173,6 @@ public: // *** Member functions ***
 
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
 
-
-public: // *** Getter/setters
-
-    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
-
 };
 
 // ========================================================================================================================
@@ -237,11 +190,9 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
-    //typename SSTModel<T>::tmePtr m_SSTPtr;
     typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
-    //gsField<T> m_distanceField;
-
+    
 protected: // *** Base class members ***
 
     using Base::m_rhsVals;
@@ -262,11 +213,6 @@ public: // *** Member functions ***
 
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
 
-
-public: // *** Getter/setters
-
-    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
-
 };
 
 // ========================================================================================================================
@@ -284,11 +230,9 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
-    //typename SSTModel<T>::tmePtr m_SSTPtr;
     typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
-    //gsField<T> m_distanceField;
-
+    
 protected: // *** Base class members ***
 
     using Base::m_rhsVals;
@@ -309,11 +253,6 @@ public: // *** Member functions ***
 
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
 
-
-public: // *** Getter/setters
-
-    //void setDistanceField() { m_distanceField = m_paramsPtr->getDistanceField(); }
-    
 };
 
 

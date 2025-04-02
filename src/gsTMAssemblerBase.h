@@ -1,4 +1,4 @@
-/** @file gsINSAssembler.h
+/** @file gsTMAssemblerBase.h
 
     This file is part of the G+Smo library.
 
@@ -13,14 +13,13 @@
 
 #include <gsCore/gsField.h>
 #include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
-//#include <gsIncompressibleFlow/src/gsTMVisitors.h>
 
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
 
 namespace gismo
 {
 
-/// @brief              A base class for incompressible Navier-Stokes assemblers.
+/// @brief              A base class for turbulence models assemblers.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
 template<class T, int MatOrder>
@@ -39,13 +38,10 @@ protected: // *** Class members ***
 
     gsBoundaryConditions<T> m_bc;
     std::vector<gsMultiBasis<T> > m_bases;
-    //std::vector<gsDofMapper> m_dofMappersTM;
     index_t m_nnzPerRowTM;
     index_t numTMvars;
     std::vector<index_t> m_kdofs;
     gsField<T> m_currentSolField;
-    //index_t m_TMdofsAll;
-    //bool m_bInitialized;
     gsMatrix<T> m_RANSsolution;
 
 protected: // *** Base class members ***
@@ -69,6 +65,7 @@ public: // *** Base class member functions ***
 
 public: // *** Constructor/destructor ***
 
+    /// @brief Constructor.
     gsTMAssemblerBase(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr)
     { 
@@ -93,6 +90,9 @@ public: // *** Member functions ***
     /// @param[in] unk              the considered unknown
     virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk);
 
+    /// @brief Construct solution from computed solution vector for unknown \a unk.
+    /// @param[in]  unk         the considered unknown
+    /// @param[out] result      the resulting solution as a gsMultiPatch object
     gsField<T> constructSolution(int unk) const
     { return constructSolution(m_solution, unk); }
     
@@ -104,20 +104,8 @@ public: // *** Member functions ***
 
 public: // *** Getters/setters ***
 
-    /// @brief Returns the viscosity value.
+    /// @brief Returns the kinematic viscosity value.
     T getViscosity() const { return m_viscosity; }
-
-    /**
-     * @brief Returns a reference to the discretization bases.
-     *
-     * In the case of velocity and pressure, the velocity basis is stored first, the  pressure basis is second.
-     * 
-     * There is also a const version returning a const reference.
-     */
-    //virtual std::vector< gsMultiBasis<T> >& getBases() { return m_bases; }
-    //virtual const std::vector< gsMultiBasis<T> >& getBases() const { return m_bases; }
-
-    //virtual const gsBoundaryConditions<T>& getBCsTM() const { return m_paramsPtr->getBCsTM(); }
 
     /// @brief Returns the assembled matrix.
     virtual const gsSparseMatrix<T, MatOrder>& matrix() const
@@ -140,9 +128,6 @@ public: // *** Getters/setters ***
 
     /// @brief Returns the number of DOFs for the i-th turbulent unknown.
     index_t numDofsUnk(size_t i);
-
-    /// @brief Returns the total number of DOFs (the matrix size).
-    //index_t numDofs() const { return m_dofs; }
 
 }; 
 

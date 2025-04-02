@@ -1,4 +1,4 @@
-/** @file gsFlowTerms.h
+/** @file gsRANSTerms.h
     
     This file is part of the G+Smo library.
 
@@ -17,7 +17,7 @@
 namespace gismo
 {
 
-/// @brief      A class for integrals of the form: test function gradient * shape function gradient.
+/// @brief      A class for integrals arising from symmetric gradient in RANS equations.
 /// @tparam T   real number type
 template <class T>
 class gsRANSTerm_SymmetricGradient : public gsFlowTerm<T>
@@ -35,15 +35,11 @@ public: // *** Constructor/destructor ***
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
         this->m_testFunFlags = NEED_DERIV;
         this->m_shapeFunFlags = NEED_DERIV;
-
-        //m_viscosity = viscosity;
-        //m_turbViscosityVals = turbViscVals;
     }
 
 
 public: // *** Member functions ***
 
-    //virtual void gsRANSTerm_Diffusion<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMatA, std::vector<gsMatrix<T> > localMatDiag);
     void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat);
 
 public: // *** Getter/setters
@@ -53,85 +49,6 @@ public: // *** Getter/setters
     void setViscosity(real_t viscosity) { m_viscosity = viscosity; }
 
 };    
-
-/*
-/// @brief      A class for integrals of the form: test function gradient * shape function gradient.
-/// @tparam T   real number type
-template <class T>
-class gsRANSTerm_SymmetricGradientDiag : public gsFlowTerm<T>
-{
-
-protected: // *** Class members ***
-
-    real_t m_viscosity;
-    gsVector<T> m_turbViscosityVals;
-
-public: // *** Constructor/destructor ***
-
-    gsRANSTerm_SymmetricGradientDiag()
-    {
-        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
-        this->m_testFunFlags = NEED_DERIV;
-        this->m_shapeFunFlags = NEED_DERIV;
-
-        //m_viscosity = viscosity;
-        //m_turbViscosityVals = turbViscVals;
-    }
-
-
-public: // *** Member functions ***
-
-    //virtual void gsRANSTerm_Diffusion<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMatA, std::vector<gsMatrix<T> > localMatDiag);
-    void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat);
-
-public: // *** Getter/setters
-
-    void setTurbulentViscosityVals(gsVector<T> turbViscosityVals) { m_turbViscosityVals = turbViscosityVals; }
-
-    void setViscosity(real_t viscosity) { m_viscosity = viscosity; }
-
-};
-
-// ===========================================================================================
-
-/// @brief      A class for integrals of the form: test function gradient * shape function gradient.
-/// @tparam T   real number type
-template <class T>
-class gsRANSTerm_SymmetricGradientOffdiag : public gsFlowTerm<T>
-{
-
-protected: // *** Class members ***
-
-    real_t m_viscosity;
-    gsVector<T> m_turbViscosityVals;
-
-public: // *** Constructor/destructor ***
-
-    gsRANSTerm_SymmetricGradientOffdiag()
-    {
-        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
-        this->m_testFunFlags = NEED_DERIV;
-        this->m_shapeFunFlags = NEED_DERIV;
-
-        //m_viscosity = viscosity;
-        //m_turbViscosityVals = turbViscVals;
-    }
-
-
-public: // *** Member functions ***
-
-    //virtual void gsRANSTerm_Diffusion<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMatA, std::vector<gsMatrix<T> > localMatDiag);
-    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat);
-
-public: // *** Getter/setters
-
-    void setTurbulentViscosityVals(gsVector<T> turbViscosityVals) { m_turbViscosityVals = turbViscosityVals; }
-
-    void setViscosity(real_t viscosity) { m_viscosity = viscosity; }
-
-};
-*/
-
 
 } // namespace gismo
 

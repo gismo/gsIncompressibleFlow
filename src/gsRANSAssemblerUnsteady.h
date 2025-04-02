@@ -35,13 +35,9 @@ public:
 protected: // *** Class members ***
 
     gsRANSVisitorUUSymmetricGradient<T, MatOrder> m_visitorRANSsymgrad;
-    //gsRANSVisitorUUSymmetricGradientOffdiag<T, MatOrder> m_visitorRANSsymgradoffdiag;
     gsSparseMatrix<T, MatOrder> m_matRANSsymgrad;
-    //gsSparseMatrix<T, MatOrder> m_matRANSsymgradoffdiag;
     gsMatrix<T> m_rhsRANS;
-    //gsMatrix<T> m_rhsRANSsymgradoffdiag;
     typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
-    //gsTMSolverSST<T, MatOrder>* m_TMsolverPtr;
     bool m_bComputeTMfirst;
     gsField<T> m_oldTimeFieldU, m_currentFieldU;
 
@@ -90,7 +86,7 @@ protected: // *** Member functions ***
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();
 
-    /// @brief 
+    /// @brief Update the assembler in new nonlinear iteration.
     /// @param solVector 
     /// @param[in] updateSol    true - save solVector into m_solution (false is used in the inner Picard iteration for unsteady problem)
     virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
@@ -100,9 +96,8 @@ protected: // *** Member functions ***
 
 public: // Getter/setters
 
+    /// @brief Set turbulence solver to the member function.
     void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
-
-    //setRANSassembler(gsRANSAssemblerUnsteady<T, MatOrder>* assemblerPtr) { m_assemblerPtr = assemblerPtr; }
 
 }; //gsRANSAssemblerUnsteady
 

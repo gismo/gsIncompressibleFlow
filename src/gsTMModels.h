@@ -1,4 +1,4 @@
-/** @file gsFlowTerms.h
+/** @file gsTMModels.h
     
     This file is part of the G+Smo library.
 
@@ -13,6 +13,8 @@
 
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 
+/// @brief              A base class for turbulence models.
+/// @tparam T           real number type
 namespace gismo
 {
 template <class T>
@@ -56,6 +58,7 @@ protected: // *** Class members ***
 
 public: // *** Constructor/destructor ***
     
+    /// @brief Constructor.
     gsTMModelData(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
     m_paramsPtr(paramsPtr)
     { 
@@ -67,20 +70,25 @@ public: // *** Constructor/destructor ***
 
 public: // *** Static functions ***
 
-    /// @brief Returns a unique pointer to a newly created instance of the given preconditioner type.
-    /// @param[in] precType the reqiured preconditioner type as a string
-    /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner (assuming the following order: NS system matrix, mass matrix (velocity, pressure or both), other matrices)
-    /// @param[in] opt a list of options for the preconditioner
+    /// @brief Returns a sharedpointer to a newly created instance.
+    /// @param[in] paramsPtr a shared point to the instance of an object holding all parameters of the solver
     static tdPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr);
 
 
 public: // *** Class functions ***
 
+    /// @brief Evaluates the turbulent viscosity.
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] patchId          an index of the patch   
     virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
 
+    /// @brief Plots the turbulent viscosity.
     virtual void plotTurbulentViscosity(typename gsFlowSolverParams<T>::Ptr paramsPtr, std::string str = "turbVisc");
 
+    /// @brief Update the current turbuelnce model quantities for the given quNodes
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] patchId          an index of the patch 
     virtual void updateModel(gsMatrix<T>& quNodes, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
 
@@ -119,6 +127,8 @@ public: // *** Getters/setters ***
 
 // ===============================================================================================================
 
+/// @brief              A class for the k-omega SST turbulnce model.
+/// @tparam T           real number type
 template <class T>
 class gsTMModelData_SST : public gsTMModelData<T>
 {
@@ -168,6 +178,7 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
     
+    /// @brief Constructor.
     gsTMModelData_SST(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
     Base(paramsPtr)
     {
@@ -190,9 +201,8 @@ public: // *** Constructor/destructor ***
 
 public: // *** Static functions ***
 
-    /// @brief Returns a unique pointer to a newly created instance.
-    /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
-    /// @param[in] opt a list of options for the preconditioner
+    /// @brief Returns a shared pointer to a newly created instance.
+    /// @param[in] paramsPtr a shared point to the instance of an object holding all parameters of the solver
     static tdPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr)
     {
         return memory::make_shared_not_owned(new gsTMModelData_SST<T>(paramsPtr));
@@ -217,26 +227,19 @@ protected: // *** Class functions ***
 
 public: // *** Class functions ***
 
+    /// @brief Update the current turbuelnce model quantities for the given quNodes
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] patchId          an index of the patch 
     void updateModel(gsMatrix<T>& quNodes, index_t patchId);
     
+    /// @brief Evaluates the turbulent viscosity.
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] patchId          an index of the patch
     void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId);
     
         
 public: // *** Getters/setters ***
     
-    // void setKSolVals(gsMatrix<T> vals) { m_KSolVals = vals; }
-    // void setOSolVals(gsMatrix<T> vals) { m_OSolVals = vals; }
-    // void setKSolDers(std::vector< gsMatrix<T> > vals) { m_KSolDers = vals; }
-    // void setOSolDers(std::vector< gsMatrix<T> > vals) { m_OSolDers = vals; }
-    // void setUSolDers(std::vector< gsMatrix<T> > vals) { m_USolDers = vals; }
-    // void setF1Vals(gsVector<T> vals) { m_F1 = vals; }
-    // void setF2Vals(gsVector<T> vals) { m_F2 = vals; }
-    // void setTurbulentViscosityVals(gsVector<T> vals) { m_turbulentViscosityVals = vals; }
-    // void setStrainRateMagVals(gsVector<T> vals) { m_StrainRateMag = vals; }
-    // void StrainRateTensor(std::vector< gsMatrix<T> > vals) { m_StrainRateTensor = vals; }
-        
-    //void setCurrent() { m_isCurrent = true; }
-    //void setNotCurrent() { m_isCurrent = false; }
     
 };
 

@@ -16,7 +16,6 @@
 #include <gsIncompressibleFlow/src/gsTMSolverBase.h>
 #include <gsIncompressibleFlow/src/gsTMAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsTMAssemblerSST.h>
-//#include <gsIncompressibleFlow/src/gsTMModels.h>
 
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
@@ -24,7 +23,7 @@
 namespace gismo
 {
 
-/// @brief              A base class for all flow solvers in gsIncompressibleFlow.
+/// @brief              A class for a solver of the k-omega SST turbulence model.
 /// @tparam T           real number type
 /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
 template<class T, int MatOrder>
@@ -40,7 +39,6 @@ public: // *** Smart pointers ***
 
 protected: // *** Class members ***
 
-    //typename SSTModel<T>::Ptr m_SSTPtr;
     typename gsTMModelData<T>::tdPtr m_TMModelPtr;     
     bool m_isSSTModelSet;
 
@@ -63,6 +61,7 @@ public: // *** Constructor/destructor ***
     gsTMSolverSST(memory::make_shared_not_owned(&params), TMModelPtr)
     { }
 
+    /// @brief Constructor.
     gsTMSolverSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr):
     Base(paramsPtr), m_TMModelPtr(TMModelPtr)
     { 
@@ -84,9 +83,9 @@ protected: // *** Member functions ***
 
 public: // *** Static functions ***
 
-    /// @brief Returns a unique pointer to a newly created instance.
-    /// @param[in] mat a const reference to std::map of labeled matrices needed for construction of the preconditioner
-    /// @param[in] opt a list of options for the preconditioner
+    /// @brief Returns a shared pointer to a newly created instance.
+    /// @param[in] paramsPtr        a shared point to the instance of an object holding all parameters of the solver
+    /// @param[in] TMModelPtr       a shared pointer to the chosen turbulence model
     static tmPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr)
     {
         return memory::make_shared_not_owned(new gsTMSolverSST<T, MatOrder>(paramsPtr, TMModelPtr));
@@ -94,11 +93,10 @@ public: // *** Static functions ***
 
 public: // *** Member functions ***
 
-    /// @brief Compute the Stokes problem and save the solution into m_solution.
-    //virtual void evalTurbulentViscosity(/*std::vector<gsMatrix<T> >& solUGrads, */gsMatrix<T>& quNodes/*, gsGeometryEvaluator<T> & geoEval*/);
+    /// @brief Evaluates the turbulent viscosity.
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] patchId          an index of the patch
     virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId);
-
-    //virtual void plotTurbulentViscosity();
 
 public: // *** Getters/setters ***
 
@@ -114,12 +112,7 @@ public: // *** Getters/setters ***
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsTMSolverSST"; }
 
-    //SSTModel getModel() { return m_SSTModel; }
-
 };
-
-// ============================================================================================================================
-
 
 } // namespace gismo
 

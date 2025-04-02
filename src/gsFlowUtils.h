@@ -15,8 +15,6 @@
 
 #include <gismo.h>
 
-//#include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
-
 namespace gismo
 {
 
@@ -128,6 +126,24 @@ gsVector<index_t> getNnzVectorPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
             ++nnzPerOuter[outer];
 
     return nnzPerOuter;
+}
+
+template <class T, int MatOrder>
+int getMaxNnzPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
+{
+    int maxNnzInOuter = 0;
+
+    for (index_t outer = 0; outer < mat.outerSize(); outer++)
+    {
+        int nnzInOuter = 0;
+
+        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(mat, outer); it; ++it)
+            nnzInOuter++;
+
+        maxNnzInOuter = math::max(maxNnzInOuter, nnzInOuter);
+    }
+
+    return maxNnzInOuter;
 }
 
 
@@ -775,14 +791,10 @@ void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int numRefineC
 template<class T>
 void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t c = 0.0)
 {
-    gsInfo << basis.piece(0).detail() << std::endl;
-
     gsMatrix<T> box(dim, 2);
 
     int uRefine = math::floor(std::log2(a / b)) + 1 + numRefineU;
-    box.setZero();
-    //box(0, 1) = 1; 
-    box << 0, 1, 0, 0;
+    box(0, 1) = 1; 
     for (int i = 0; i < uRefine; i++)
         for (int p = 0; p < 2; p++)
         {
@@ -823,12 +835,9 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
         break;
     }
 
-    gsInfo << basis.piece(0).detail() << std::endl;
-
     for (int i = 0; i < numRefine; ++i)
         basis.uniformRefine();
 
-    gsInfo << basis.piece(0).detail() << std::endl;
 }
 
 
@@ -853,12 +862,9 @@ void refineBasis_step2(gsMultiPatch<T>& patches, gsMultiBasis<T>& basis, int num
     gsMultiBasis<T> basis2(patches);
     basis = basis2;
 
-    gsInfo << "Basis before uniform refinement ... \n" << basis.piece(0).detail() << std::endl;
-
     for (int i = 0; i < numRefine; ++i)
         basis.uniformRefine();
 
-    gsInfo << "Basis after uniform refinement ... \n" << basis.piece(0).detail() << std::endl;
 }
 
 
@@ -1049,23 +1055,8 @@ gsField<T> computeDistanceField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
     }
     
     gsInfo << "Done" << std::endl;
-    //typename gsFunctionSet<T>::Ptr wd = typename gsFunctionSet<T>::Ptr(wallDistanceMP);
-    //gsInfo << wd->size() << ", " << wd->nPieces() << std::endl;
     gsField<T> result = gsField<T>(paramsPtr->getPde().patches(), typename gsFunctionSet<T>::Ptr(wallDistanceMP), true);
-    //gsInfo << result.nPatches() << std::endl;
-    //gsMultiPatch<T> mppom = result.patches();
-    //gsMatrix<T> mat(2, 2);
-    //mat << 0.2, 0.4, 0.6, 0.8;
-    //gsInfo << result.value(mat, 0) << ", " << result.value(mat, 1) << ", " << result.value(mat, 2) << std::endl;
     return result;
-    //gsField<T> result = gsField<T>(m_patches, wallDistanceMP);
-    //gsMultiPatch<T> mppom = result.patches();
-    //paramsPtr->setDistanceField(result);
-    //gsInfo << result.nPatches() << std::endl;
-    //gsWriteParaview<T>(result, "distanceField", 10000);
-    //gsInfo << result.nPatches() << std::endl;
-    //gsInfo << paramsPtr->getDistanceField().nPatches() << std::endl;
-    //return result;
 }
 
 

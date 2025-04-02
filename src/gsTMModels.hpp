@@ -27,7 +27,7 @@ typename gsTMModelData<T>::tdPtr gsTMModelData<T>::make(typename gsFlowSolverPar
     //{ }
     else 
     {
-        //gsInfo << "Unknown identifier of a turbulent model entered! Using k-omega SST model." << std::endl;
+        gsInfo << "Unknown identifier of a turbulent model entered! Using k-omega SST model." << std::endl;
         return gsTMModelData_SST<T>::make(paramsPtr);
     }
 }
@@ -63,7 +63,6 @@ void gsTMModelData<T>::plotTurbulentViscosity(typename gsFlowSolverParams<T>::Pt
         turbViscMP->addPatch(basisp.makeGeometry(turbViscCoeffs));
     }
 
-    gsInfo << "Done" << std::endl;
     gsField<T> result = gsField<T>(paramsPtr->getPde().patches(), typename gsFunctionSet<T>::Ptr(turbViscMP), true);
     gsWriteParaview<T>(result, str, 10000);
 }
@@ -89,7 +88,6 @@ void gsTMModelData_SST<T>::evalDistance(gsMatrix<T>& quNodes, index_t patchId)
     index_t nQuPoints = quNodes.cols();
     gsField<T> distanceField; 
     distanceField = m_paramsPtr->getDistanceField();
-    //gsInfo << distanceField.nPatches() << std::endl;
     gsMatrix<T> Distance(1, nQuPoints);
     Distance = distanceField.value(quNodes, patchId);
     m_distance.setZero(nQuPoints);
@@ -104,8 +102,7 @@ void gsTMModelData_SST<T>::evalVelocityQuantities(gsMatrix<T>& quNodes, index_t 
     index_t dim = quNodes.rows();
     gsMultiBasis<T> basis = m_paramsPtr->getBases()[0];
     gsField<T> USolField = m_paramsPtr->getVelocitySolution();
-    //std::vector< gsMatrix<T> > USolDers = USolField.function(patchId).evalAllDers(quNodes, 1);
-
+    
     gsMapData<T> mapData;
     unsigned geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
     mapData.flags = geoFlags;
@@ -149,7 +146,6 @@ void gsTMModelData_SST<T>::evalVelocityQuantities(gsMatrix<T>& quNodes, index_t 
                 SS(i, j) = Sij;
                 StrainRateMag(k) += 2 * Sij * Sij;
             }
-        //StrainRateTensor.push_back(SS);
         StrainRateTensor[k] = SS;
         StrainRateMag(k) = math::sqrt(StrainRateMag(k));
     }
@@ -167,12 +163,7 @@ void gsTMModelData_SST<T>::evalKSol(gsMatrix<T>& quNodes, index_t patchId, index
     
     m_KSolVals.resize(1, nQuPoints);
     m_KSolVals = KSolField.function(patchId).eval(quNodes);
-    // for (index_t i = 0; i < nQuPoints; i++)
-    // {
-    //     m_KSolVals(0, i) = math::max(m_KSolVals(0, i), m_eps);
-    // }
     
-    //std::vector< gsMatrix<T> > KSolDers = KSolField.function(patchId).evalAllDers(quNodes, der);
     if (der > 0)
     {
         gsMapData<T> mapData;
@@ -213,12 +204,7 @@ void gsTMModelData_SST<T>::evalOSol(gsMatrix<T>& quNodes, index_t patchId, index
     
     m_OSolVals.resize(1, nQuPoints);
     m_OSolVals = OSolField.function(patchId).eval(quNodes);
-    // for (index_t i = 0; i < nQuPoints; i++)
-    // {
-    //     m_OSolVals(0, i) = math::max(m_OSolVals(0, i), m_eps);
-    // }
     
-    //std::vector< gsMatrix<T> > KSolDers = KSolField.function(patchId).evalAllDers(quNodes, der);
     if (der > 0)
     {
         gsMapData<T> mapData;
@@ -338,7 +324,6 @@ void gsTMModelData_SST<T>::updateModel(gsMatrix<T>& quNodes, index_t patchId)
 template <class T>
 void gsTMModelData_SST<T>::evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
 {
-    //gsInfo << "Evaluating turbulent viscosity ..." << std::endl;
     // evaluate k, omega, grad(k), grad(omega)
     evalKSol(quNodes, patchId, 0);
     evalOSol(quNodes, patchId, 0);

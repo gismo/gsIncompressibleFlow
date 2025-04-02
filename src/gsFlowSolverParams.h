@@ -15,8 +15,6 @@
 
 #include <gsIncompressibleFlow/src/gsNavStokesPde.h>
 #include <gsIncompressibleFlow/src/gsINSPreconditioners.h>
-//#include <gsIncompressibleFlow/src/gsTMModels.h>
-//#include <gsIncompressibleFlow/src/gsDistanceField.h>
 
 namespace gismo
 {
@@ -56,7 +54,6 @@ protected: // *** Class members ***
     gsField<T> m_USolField;
     gsField<T> m_KSolField;
     gsField<T> m_OSolField;
-    //SSTModel<T> m_SST;
     gsField<T> m_distanceField;
     
 public: // *** Constructor/destructor ***
@@ -84,8 +81,6 @@ public: // *** Constructor/destructor ***
             for (size_t i = 0; i < basesTM.size(); i++)
                 m_bases.push_back(basesTM[i]);
         }
-
-        //m_SST = SSTModel<T>();
     }
 
     ~gsFlowSolverParams()
@@ -150,26 +145,7 @@ public: // *** Static functions ***
 
 public: // *** Member functions ***
 
-    /// @brief Creates DOF mappers for velocity and pressure.
-    /*void createDofMappers(std::vector<gsDofMapper>& mappers)
-    {
-        if (m_bases.size() > 0)
-        {
-            if (m_basesTM.size() > 0)
-                mappers.resize(2 + m_basesTM.size());
-            else
-                mappers.resize(2);
-    
-            m_bases.front().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pdePtr->bc(), mappers[0], 0);
-            m_bases.back().getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy,  m_pdePtr->bc(), mappers[1], 1);    
-
-            for (size_t i = 0; i < m_basesTM.size(); i++)
-            {
-                m_basesTM[i].getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_pdePtr->bc(), mappers[i+2], 1);
-            }
-        }
-    }
-    */
+    /// @brief Creates DOF mappers.
     void createDofMappers(std::vector<gsDofMapper>& mappers)
     {
         mappers.resize(m_bases.size());
@@ -200,11 +176,7 @@ public: // *** Getters/setters ***
     const gsNavStokesPde<T>& getPde() const { return *m_pdePtr; }
 
     /// @brief Returns a const reference to the boundary conditions.
-    //const gsBoundaryConditions<T>& getBCs() const { return m_pdePtr->bc(); }
     const gsBoundaryConditions<T>& getBCs() const { return m_BC; }
-
-    /// @brief Returns a const reference to the boundary conditions.
-    //const gsBoundaryConditions<T>& getBCsTM() const { return m_bcTM; }
 
     /// @brief Returns a const reference to the boundary conditions.
     void setBCs(gsBoundaryConditions<T>& bcs) { m_BC = bcs; }
@@ -286,9 +258,6 @@ public: // *** Getters/setters ***
     void setVelocitySolution(gsField<T> sol) { m_USolField = sol; }
     void setKSolution(gsField<T> sol) { m_KSolField = sol; }
     void setOmegaSolution(gsField<T> sol) { m_OSolField = sol; }
-
-    //void createSSTModel() { m_SST = SSTModel<T>(); }
-    //SSTModel<T> getSSTModel() { return m_SST; }
 
     void setDistanceField(gsField<T>& dfield) { m_distanceField = dfield; }
 

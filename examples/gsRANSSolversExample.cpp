@@ -257,91 +257,19 @@ int main(int argc, char *argv[])
     solveOpt.addSwitch("stokesInit", "", stokesInit);
     solveOpt.addString("id", "", "");
 
-    /*
-    if (steady)
-    {
-        solveOpt.setString("id", "steady");
-        params.options().setString("lin.solver", "direct");
+    solveOpt.setString("id", "unsteady");
+    params.options().setReal("timeStep", timeStep);
+    params.options().setInt("nonlin.maxIt", picardIt);
+    params.options().setReal("nonlin.tol", picardTol);
+    params.options().setString("lin.solver", "direct");
 
-        gsINSSolverSteady<real_t, ColMajor> NSsolver(params);
+    gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
 
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the steady problem with direct linear solver.\n";
+    gsInfo << "\n-----------------------------------------------------------\n";
+    gsInfo << "Solving the unsteady RANS problem with direct linear solver\n";
+    gsInfo << "-----------------------------------------------------------\n";
 
-        solveProblem(NSsolver, solveOpt, geo);
-
-        // example of flow rate computation
-        gsField<> velocity = NSsolver.constructSolution(0);
-        gsFlowBndEvaluator_flowRate<real_t> flowRateEval(params, bndOut);
-        flowRateEval.setVelocityField(velocity);
-        flowRateEval.evaluate();
-        gsInfo << "bndOut flow rate = " << flowRateEval.getValue() << "\n";
-    }
-
-    if (steadyIt)
-    {
-        solveOpt.setString("id", "steadyIt");
-        params.options().setString("lin.solver", "iter");
-        params.options().setInt("lin.maxIt", linIt);
-        params.options().setReal("lin.tol", linTol);
-        params.options().setString("lin.precType", precond);
-        // params.precOptions().setReal("gamma", 1); // parameter for AL preconditioner
-
-        gsINSSolverSteady<real_t, ColMajor > NSsolver(params);
-
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the steady problem with preconditioned GMRES as linear solver.\n";
-        gsInfo << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
-
-        solveProblem(NSsolver, solveOpt, geo);
-
-        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver());
-        reportLinIterations(linSolverPtr);
-    }
-    */
-
-    if (unsteady)
-    {
-        solveOpt.setString("id", "unsteady");
-        params.options().setReal("timeStep", timeStep);
-        params.options().setInt("nonlin.maxIt", picardIt);
-        params.options().setReal("nonlin.tol", picardTol);
-        params.options().setString("lin.solver", "direct");
-
-        gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
-
-        gsInfo << "\n-----------------------------------------------------------\n";
-        gsInfo << "Solving the unsteady RANS problem with direct linear solver\n";
-        gsInfo << "-----------------------------------------------------------\n";
-
-        solveProblem(NSsolver, solveOpt, geo);
-    }
-
-    /*
-    if (unsteadyIt)
-    {
-        solveOpt.setString("id", "unsteadyIt");
-        params.options().setReal("timeStep", timeStep);
-        params.options().setInt("nonlin.maxIt", picardIt);
-        params.options().setReal("nonlin.tol", picardTol);
-        params.options().setString("lin.solver", "iter");
-        params.options().setInt("lin.maxIt", linIt);
-        params.options().setReal("lin.tol", linTol);
-        params.options().setString("lin.precType", precond);
-        // params.precOptions().setReal("gamma", 10); // parameter for AL preconditioner
-
-        gsINSSolverUnsteady<real_t, ColMajor > NSsolver(params);
-
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the unsteady problem with preconditioned GMRES as linear solver.\n";
-        gsInfo << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
-
-        solveProblem(NSsolver, solveOpt, geo);
-        
-        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver());
-        reportLinIterations(linSolverPtr);
-    }
-    */
+    solveProblem(NSsolver, solveOpt, geo);
 
     return 0; 
 }
@@ -422,8 +350,8 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     {
         gsField<> velocity = NSsolver.constructSolution(0);
         gsField<> pressure = NSsolver.constructSolution(1);
-        gsField<> ksol = NSsolver.constructSolutionTM(2);
-        gsField<> omegasol = NSsolver.constructSolutionTM(3);
+        gsField<> ksol = NSsolver.constructSolution(2);
+        gsField<> omegasol = NSsolver.constructSolution(3);
 
         int plotPts = opt.getInt("plotPts");
  
@@ -432,7 +360,6 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
         gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
         gsWriteParaview<>(ksol, geoStr + "_" + id + "_k", plotPts);
         gsWriteParaview<>(omegasol, geoStr + "_" + id + "_omega", plotPts);
-        // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
         gsInfo << "Done.\n";
     }
 }

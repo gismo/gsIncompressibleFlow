@@ -72,9 +72,6 @@ protected: // *** Member functions ***
 
 public: // *** Member functions *** 
 
-    /// @brief Initialize the assembler.
-    //virtual void initialize();
-
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
     
 };
@@ -89,7 +86,6 @@ public:
     typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
 public:
-    //gsField<T> m_USolField;
     typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
 
@@ -122,25 +118,17 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
-    /// @brief Initialize all members.
-    //void initMembers();
-
     void evaluate(index_t testFunID);
     
     void evaluate(const gsDomainIterator<T>* domIt);
 
-    // upravit pro RANS
     virtual void defineTerms()
     {
         m_terms.push_back( new gsTMTerm_VecCoeffGradVal<T>() );
 
         // production term going to rhs
         m_terms.push_back( new gsTMTerm_ProductionRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
-                
-        //if(m_paramsPtr->options().getSwitch("unsteady"))
-        //    m_terms.push_back( new gsFlowTerm_TimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
-
-        // ... other terms, e.g. from stabilizations
+    
     }
 
     virtual void defineTestShapeUnknowns()
@@ -151,18 +139,9 @@ protected: // *** Member functions ***
 
 public: // *** Member functions *** 
 
-    /// @brief Initialize the visitor.
-    //void initialize();
-
     virtual void assemble();
 
     virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
-
-public: // Getter/setters
-
-    //void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
-
-    //void setRANSsolution(gsField<T> sol) { m_velSolField = sol;}
 
 };
 
@@ -177,21 +156,14 @@ public:
     typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
 public:
-    //gsField<T> m_velSolField;
+    
     typename gsTMModelData<T>::tdPtr m_TMModelPtr;
     index_t m_unknown;
     real_t m_konst1, m_konst2, m_konst3;
     real_t m_konst;
-    //gsField<T> m_currentSol;
     index_t m_numLhsTerms;
     index_t m_numRhsTerms;
     gsMatrix<T> m_solution;
-    //gsField<T> m_distanceField;
-    //typename SSTModel<T>::tmePtr m_SSTPtr;
-    //real_t m_viscosity;
-    //typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
-    //gsVector<T> m_TurbulentViscosityVals;
-    //gsFlowAssemblerBase<T, MatOrder>* m_assemblerPtr = NULL;
 
 protected: // *** Base class members ***
 
@@ -210,9 +182,6 @@ protected: // *** Base class members ***
     using Base::m_testFunData;
     using Base::m_shapeFunData;
     using Base::m_geoFlags;
-    //using Base::m_TurbulentViscosityVals;
-    //using Base::m_viscosity;
-    //using Base::m_TMsolverPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -226,14 +195,10 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
-    /// @brief Initialize all members.
-    //void initMembers();
-
     void evaluate(index_t testFunID);
 
     void evaluate(const gsDomainIterator<T>* domIt);
 
-    // upravit pro RANS
     virtual void defineTerms()
     {
         m_numLhsTerms = 3;
@@ -249,7 +214,6 @@ protected: // *** Member functions ***
         
         m_terms.push_back( new gsTMTerm_BlendCoeffRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         
-        // ... other terms, e.g. from stabilizations
     }
 
     virtual void defineTestShapeUnknowns()
@@ -270,37 +234,6 @@ public: // *** Member functions ***
 public: // Getter/setters
 
     void setCurrentSolution(const gsMatrix<T>& solution) { m_solution = solution; }
-
-    //void setSSTModelEvaluator(typename SSTModel<T>::tmePtr SSTPtr)
-    //{
-    //    m_SSTPtr = SSTPtr;
-    //}
-
-    // void setConstants()
-    // {
-    //     if (m_unknown == 2)
-    //     {
-    //         m_konst1 = m_SSTPtr->get_sigmaK1();
-    //         m_konst2 = m_SSTPtr->get_sigmaK2();
-    //         m_konst3 = m_paramsPtr->getPde().viscosity();
-            
-    //     }
-    //     else
-    //     {
-    //         m_konst1 = m_SSTPtr->get_sigmaO1();
-    //         m_konst2 = m_SSTPtr->get_sigmaO2();
-    //         m_konst3 = m_paramsPtr->getPde().viscosity();
-    //     }
-    // }
-
-    //void setDistanceField(const gsField<T>& dfield)
-    //{ 
-    //    m_distanceField = dfield;
-    //}
-
-    //void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
-
-    //void setRANSsolution(gsField<T> sol) { m_velSolField = sol;}
 
 };
 
