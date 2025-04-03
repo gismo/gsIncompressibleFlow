@@ -1,4 +1,4 @@
-/** @file gsINSSolversExample.cpp
+/** @file flappingBeam_fluid.cpp
  
     This file is part of the G+Smo library.
 
@@ -6,7 +6,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): H. Honnerova
+    Author(s): J. Li
 */
 
 
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     real_t inVelY = 0; // inlet y-velocity for profile2D
     
     // solver settings
-    int maxIt = 3;
+    int maxIt = 10;
     int picardIt = 5;
     int linIt = 50;
     real_t timeStep = 0.01;
@@ -461,61 +461,82 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
             
             for (int i = 0; i < opt.getInt("maxIt"); ++i)
             {
-                // 如果不是第一步，使用上一步的解作为初始条件
-                if (i > 0)
-                {
-                    pSolver->setSolutionCoefs(prevVelocityCoefs, 0);
-                    pSolver->setSolutionCoefs(prevPressureCoefs, 1);
-
-                }
-                
-                // perform a time step
+                // 执行一个时间步
                 pSolver->nextIteration();
                 
-                // get the coefficients of the current solution
+                // 验证求解器状态
+                GISMO_ASSERT(pSolver->getParams()->getPde().patches().nPatches() > 0, 
+                            "Solver has empty patches after nextIteration");
+                
+                // 获取当前解的系数
                 gsVector<T> currentVelocityCoefs = pSolver->solutionCoefs(0);
                 gsVector<T> currentPressureCoefs = pSolver->solutionCoefs(1);
 
-                gsField<T> velocity = pSolver->constructSolution(0);
-
-                gsField<T> pressure = pSolver->constructSolution(1);
-                // Change to new mesh
-                const gsMultiPatch<T>& currentPatches = NSsolver.getParams()->getPde().patches();
-                gsMultiPatch<T> newPatches = currentPatches;
-                    
-                newPatches.uniformRefine();
-                gsInfo << "Degree of freedom last step " << currentPatches.coefs().dim() << "\n";
-                gsInfo << "Degree of freedom new step " << newPatches.coefs().dim() << "\n";
-
-                resetSolverWithNewMesh(pSolver, newPatches);
+                // 记录是否进行了细化
+                bool meshRefined = false;
                 
-                // 计算解的变化 (仅在第二步及以后)
-                T relChange = 0;
-                if (i > 0)
+                // 仅在特定条件下执行网格细化
+                if (i % 3 == 0) // 例如只在特定时间步细化
                 {
-                    // 计算速度和压力变化的平方和
-                    gsVector<T> velocityDiff = currentVelocityCoefs - prevVelocityCoefs;
-                    gsVector<T> pressureDiff = currentPressureCoefs - prevPressureCoefs;
+                    const gsMultiPatch<T>& currentPatches = pSolver->getParams()->getPde().patches();
+                    GISMO_ASSERT(currentPatches.nPatches() > 0, "Current patches are empty before refinement");
                     
-                    T velocityNorm = velocityDiff.norm();
-                    T pressureNorm = pressureDiff.norm();
-                    T totalNorm = std::sqrt(velocityNorm*velocityNorm + pressureNorm*pressureNorm);
+                    gsMultiPatch<T> newPatches = currentPatches;
+                    newPatches.uniformRefine();
                     
-                    T prevNorm = std::sqrt(prevVelocityCoefs.squaredNorm() + prevPressureCoefs.squaredNorm());
-                    if (prevNorm > 1e-10)
-                        relChange = totalNorm / prevNorm;
-                    else
-                        relChange = totalNorm;
+                    GISMO_ASSERT(newPatches.nPatches() > 0, "New patches are empty after refinement");
                     
-                    gsInfo << "Time step " << i+1 << " solution change: " << relChange << "\n";
+                    resetSolverWithNewMesh(pSolver, newPatches);
+                    
+                    // 验证求解器状态
+                    GISMO_ASSERT(pSolver->getParams()->getPde().patches().nPatches() > 0, 
+                                "Solver has empty patches after resetSolverWithNewMesh");
+                    
+                    // 更新当前系数
+                    currentVelocityCoefs = pSolver->solutionCoefs(0);
+                    currentPressureCoefs = pSolver->solutionCoefs(1);
+                    
+                    // 标记已细化网格
+                    meshRefined = true;
                 }
                 
+                // Calculate solution change
+                T relChange = 0;
+                if (i > 0 && !meshRefined) // Only calculate change when mesh wasn't refined
+                {
+                    // Make sure dimensions match
+                    if (currentVelocityCoefs.size() == prevVelocityCoefs.size() && 
+                        currentPressureCoefs.size() == prevPressureCoefs.size())
+                    {
+                        // Calculate sum of squares of velocity and pressure changes
+                        gsVector<T> velocityDiff = currentVelocityCoefs - prevVelocityCoefs;
+                        gsVector<T> pressureDiff = currentPressureCoefs - prevPressureCoefs;
+                        
+                        T velocityNorm = velocityDiff.norm();
+                        T pressureNorm = pressureDiff.norm();
+                        T totalNorm = std::sqrt(velocityNorm*velocityNorm + pressureNorm*pressureNorm);
+                        
+                        T prevNorm = std::sqrt(prevVelocityCoefs.squaredNorm() + prevPressureCoefs.squaredNorm());
+                        if (prevNorm > 1e-10)
+                            relChange = totalNorm / prevNorm;
+                        else
+                            relChange = totalNorm;
+                        
+                        gsInfo << "Time step " << i+1 << " solution change: " << relChange << "\n";
+                    }
+                    else
+                    {
+                        gsInfo << "Skip computing solution change due to dimension mismatch after mesh refinement.\n";
+                    }
+                }
+                
+                // Always update previous solution to ensure we can calculate change in next iteration
                 prevVelocityCoefs = currentVelocityCoefs;
                 prevPressureCoefs = currentPressureCoefs;
                 
                 if (opt.getSwitch("plot"))
                 {
-                    // 使用最新的解决方案字段
+                    // Use the latest solution fields
                     try {
                         gsField<T> velocity = pSolver->constructSolution(0);
                         gsField<T> pressure = pSolver->constructSolution(1);
@@ -526,7 +547,7 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
                         gsWriteParaview<>(velocity, velocityBaseName, opt.getInt("plotPts"), opt.getSwitch("plotMesh"));
                         gsWriteParaview<>(pressure, pressureBaseName, opt.getInt("plotPts"));
                         
-                        // 向集合文件添加引用
+                        // Add references to the collection file
                         int numPatches = pSolver->getParams()->getPde().patches().nPatches();
                         for (int p = 0; p < numPatches; p++)
                         {
@@ -541,7 +562,7 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
                 }
             }
             
-            // 关闭ParaView集合文件
+            // Close ParaView collection files
             gismo::endAnimationFile(fileU);
             gismo::endAnimationFile(fileP);
             
@@ -568,80 +589,108 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 
     if (opt.getSwitch("plot")) 
     {
-        gsField<> velocity = NSsolver.constructSolution(0);
-        gsField<> pressure = NSsolver.constructSolution(1);
-
-        int plotPts = opt.getInt("plotPts");
+        try {
+            gsField<> velocity = NSsolver.constructSolution(0);
+            gsField<> pressure = NSsolver.constructSolution(1);
  
-        gsInfo << "Plotting in Paraview...\n";
-        gsWriteParaview<>(velocity, geoStr + "_" + id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
-        gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
-        // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
+            int plotPts = opt.getInt("plotPts");
+ 
+            gsInfo << "Plotting in Paraview...\n";
+            gsWriteParaview<>(velocity, geoStr + "_" + id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
+            gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
+            // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
+        } catch (const std::exception &e) {
+            gsInfo << "Error constructing solution for plotting: " << e.what() << "\n";
+        }
     }
 }
+
 template<class T, int MatOrder>
 void resetSolverWithNewMesh(gsINSSolverUnsteady<T, MatOrder>*& solver,
-                            const gsMultiPatch<T>& newPatches)
+                           const gsMultiPatch<T>& newPatches)
 {
-    // 1. save the current solver parameters
+    // 1. Save current solver parameters
     gsFlowSolverParams<T>* currentParams = solver->getParams().get();
     gsOptionList solverOptions = currentParams->options();
     T viscosity = currentParams->getPde().viscosity();
     const gsFunction<T>* f = currentParams->getPde().rhs();
     gsBoundaryConditions<> bcInfo = currentParams->getPde().bc();
 
-    // 2. save the current solution (as fields)
+    // 2. Save current solution (as fields)
     gsField<T> velocityFieldOld = solver->constructSolution(0);
     gsField<T> pressureFieldOld = solver->constructSolution(1);
     
     gsInfo << "Current dofs: " << solver->numDofs() << "\n";
     
-    // 3. create new basis functions for the new geometry
-    std::vector<gsMultiBasis<T>> currentBases = solver->getAssembler()->getBases();
-    std::vector<gsMultiBasis<T>> newBases;
+    // Create deep copy of new patches to ensure their lifecycle - this is a key modification
+    gsMultiPatch<T>* persistentPatches = new gsMultiPatch<T>(newPatches);
     
-    for (size_t i = 0; i < currentBases.size(); ++i)
-    {
-        gsMultiBasis<T> newBasis(newPatches);
-        
-        // match the degree of the original basis functions
-        for (size_t p = 0; p < newBasis.nBases(); ++p)
-        {
-            if (p < currentBases[i].nBases())
-                newBasis.basis(p).setDegree(currentBases[i].basis(p).degree(0));
+    // 3. Create new basis functions based on new geometry
+    gsMultiBasis<T> basis(*persistentPatches);
+    
+    // Optional: Match the degree of original basis functions
+    const std::vector<gsMultiBasis<T>> currentBases = solver->getAssembler()->getBases();
+    if (!currentBases.empty() && currentBases[0].nBases() > 0) {
+        for (size_t p = 0; p < basis.nBases() && p < currentBases[0].nBases(); ++p) {
+            basis.basis(p).setDegree(currentBases[0].basis(p).degree(0));
         }
-        // apply refinement
-        for (int r = 0; r < 3; ++r)
-            newBasis.uniformRefine();
-        
-        newBases.push_back(newBasis);
     }
-
-    // ensure Taylor-Hood elements (velocity one order higher than pressure)
-    if (newBases.size() >= 2)
-        newBases[0].degreeElevate(1);
     
-    // 4. create a new PDE and solver parameters
-    gsNavStokesPde<T> newPde(newPatches, bcInfo, f, viscosity);
+    // Create basis function vector
+    std::vector<gsMultiBasis<T>> newBases;
+    newBases.push_back(basis); // Basis for velocity
+    newBases.push_back(basis); // Basis for pressure
     
+    // Elevate degree of velocity space (Taylor-Hood element type)
+    newBases[0].degreeElevate(1);
+    
+    // 4. Create new PDE and solver parameters
+    // Use persistent patches to create PDE
+    gsNavStokesPde<T>* persistentPde = new gsNavStokesPde<T>(*persistentPatches, bcInfo, f, viscosity);
+    
+    // Create persistent solver parameters - these objects need to persist
     typename gsFlowSolverParams<T>::Ptr newParamsPtr =
-        std::make_shared<gsFlowSolverParams<T>>(newPde, newBases);
+        std::make_shared<gsFlowSolverParams<T>>(*persistentPde, newBases);
     newParamsPtr->options() = solverOptions;
     
-    // 5. create a new solver instance
+    // 5. Create new solver instance - fix truncation issue here
     auto* newSolver = new gsINSSolverUnsteady<T, MatOrder>(newParamsPtr);
     
-    // initialize the new solver
+    // Initialize new solver
     newSolver->initialize();
     
-    // print the number of dofs
+    // Print number of DOFs and verify basis/geometry consistency
     gsInfo << "New dofs: " << newSolver->numDofs() << "\n";
-    
-    // 6. project the old solution to the new mesh
+    gsInfo << "New patches: " << persistentPatches->nPatches() << "\n";
+    gsInfo << "New bases[0] pieces: " << newSolver->getAssembler()->getBases()[0].nBases() << "\n";
+    gsInfo << "New bases[1] pieces: " << newSolver->getAssembler()->getBases()[1].nBases() << "\n";
+
+    // Ensure consistency
+    GISMO_ASSERT(newSolver->getAssembler()->getBases()[0].nBases() == persistentPatches->nPatches(), 
+                 "Inconsistency between bases[0] and patches");
+    GISMO_ASSERT(newSolver->getAssembler()->getBases()[1].nBases() == persistentPatches->nPatches(), 
+                 "Inconsistency between bases[1] and patches");
+
+    // 6. Project old solution onto new mesh
     transferSolutionToNewMesh(newSolver, velocityFieldOld, pressureFieldOld);
     
-    // safely replace the solver
+    // 7. Verify new solver state
+    gsInfo << "Verifying new solver state...\n";
+    gsInfo << "New solver patch count: " << newSolver->getParams()->getPde().patches().nPatches() << "\n";
+    GISMO_ASSERT(newSolver->getParams()->getPde().patches().nPatches() > 0, 
+                "New solver has empty patches");
+    
+    // 8. Replace solver, maintaining pointer ownership
+    gsINSSolverUnsteady<T, MatOrder>* oldSolver = solver;
     solver = newSolver;
+    
+    // 9. Final verification
+    gsInfo << "Final verification, solver patch count: " << solver->getParams()->getPde().patches().nPatches() << "\n";
+    GISMO_ASSERT(solver->getParams()->getPde().patches().nPatches() > 0, 
+                "Final solver has empty patches");
+    
+    // Note: We don't delete oldSolver in case it's externally managed
+    // We also don't delete persistentPatches and persistentPde as they're managed by the solver
 }
 
 template<class T, int MatOrder>
@@ -649,15 +698,19 @@ void transferSolutionToNewMesh(gsINSSolverUnsteady<T, MatOrder>* solver,
                               const gsField<T>& velocityField,
                               const gsField<T>& pressureField)
 {
-    // Get the new basis functions
+    // 获取新的基函数和补丁
     const std::vector<gsMultiBasis<T>>& newBases = solver->getAssembler()->getBases();
     const gsMultiPatch<T>& newPatches = solver->getParams()->getPde().patches();
 
-    gsDebugVar(solver->numDofs());
+    // 添加调试信息，检查一致性
+    gsDebugVar(newPatches.nPatches());
+    gsDebugVar(newBases.size());
+    for (size_t i = 0; i < newBases.size(); ++i) {
+        gsDebugVar(newBases[i].nBases());
+    }
     
-    // get the target dimension and the number of dofs
+    // 获取目标维度和自由度数量
     const index_t vDim = velocityField.function(0).targetDim();
-    const index_t pDim = pressureField.function(0).targetDim();
     const index_t fullUdofs = solver->getAssembler()->getUdofs();
     const index_t tarDim = solver->getParams()->getPde().domain().geoDim();
     const index_t pShift = tarDim * fullUdofs;
@@ -672,26 +725,35 @@ void transferSolutionToNewMesh(gsINSSolverUnsteady<T, MatOrder>* solver,
     // 对速度场进行准插值
     gsQuasiInterpolate<T> quasiInterp;
     
-    // get the mappers
+    // 获取映射器
     const std::vector<gsDofMapper>& mappers = solver->getAssembler()->getMappers();
     
-    // interpolate for each patch
+    // 对每个patch进行插值
     for (size_t p = 0; p < newPatches.nPatches(); ++p)
     {
+        if (p >= newBases[0].nBases()) {
+            gsInfo << "Invalid patch index " << p << " for velocity basis. Skipping." << "\n";
+            continue;
+        }
+        
+        if (p >= velocityField.nPatches()) {
+            gsInfo << "Skipping velocity interpolation for patch " << p << " as it does not exist in the old field.\n";
+            continue;
+        }
+
         // 获取当前patch的基函数
         const gsBasis<T>& vBasis = newBases[0].basis(p);
         
         for (size_t i = 0; i < vBasis.size(); ++i)
         {
             try {
-                // Interpolate for each basis function
+                // 对每个基函数进行插值
                 gsMatrix<T> coef = quasiInterp.localIntpl(vBasis, velocityField.function(p), i);
                 
-                // Store the coefficients to the global coefficient matrix - use the mapper to get the global index
+                // 将系数存储到全局系数矩阵中 - 使用映射器获取全局索引
                 if (mappers[0].is_free(i, p)) {
                     index_t globalIndex = mappers[0].index(i, p);
                     
-
                     for (index_t d = 0; d < vDim; ++d) {
                         newVelocityCoefs(globalIndex + d * fullUdofs, 0) = coef(0, d);
                     }
@@ -702,19 +764,29 @@ void transferSolutionToNewMesh(gsINSSolverUnsteady<T, MatOrder>* solver,
         }
     }
     
-    // Interpolate the pressure field
+    // 插值压力场
     for (size_t p = 0; p < newPatches.nPatches(); ++p)
     {
-        // Get the basis function of the current patch
+        if (p >= newBases[1].nBases()) {
+            gsInfo << "Invalid patch index " << p << " for pressure basis. Skipping." << "\n";
+            continue;
+        }
+        
+        if (p >= pressureField.nPatches()) {
+            gsInfo << "Skipping pressure interpolation for patch " << p << " as it does not exist in the old field.\n";
+            continue;
+        }
+        
+        // 获取当前patch的基函数
         const gsBasis<T>& pBasis = newBases[1].basis(p);
         
         for (size_t i = 0; i < pBasis.size(); ++i)
         {
             try {
-                // Interpolate for each basis function
+                // 对每个基函数进行插值
                 gsMatrix<T> coef = quasiInterp.localIntpl(pBasis, pressureField.function(p), i);
                 
-                // Store the coefficients to the global coefficient matrix - use the mapper to get the global index
+                // 将系数存储到全局系数矩阵中 - 使用映射器获取全局索引
                 if (mappers[1].is_free(i, p)) {
                     index_t globalIndex = mappers[1].index(i, p);
                     newPressureCoefs(globalIndex, 0) = coef(0, 0);
@@ -725,18 +797,17 @@ void transferSolutionToNewMesh(gsINSSolverUnsteady<T, MatOrder>* solver,
         }
     }
     
-    // set the projected coefficients to the new solution
+    // 将投影后的系数设置为新解
     solver->setSolutionCoefs(newVelocityCoefs, 0);
     solver->setSolutionCoefs(newPressureCoefs, 1);
 
     gsDebugVar(newVelocityCoefs.size());
     gsDebugVar(newPressureCoefs.size());
-    gsField<T> velocityResult = solver->constructSolution(0);
-    gsField<T> pressureResult = solver->constructSolution(1);
+    // 删除或注释掉以下行，避免在此时构建解
+    // gsField<T> velocityResult = solver->constructSolution(0);
+    // gsField<T> pressureResult = solver->constructSolution(1);
+    // gsWriteParaview<>(velocityResult, "velocityResult", 1000, false);
+    // gsWriteParaview<>(pressureResult, "pressureResult", 1000, false);
 
-    gsWriteParaview<>(velocityResult, "velocityResult", 1000, false);
-    gsWriteParaview<>(pressureResult, "pressureResult", 1000, false);
-
-    
     gsInfo << "Projected solution to new mesh\n";
 }
