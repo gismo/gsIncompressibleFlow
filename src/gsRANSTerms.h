@@ -34,7 +34,7 @@ public: // *** Constructor/destructor ***
     {
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
         this->m_testFunFlags = NEED_DERIV;
-        this->m_shapeFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
     }
 
 

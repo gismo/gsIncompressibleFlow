@@ -42,10 +42,10 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
-    using Base::m_shapeUnkID;
+    using Base::m_trialUnkID;
     using Base::m_dofMappers;
     using Base::m_testFunActives;
-    using Base::m_shapeFunActives;
+    using Base::m_trialFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
     
@@ -77,10 +77,10 @@ protected: // *** Member functions ***
         m_terms.push_back( new gsRANSTerm_SymmetricGradient<T>() );
     }
 
-    virtual void defineTestShapeUnknowns()
+    virtual void defineTestTrialUnknowns()
     {
         m_testUnkID = 0;    // velocity
-        m_shapeUnkID = 0;   // velocity
+        m_trialUnkID = 0;   // velocity
     }
 
 public: // *** Member functions *** 

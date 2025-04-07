@@ -47,7 +47,7 @@ protected: // *** Base class members ***
     using Base::m_pshift;
     using Base::m_udofs;
     using Base::m_tarDim;
-    using Base::m_nnzPerRowU;
+    using Base::m_nnzPerOuterU;
     using Base::m_dofMappers;
     using Base::m_solution;
     using Base::m_baseMatrix;

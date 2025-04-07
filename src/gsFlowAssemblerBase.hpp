@@ -293,8 +293,8 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
             if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
                 gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
 
-            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).domain()->beginAll();
-            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBases().front().piece(p).domain()->endAll();
+            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases()[testBasisID].piece(p).domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBases()[testBasisID].piece(p).domain()->endAll();
 
             while (domIt!=domItEnd)
             {

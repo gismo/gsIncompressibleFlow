@@ -71,11 +71,11 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal(const std::vec
     GISMO_ASSERT(nComponents == 1 || nComponents == dim, "Wrong matrix size in gsRANSVisitorUU::localToGlobal.");
 
     m_dofMappers[m_testUnkID].localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
-    m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
+    m_dofMappers[m_trialUnkID].localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
 
 
     index_t numActTest = m_testFunActives.rows();
-    index_t numActShape = m_shapeFunActives.rows();
+    index_t numActTrial = m_trialFunActives.rows();
 
     for (index_t i = 0; i < numActTest; ++i)
     {
@@ -83,11 +83,11 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal(const std::vec
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
-            for (index_t j = 0; j < numActShape; ++j)
+            for (index_t j = 0; j < numActTrial; ++j)
             {
-                const index_t jj = m_shapeFunActives(j);
+                const index_t jj = m_trialFunActives(j);
 
-                if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
+                if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
                     for (index_t d = 0; d < nComponents; d++)
                     {
@@ -108,22 +108,22 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal(const std::vec
                 }
                 else // is_boundary_index(jj)
                 {
-                    const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
+                    const int bb = m_dofMappers[m_trialUnkID].global_to_bindex(jj);
 
                     for (index_t d = 0; d < dim; d++) 
                     {
-                        globalRhs(ii + d*uCompSize, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_shapeUnkID](bb, d);   // block A
-                        globalRhs(ii + d*uCompSize, 0) -= m_locMatVec[d+1](i, j) * eliminatedDofs[m_shapeUnkID](bb, d);   // block Eii
+                        globalRhs(ii + d*uCompSize, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_trialUnkID](bb, d);   // block A
+                        globalRhs(ii + d*uCompSize, 0) -= m_locMatVec[d+1](i, j) * eliminatedDofs[m_trialUnkID](bb, d);   // block Eii
                     }
 
-                    globalRhs(ii, 0) -= m_locMatVec[dim+1](i, j) * eliminatedDofs[m_shapeUnkID](bb, 1);                 // - E12*u_2^*
-                    globalRhs(ii + uCompSize, 0) -= m_locMatVec[dim+1](j, i) * eliminatedDofs[m_shapeUnkID](bb, 0);     // - E21*u_1^*
+                    globalRhs(ii, 0) -= m_locMatVec[dim+1](i, j) * eliminatedDofs[m_trialUnkID](bb, 1);                 // - E12*u_2^*
+                    globalRhs(ii + uCompSize, 0) -= m_locMatVec[dim+1](j, i) * eliminatedDofs[m_trialUnkID](bb, 0);     // - E21*u_1^*
                     if (dim == 3)
                     {
-                        globalRhs(ii, 0) -= m_locMatVec[dim+2](i, j) * eliminatedDofs[m_shapeUnkID](bb, 2);                 // - E13*u_3^*
-                        globalRhs(ii + uCompSize, 0) -= m_locMatVec[dim+3](i, j) * eliminatedDofs[m_shapeUnkID](bb, 2);     // - E23*u_3^*
-                        globalRhs(ii + 2*uCompSize, 0) -= m_locMatVec[dim+2](j, i) * eliminatedDofs[m_shapeUnkID](bb, 0);   // - E31*u_1^*
-                        globalRhs(ii + 2*uCompSize, 0) -= m_locMatVec[dim+3](j, i) * eliminatedDofs[m_shapeUnkID](bb, 1);   // - E32*u_2^*
+                        globalRhs(ii, 0) -= m_locMatVec[dim+2](i, j) * eliminatedDofs[m_trialUnkID](bb, 2);                 // - E13*u_3^*
+                        globalRhs(ii + uCompSize, 0) -= m_locMatVec[dim+3](i, j) * eliminatedDofs[m_trialUnkID](bb, 2);     // - E23*u_3^*
+                        globalRhs(ii + 2*uCompSize, 0) -= m_locMatVec[dim+2](j, i) * eliminatedDofs[m_trialUnkID](bb, 0);   // - E31*u_1^*
+                        globalRhs(ii + 2*uCompSize, 0) -= m_locMatVec[dim+3](j, i) * eliminatedDofs[m_trialUnkID](bb, 1);   // - E32*u_2^*
                     }
                 }
             }

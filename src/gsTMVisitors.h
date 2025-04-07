@@ -35,16 +35,16 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
-    using Base::m_shapeUnkID;
+    using Base::m_trialUnkID;
     using Base::m_dofMappers;
     using Base::m_testFunActives;
-    using Base::m_shapeFunActives;
+    using Base::m_trialFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
     using Base::m_mapData;
     using Base::m_quWeights;
     using Base::m_testFunData;
-    using Base::m_shapeFunData;
+    using Base::m_trialFunData;
     using Base::m_geoFlags;
 
     
@@ -59,10 +59,10 @@ public: // *** Constructor/destructor ***
     
 protected: // *** Member functions ***
 
-    virtual void defineTestShapeUnknowns()
+    virtual void defineTestTrialUnknowns()
     {
         m_testUnkID = m_unknown;
-        m_shapeUnkID = m_unknown;
+        m_trialUnkID = m_unknown;
     }
     
     virtual void defineTerms()
@@ -95,16 +95,16 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
-    using Base::m_shapeUnkID;
+    using Base::m_trialUnkID;
     using Base::m_dofMappers;
     using Base::m_testFunActives;
-    using Base::m_shapeFunActives;
+    using Base::m_trialFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
     using Base::m_mapData;
     using Base::m_quWeights;
     using Base::m_testFunData;
-    using Base::m_shapeFunData;
+    using Base::m_trialFunData;
     using Base::m_geoFlags;
 
 public: // *** Constructor/destructor ***
@@ -131,10 +131,10 @@ protected: // *** Member functions ***
     
     }
 
-    virtual void defineTestShapeUnknowns()
+    virtual void defineTestTrialUnknowns()
     {
         m_testUnkID = m_unknown;
-        m_shapeUnkID = m_unknown;
+        m_trialUnkID = m_unknown;
     }
 
 public: // *** Member functions *** 
@@ -171,16 +171,16 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_patchID;
     using Base::m_testUnkID;
-    using Base::m_shapeUnkID;
+    using Base::m_trialUnkID;
     using Base::m_dofMappers;
     using Base::m_testFunActives;
-    using Base::m_shapeFunActives;
+    using Base::m_trialFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
     using Base::m_mapData;
     using Base::m_quWeights;
     using Base::m_testFunData;
-    using Base::m_shapeFunData;
+    using Base::m_trialFunData;
     using Base::m_geoFlags;
 
 public: // *** Constructor/destructor ***
@@ -216,10 +216,10 @@ protected: // *** Member functions ***
         
     }
 
-    virtual void defineTestShapeUnknowns()
+    virtual void defineTestTrialUnknowns()
     {
         m_testUnkID = m_unknown; 
-        m_shapeUnkID = m_unknown;
+        m_trialUnkID = m_unknown;
     }
 
 public: // *** Member functions *** 

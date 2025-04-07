@@ -20,10 +20,10 @@ template <class T, int MatOrder>
 void gsTMVisitorLinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     m_dofMappers[m_testUnkID].localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
-    m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
+    m_dofMappers[m_trialUnkID].localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
 
     index_t numActTest = m_testFunActives.rows();
-    index_t numActShape = m_shapeFunActives.rows();
+    index_t numActShape = m_trialFunActives.rows();
     
     for (index_t i = 0; i < numActTest; ++i)
     {
@@ -33,17 +33,17 @@ void gsTMVisitorLinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMatrix
         {
             for (index_t j = 0; j < numActShape; ++j)
             {
-                const index_t jj = m_shapeFunActives(j);
+                const index_t jj = m_trialFunActives(j);
     
-                if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
+                if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
                     globalMat.coeffRef(ii, jj) += m_localMat(i, j);
                 }
                 else // is_boundary_index(jj)
                 {
-                    const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
+                    const int bb = m_dofMappers[m_trialUnkID].global_to_bindex(jj);
    
-                    globalRhs(ii, 0) -= m_localMat(i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
+                    globalRhs(ii, 0) -= m_localMat(i, j) * eliminatedDofs[m_trialUnkID](bb, 0);
                 }
             }
         }
@@ -87,21 +87,21 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::assemble()
 {
     m_locMatVec.resize(2);
 
-    m_locMatVec[0].setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
-    m_terms[0]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_locMatVec[0]);
+    m_locMatVec[0].setZero(m_testFunActives.rows(), m_trialFunActives.rows());
+    m_terms[0]->assemble(m_mapData, m_quWeights, m_testFunData, m_trialFunData, m_locMatVec[0]);
 
     m_locMatVec[1].setZero(m_testFunActives.rows(), 1);
-    m_terms[1]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_locMatVec[1]);
+    m_terms[1]->assemble(m_mapData, m_quWeights, m_testFunData, m_trialFunData, m_locMatVec[1]);
 }
 
 template <class T, int MatOrder>
 void gsTMVisitorTimeIterationSST<T, MatOrder>::localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     m_dofMappers[m_testUnkID].localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
-    m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
+    m_dofMappers[m_trialUnkID].localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
 
     index_t numActTest = m_testFunActives.rows();
-    index_t numActShape = m_shapeFunActives.rows();
+    index_t numActShape = m_trialFunActives.rows();
 
     for (index_t i = 0; i < numActTest; ++i)
     {
@@ -113,17 +113,17 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::localToGlobal(const std::vector<g
             
             for (index_t j = 0; j < numActShape; ++j)
             {
-                const index_t jj = m_shapeFunActives(j);
+                const index_t jj = m_trialFunActives(j);
 
-                if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
+                if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
                     globalMat.coeffRef(ii, jj) += m_locMatVec[0](i, j);
                 }
                 else // is_boundary_index(jj)
                 {
-                    const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
+                    const int bb = m_dofMappers[m_trialUnkID].global_to_bindex(jj);
 
-                    globalRhs(ii, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
+                    globalRhs(ii, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_trialUnkID](bb, 0);
                 }
             }
         }
@@ -168,14 +168,14 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::assemble()
 
     for (index_t i = 0; i < m_numLhsTerms; i++)
     {
-        m_locMatVec[i].setZero(m_testFunActives.rows(), m_shapeFunActives.rows());
-        m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_locMatVec[i]);
+        m_locMatVec[i].setZero(m_testFunActives.rows(), m_trialFunActives.rows());
+        m_terms[i]->assemble(m_mapData, m_quWeights, m_testFunData, m_trialFunData, m_locMatVec[i]);
     }
         
     for (index_t i = 0; i < m_numRhsTerms; i++)
     {
         m_locMatVec[i + m_numLhsTerms].setZero(m_testFunActives.rows(), 1);
-        m_terms[i + m_numLhsTerms]->assemble(m_mapData, m_quWeights, m_testFunData, m_shapeFunData, m_locMatVec[i + m_numLhsTerms]);
+        m_terms[i + m_numLhsTerms]->assemble(m_mapData, m_quWeights, m_testFunData, m_trialFunData, m_locMatVec[i + m_numLhsTerms]);
     }
 
 }
@@ -188,10 +188,10 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMat
         m_dofshift += m_dofMappers[i].freeSize();
     
     m_dofMappers[m_testUnkID].localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
-    m_dofMappers[m_shapeUnkID].localToGlobal(m_shapeFunActives, m_patchID, m_shapeFunActives);
+    m_dofMappers[m_trialUnkID].localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
 
     index_t numActTest = m_testFunActives.rows();
-    index_t numActShape = m_shapeFunActives.rows();
+    index_t numActShape = m_trialFunActives.rows();
 
     for (index_t i = 0; i < numActTest; ++i)
     {
@@ -206,19 +206,19 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMat
             
             for (index_t j = 0; j < numActShape; ++j)
             {
-                const index_t jj = m_shapeFunActives(j);
+                const index_t jj = m_trialFunActives(j);
 
-                if (m_dofMappers[m_shapeUnkID].is_free_index(jj))
+                if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
                     for (index_t k = 0; k < m_numLhsTerms; k++)
                         globalMat.coeffRef(ii, jj) += m_locMatVec[k](i, j);
                 }
                 else // is_boundary_index(jj)
                 {
-                    const int bb = m_dofMappers[m_shapeUnkID].global_to_bindex(jj);
+                    const int bb = m_dofMappers[m_trialUnkID].global_to_bindex(jj);
 
                     for (index_t k = 0; k < m_numLhsTerms; k++)
-                        globalRhs(ii, 0) -= m_locMatVec[k](i, j) * eliminatedDofs[m_shapeUnkID](bb, 0);
+                        globalRhs(ii, 0) -= m_locMatVec[k](i, j) * eliminatedDofs[m_trialUnkID](bb, 0);
                 }
             }
         }

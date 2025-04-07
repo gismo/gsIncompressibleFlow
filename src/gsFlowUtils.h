@@ -164,24 +164,6 @@ int getMaxNnzPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
 }
 
 
-template <class T, int MatOrder>
-int getMaxNnzPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
-{
-    int maxNnzInOuter = 0;
-
-    for (index_t outer = 0; outer < mat.outerSize(); outer++)
-    {
-        int nnzInOuter = 0;
-
-        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(mat, outer); it; ++it)
-            nnzInOuter++;
-
-        maxNnzInOuter = math::max(maxNnzInOuter, nnzInOuter);
-    }
-
-    return maxNnzInOuter;
-}
-
 
 /// @brief Fill a diagonal approximation of an inverse matrix.
 /// @tparam T           real number type
@@ -257,6 +239,7 @@ gsTensorBSpline<2, T> BSplineRectangle(int deg, const T llx, const T lly, const 
     return gsTensorBSpline<2, T>(kv, kv, coef);
 }
 
+// TODO: Leave out?
 template<class T>
 gsTensorBSpline<2, T> BSplineRectangle2(int deg, const T llx, const T lly, const T a, const T b, int numSep = 0)
 {
@@ -400,6 +383,7 @@ gsMultiPatch<T> BSplineStep3D(int deg, const T a, const T b, const T c, const T 
     mp.addInterface(0, boundary::north, 1, boundary::south);
     mp.addInterface(2, boundary::east, 1, boundary::west);
 
+    // TODO: does it work?
     // if (periodic)
     // {
     //     mp.addInterface(0, boundary::front, 0, boundary::back);
@@ -827,17 +811,17 @@ void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int numRefineC
 template <class T>
 void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t c = 0.0)
 {
+    for (int i = 0; i < numRefine; ++i)
+        basis.uniformRefine();
+
     gsMatrix<T> box(dim, 2);
 
     int uRefine = math::floor(std::log2(a / b)) + 1 + numRefineU;
+    box.setZero();
     box(0, 1) = 1; 
     for (int i = 0; i < uRefine; i++)
         for (int p = 0; p < 2; p++)
-        {
             basis.refine(p, box);
-            gsInfo << basis.piece(0).detail() << std::endl;
-            gsInfo << basis.piece(1).detail() << std::endl;
-        }
 
     gsInfo << basis.piece(0).detail() << std::endl;
 
@@ -871,12 +855,9 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
         break;
     }
 
-    for (int i = 0; i < numRefine; ++i)
-        basis.uniformRefine();
-
 }
 
-
+// TODO: Unify with refineBasis_step()
 template<class T>
 void refineBasis_step2(gsMultiPatch<T>& patches, gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t a_in, real_t c = 0.0)
 {

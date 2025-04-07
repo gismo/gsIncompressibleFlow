@@ -111,12 +111,12 @@ public: // *** Member functions ***
     /// @brief Construct solution field for the unknown \a unk for the current solution vector.
     /// @param unk the considered unknown (0 - velocity, 1 - pressure, >=2 - turbulent variables)
     /// @return 
-    gsField<T> constructSolution(int unk) const
+    gsField<T> constructSolution(int unk, bool customSwitch = false) const
     { 
         if (unk < 2)
             return Base::constructSolution(unk);
         else
-            return m_TMsolverPtr->getAssembler()->constructSolution(unk); 
+            return m_TMsolverPtr->getAssembler()->constructSolution(unk, customSwitch); 
     }
 
 

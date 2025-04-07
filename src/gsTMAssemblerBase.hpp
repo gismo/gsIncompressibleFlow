@@ -100,9 +100,9 @@ void gsTMAssemblerBase<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector
     this->updateSizes();
 }
 
-
+// TODO: update with respect to the new version in gsINSAssembler.hpp
 template<class T, int MatOrder>
-gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& solVector, index_t unk) const
+gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& solVector, index_t unk, bool customSwitch) const
 {
     GISMO_ASSERT(m_dofs == solVector.rows(), "Something went wrong, is solution vector valid?");
 

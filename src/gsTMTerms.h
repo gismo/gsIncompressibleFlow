@@ -43,7 +43,7 @@ public: // *** Constructor/destructor ***
     {
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
         this->m_testFunFlags = NEED_VALUE;
-        this->m_shapeFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
     }
 
 
@@ -83,7 +83,7 @@ public: // *** Constructor/destructor ***
     {
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
         this->m_testFunFlags = NEED_DERIV;
-        this->m_shapeFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
     }
 
 
@@ -123,7 +123,7 @@ public: // *** Constructor/destructor ***
     {
         this->m_geoFlags = NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
-        this->m_shapeFunFlags = NEED_VALUE;
+        this->m_trialFunFlags = NEED_VALUE;
     }
 
 
@@ -163,7 +163,7 @@ public: // *** Constructor/destructor ***
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;;
         this->m_testFunFlags = NEED_VALUE;
-        this->m_shapeFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
     }
 
 

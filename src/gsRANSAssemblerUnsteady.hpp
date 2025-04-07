@@ -75,7 +75,7 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
         m_visitorRANSsymgrad.setTurbulenceSolver(m_TMsolverPtr);
         m_visitorRANSsymgrad.setRANSsolution(solVector);
         m_matRANSsymgrad.resize(m_pshift, m_pshift);
-        m_matRANSsymgrad.reserve(gsVector<index_t>::Constant(m_matRANSsymgrad.outerSize(), m_tarDim * m_nnzPerRowU));
+        m_matRANSsymgrad.reserve(gsVector<index_t>::Constant(m_matRANSsymgrad.outerSize(), m_tarDim * m_nnzPerOuterU));
         m_rhsRANS.setZero(m_pshift, 1);
         this->assembleBlock(m_visitorRANSsymgrad, 0, m_matRANSsymgrad, m_rhsRANS);
     }
