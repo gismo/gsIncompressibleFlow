@@ -188,11 +188,11 @@ public: // *** Member functions ***
 
     /// @brief Evaluate basis data on the support of a given test function (used for row-by-row assembly).
     /// @param[in] testFunID the local test function index on the current patch
-    void evaluate(index_t testFunID);
+    virtual void evaluate(index_t testFunID);
 
     /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
     /// @param[in] domIt domain iterator pointing to the current element
-    void evaluate(const gsDomainIterator<T>* domIt);
+    virtual void evaluate(const gsDomainIterator<T>* domIt);
 
     /// Assemble the local matrix.
     virtual void assemble();
@@ -239,6 +239,7 @@ protected: // *** Base class members ***
     using Base::m_mapData;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
+    using Base::m_quNodes;
     using Base::m_quWeights;
     using Base::m_testFunData;
     using Base::m_trialFunData;

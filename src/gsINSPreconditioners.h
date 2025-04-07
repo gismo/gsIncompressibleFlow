@@ -72,11 +72,11 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the preconditioner.
-    virtual int rows() const
+    virtual index_t rows() const
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Returns the number of columns of the preconditioner.
-    virtual int cols() const
+    virtual index_t cols() const
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Returns the preconditioner name as a string.
@@ -163,13 +163,13 @@ protected: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the preconditioner.
-    virtual int rows() const
+    virtual index_t rows() const
     {
         return (m_Finv->rows() + m_Sinv->rows());
     }
 
     /// @brief Returns the number of columns of the preconditioner.
-    virtual int cols() const
+    virtual index_t cols() const
     {
         return (m_Finv->cols() + m_Bt->cols());
     }
@@ -755,13 +755,13 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the preconditioner.
-    virtual int rows() const
+    virtual index_t rows() const
     {
         return (m_Finv->rows() + m_Sinv->rows());
     }
 
     /// @brief Returns the number of columns of the preconditioner.
-    virtual int cols() const
+    virtual index_t cols() const
     {
         return (m_Finv->cols() + m_Sinv->cols());
     }

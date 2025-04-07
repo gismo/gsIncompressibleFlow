@@ -144,7 +144,7 @@ public: // *** Member functions ***
     /// @brief Compute and display the relative norm of the solution change given the two successive solutions.
     /// @param[in] solOld the old solution
     /// @param[in] solNew the new solution
-    virtual void writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew);
+    virtual void writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew, std::string solstr);
 
     /// @brief Compute and return the relative residual norm for the current solution.
     virtual T residualRelNorm() const 
@@ -157,7 +157,7 @@ public: // *** Member functions ***
     /// @brief Construct solution field for the unknown \a unk for the current solution vector.
     /// @param[in] unk          the considered unknown (0 - velocity, 1 - pressure)
     /// @param[in] customSwitch a switch to be used for any purpose by derived classes
-    gsField<T> constructSolution(int unk, bool customSwitch = false) const
+    virtual gsField<T> constructSolution(int unk, bool customSwitch = false) const
     { return getAssembler()->constructSolution(m_solution, unk, customSwitch); }
 
     /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.

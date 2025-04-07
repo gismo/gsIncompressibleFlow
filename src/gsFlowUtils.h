@@ -18,6 +18,9 @@
 namespace gismo
 {
 
+template<class T>
+class gsFlowSolverParams;
+
 #ifdef GISMO_WITH_PARDISO
 /// @brief Setup the pardiso solver.
 /// @param[in,out] solver a reference to the pardiso solver
@@ -142,6 +145,24 @@ gsVector<index_t> getNnzVectorPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
     return nnzPerOuter;
 }
 
+template <class T, int MatOrder>
+int getMaxNnzPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
+{
+    int maxNnzInOuter = 0;
+
+    for (index_t outer = 0; outer < mat.outerSize(); outer++)
+    {
+        int nnzInOuter = 0;
+
+        for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(mat, outer); it; ++it)
+            nnzInOuter++;
+
+        maxNnzInOuter = math::max(maxNnzInOuter, nnzInOuter);
+    }
+
+    return maxNnzInOuter;
+}
+
 
 template <class T, int MatOrder>
 int getMaxNnzPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
@@ -234,6 +255,23 @@ gsTensorBSpline<2, T> BSplineRectangle(int deg, const T llx, const T lly, const 
             coef.row(i + j*n) << llx + (i*a) / (deg*(numSep + 1)), lly + (j*b) / (deg*(numSep + 1));
 
     return gsTensorBSpline<2, T>(kv, kv, coef);
+}
+
+template<class T>
+gsTensorBSpline<2, T> BSplineRectangle2(int deg, const T llx, const T lly, const T a, const T b, int numSep = 0)
+{
+    gsKnotVector<T> kv1(0, 1, a-1, deg + 1, 1); // first, last, num_inter, mult_end, mult_inter
+    gsKnotVector<T> kv2(0, 1, b-1, deg + 1, 1); // first, last, num_inter, mult_end, mult_inter
+
+    int m = kv1.size() - deg - 1;
+    int n = kv2.size() - deg - 1;
+    gsMatrix<T> coef(m*n, 2);
+
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < n; j++)
+            coef.row(i + j*n) << llx + (i*a) / (deg+a-1), lly + (j*b) / (deg+b-1);
+
+    return gsTensorBSpline<2, T>(kv1, kv2, coef);
 }
 
 
@@ -362,18 +400,17 @@ gsMultiPatch<T> BSplineStep3D(int deg, const T a, const T b, const T c, const T 
     mp.addInterface(0, boundary::north, 1, boundary::south);
     mp.addInterface(2, boundary::east, 1, boundary::west);
 
-    if (periodic)
-    {
-        mp.addInterface(0, boundary::front, (size_t)0, boundary::back);
-        mp.addInterface(1, boundary::front, 1, boundary::back);
-        mp.addInterface(2, boundary::front, 2, boundary::back);
-    }
+    // if (periodic)
+    // {
+    //     mp.addInterface(0, boundary::front, 0, boundary::back);
+    //     mp.addInterface(1, boundary::front, 1, boundary::back);
+    //     mp.addInterface(2, boundary::front, 2, boundary::back);
+    // }
     
     mp.addAutoBoundaries();
 
     return mp;
 }
-
 
 /// @brief Define boundary conditions for the corresponding boundary parts.
 /// @tparam T            real number type
@@ -391,6 +428,26 @@ void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide>
     for (size_t i = 0; i < bndWall.size(); i++)
         bcInfo.addCondition(bndWall[i].first, bndWall[i].second, condition_type::dirichlet, Uwall);
 }
+
+
+/// @brief Define boundary conditions for the corresponding boundary parts.
+/// @tparam T            real number type
+/// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
+/// @param[in]  bndIn    reference to a container of patch sides corresponding to inflow boundaries
+/// @param[in]  bndWall  reference to a container of patch sides corresponding to solid walls
+/// @param[in]  Uin      the inflow velocity as gsFunctionExpr
+/// @param[in]  Uwall    the wall velocity as gsFunctionExpr
+/// @param[in]  unk      specifies which unknown variable the boundary condition refers to
+template<class T>
+void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndWall, gsFunctionExpr<T> Uin, gsFunctionExpr<T> Uwall, short_t unk)
+{
+    for (size_t i = 0; i < bndIn.size(); i++)
+        bcInfo.addCondition(bndIn[i].first, bndIn[i].second, condition_type::dirichlet, Uin, unk);
+
+    for (size_t i = 0; i < bndWall.size(); i++)
+        bcInfo.addCondition(bndWall[i].first, bndWall[i].second, condition_type::dirichlet, Uwall, unk);
+}
+
 
 
 /// @brief Define boundary conditions for the 2D lid-driven cavity problem.
@@ -770,17 +827,19 @@ void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int numRefineC
 template <class T>
 void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t c = 0.0)
 {
-    for (int i = 0; i < numRefine; ++i)
-        basis.uniformRefine();
-
     gsMatrix<T> box(dim, 2);
 
     int uRefine = math::floor(std::log2(a / b)) + 1 + numRefineU;
-    box.setZero();
     box(0, 1) = 1; 
     for (int i = 0; i < uRefine; i++)
         for (int p = 0; p < 2; p++)
+        {
             basis.refine(p, box);
+            gsInfo << basis.piece(0).detail() << std::endl;
+            gsInfo << basis.piece(1).detail() << std::endl;
+        }
+
+    gsInfo << basis.piece(0).detail() << std::endl;
 
     if (dim == 3)
     {
@@ -797,6 +856,8 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
     for (int p = 0; p < 2; p++)
         basis.refine(p, box);
 
+    gsInfo << basis.piece(0).detail() << std::endl;
+
     switch (dim)
     {
     case 2:
@@ -809,6 +870,37 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
         GISMO_ERROR("Wrong dimension!");
         break;
     }
+
+    for (int i = 0; i < numRefine; ++i)
+        basis.uniformRefine();
+
+}
+
+
+template<class T>
+void refineBasis_step2(gsMultiPatch<T>& patches, gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t a_in, real_t c = 0.0)
+{
+    for (index_t p = 0; p < 2; p++)
+    {
+        for (index_t i = 1; i < a; i++)
+            patches.patch(p).insertKnot((real_t) i/a, 0);
+
+        for (index_t i = 1; i < b/2; i++)
+            patches.patch(p).insertKnot((real_t) 2 * i/b, 1);
+    }
+
+    for (index_t i = 1; i < a_in; i++)
+        patches.patch(2).insertKnot((real_t) i/a_in, 0);
+    
+    for (index_t i = 1; i < b/2; i++)
+        patches.patch(2).insertKnot((real_t) 2* i/b, 1);
+
+    gsMultiBasis<T> basis2(patches);
+    basis = basis2;
+
+    for (int i = 0; i < numRefine; ++i)
+        basis.uniformRefine();
+
 }
 
 
@@ -890,6 +982,117 @@ void plotQuantityFromSolution(std::string quantity, const gsField<T>& solField, 
         pwCollection.addPart(fileName + ".vts");
     }
     pwCollection.save();
+}
+
+
+template<class T>    
+gsField<T> computeDistanceField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
+{
+    gsInfo << "Computing required distance field ... ";
+
+    gsMultiPatch<T> patches = paramsPtr->getPde().patches();    // multipatch representing the computational domain
+    gsMultiBasis<T> basis = paramsPtr->getBases()[1];           // pressure basis as base basis for distance computation
+
+    std::vector<std::pair<int, boxSide> > bndIn = paramsPtr->getBndIn();
+    std::vector<std::pair<int, boxSide> > bndWall = paramsPtr->getBndWall();
+    index_t numRefs = paramsPtr->options().getInt("TM.addRefsDF");
+
+    for (int i = 0; i < numRefs; ++i)       // additional refinements for distance computation
+        basis.uniformRefine();
+
+    gsFunctionExpr<real_t> fw("1", "0", "0", patches.targetDim());
+    gsFunctionExpr<real_t> gw("0", "0", "0", patches.targetDim());
+    gsFunctionExpr<real_t> wallw("0.0", "0.0", "0.0", patches.targetDim());
+
+    // boundary conditions for related Poisson problem
+    gsBoundaryConditions<T> bcDF;
+    addBCs(bcDF, bndIn, bndWall, gw, wallw, 0);
+
+    // solving Poisson problem
+    gsPoissonAssembler<T> assembler(patches, basis, bcDF, fw, dirichlet::elimination, iFace::glue);
+    assembler.assemble();
+
+    #ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<T>::PardisoLU solver;
+    pardisoSetup<T>(solver);
+    #else
+    typename gsSparseSolver<T>::LU solver;
+    #endif 
+
+    gsMatrix<T> solVector = solver.compute( assembler.matrix() ).solve ( assembler.rhs() );
+    for (int i = 0; i < solVector.rows(); i++)
+    {
+        if (solVector(i, 0) < 0)
+            solVector(i, 0) = math::abs(solVector(i, 0));
+    }
+
+    gsField<T> solPoisson = assembler.constructSolution(solVector, 0);
+    //gsWriteParaview<T>(solPoisson, "PoissonSolution", 10000);
+
+    // evaluating distance values at a grid of points
+    size_t np = patches.nPatches();
+    gsMultiPatch<T>* wallDistanceMP = new gsMultiPatch<T>;
+    for (size_t i = 0; i < np; i++)
+    {
+        index_t patchId = i;
+        const gsBasis<T> & basisp = basis.piece(patchId);
+
+        std::vector< gsVector<T> > rr;
+        rr.reserve(patches.parDim());
+
+        for (short_t j = 0; j < patches.parDim(); ++j)            // computing grid of point
+        {
+            rr.push_back(basisp.component(j).anchors().transpose());
+        }
+        gsMatrix<T> gridPts = gsPointGrid<T>(rr);
+
+        gsMapData<T> mapData;
+        unsigned geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        mapData.flags = geoFlags;
+        mapData.patchId = patchId;
+        mapData.points = gridPts;
+        paramsPtr->getPde().patches().patch(patchId).computeMap(mapData);
+
+        gsMatrix<index_t> actives;
+        gsMatrix<T> parGrads, physGrad;
+        basisp.deriv_into(gridPts, parGrads);
+        
+        gsMatrix<T> solPoissonCoeffVec = solPoisson.coefficientVector(patchId);
+        std::vector<gsMatrix<T> > solPoissonGrads(gridPts.cols());
+        for (index_t k = 0; k < gridPts.cols(); k++)
+        {
+            // eval solPoissonGrads at all pts
+            basisp.active_into(gridPts.col(k), actives);
+            int numActP = actives.rows();
+            gsMatrix<T> solActPoissonCoeffs(1, numActP);
+            for (int j = 0; j < numActP; j++)
+                solActPoissonCoeffs(0, j) = solPoissonCoeffVec(actives(j, 0), 0);
+
+            transformGradients(mapData, k, parGrads, physGrad);
+            solPoissonGrads[k].noalias() = solActPoissonCoeffs * physGrad.transpose();
+        }
+
+        gsMatrix<T> solPoissonVals = solPoisson.value(gridPts, patchId);
+        
+        // Evaluate wall distance at pts
+        gsMatrix<T> wallDistanceVals(1, gridPts.cols());
+        for (index_t k = 0; k < gridPts.cols(); k++)
+        {
+            wallDistanceVals(0, k) = math::sqrt(math::pow(solPoissonGrads[k].norm(), 2) + 2 * solPoissonVals(0, k)) - solPoissonGrads[k].norm();
+            if (math::isnan(wallDistanceVals(0, k)))
+            {
+                wallDistanceVals(0, k) = 0.;
+            }
+        }
+
+        typename gsGeometry<T>::uPtr geo = basisp.interpolateAtAnchors(wallDistanceVals);    // interpolating distances at grid points 
+        const gsMatrix<T> & distanceCoeffs = geo->coefs();
+        wallDistanceMP->addPatch(basisp.makeGeometry(distanceCoeffs));
+    }
+    
+    gsInfo << "Done" << std::endl;
+    gsField<T> result = gsField<T>(paramsPtr->getPde().patches(), typename gsFunctionSet<T>::Ptr(wallDistanceMP), true);
+    return result;
 }
 
 
