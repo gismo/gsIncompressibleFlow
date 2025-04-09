@@ -90,13 +90,14 @@ protected: // *** Member functions ***
     virtual void evalOnElement(index_t patchID, boxSide side, const gsMatrix<T>& quNodes, const gsVector<T>& quWeights)
     { GISMO_NO_IMPLEMENTATION }
 
-    /// @brief Evaluate the quantity over one patch side.
-    /// @param[in] patchID  patch index
-    /// @param[in] side     patch side
-    void evalOnPatchSide(index_t patchID, boxSide side);
-
 
 public: // *** Member functions ***
+
+    /// @brief Evaluate the quantity over one patch side.
+    /// @param[in] patchID      patch index
+    /// @param[in] side         patch side
+    /// @param[in] setZeroFirst set the quantity to zero before computing
+    void evalOnPatchSide(index_t patchID, boxSide side, bool setZeroFirst = true);
 
     /// @brief Evaluate the quantity, i.e., perform the integration over the given boundary part.
     void evaluate()
@@ -104,7 +105,7 @@ public: // *** Member functions ***
         m_quantValue = 0.0;
 
         for(size_t i = 0; i < m_bndPart.size(); i++)
-            evalOnPatchSide(m_bndPart[i].first, m_bndPart[i].second);
+            evalOnPatchSide(m_bndPart[i].first, m_bndPart[i].second, false);
     }
 
 

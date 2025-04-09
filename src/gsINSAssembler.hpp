@@ -548,6 +548,7 @@ T gsINSAssembler<T, MatOrder>::computeFlowRate(index_t patch, boxSide side, gsMa
     // Initialize geometry evaluator
     gsMapData<T> mapData;
     mapData.flags = NEED_VALUE | NEED_OUTER_NORMAL;
+    mapData.side = side;
 
     //typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(side);
     typename gsBasis<T>::domainIter domIt = basis.domain()->beginBdr(side);
