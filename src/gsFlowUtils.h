@@ -811,9 +811,6 @@ void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int numRefineC
 template <class T>
 void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t c = 0.0)
 {
-    for (int i = 0; i < numRefine; ++i)
-        basis.uniformRefine();
-
     gsMatrix<T> box(dim, 2);
 
     int uRefine = math::floor(std::log2(a / b)) + 1 + numRefineU;
@@ -842,6 +839,9 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
 
     gsInfo << basis.piece(0).detail() << std::endl;
 
+    for (int i = 0; i < numRefine; ++i)
+        basis.uniformRefine();
+        
     switch (dim)
     {
     case 2:
