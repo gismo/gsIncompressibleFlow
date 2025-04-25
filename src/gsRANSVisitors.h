@@ -48,6 +48,8 @@ protected: // *** Base class members ***
     using Base::m_trialFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
+    using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
     
 
 public: // *** Constructor/destructor ***
@@ -88,9 +90,14 @@ public: // *** Member functions ***
     /// @brief Initialize the visitor.
     void initialize();
 
-    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
-public: // Getter/setters
+protected: // *** Member functions *** 
+
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+
+public: // *** Getters/setters ***
 
     void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
 

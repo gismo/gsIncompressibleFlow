@@ -412,37 +412,23 @@ void gsINSVisitorPU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
                     bool jjElim = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->isEliminated(jj);
                     const index_t jjMapped = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(jj);
 
-                    // ii and jj are not eliminated periodic dofs or only jj is eliminated:
+                    // ii is not eliminated periodic dof:
                     if (!iiElim) 
                     {
                         for (index_t d = 0; d < dim; d++)
                             globalMat.coeffRef(iiMapped + d*uCompSize, jjMapped) += m_locMatVec[d](i, j);
                     }
-                    // only ii is eliminated periodic dof:
-                    else if ( (iiElim && !jjElim) )
-                    {
-                        for (int s = 0; s < dim; s++)
-                        {
-                            for (int t = 0; t < dim; t++)
-                            {
-                                T tmp = m_periodicTransformMat(t, s) * m_locMatVec[s](i, j);
-
-                                if (tmp != 0)
-                                    globalMat.coeffRef(iiMapped + t*uCompSize, jjMapped) += tmp;
-                            }
-                        }
-                    }
-                    // both ii and jj are eliminated periodic dofs:
+                    // ii is eliminated periodic dof:
                     else 
                     {
                         for (int s = 0; s < dim; s++)
                         {
                             for (int t = 0; t < dim; t++)
                             {
-                                T tmp = m_periodicTransformMat(t, s) * m_locMatVec[s](i, j);
-                                
+                                T tmp = m_periodicTransformMat(s, t) * m_locMatVec[t](i, j);
+
                                 if (tmp != 0)
-                                    globalMat.coeffRef(iiMapped + t*uCompSize, jjMapped) += tmp;
+                                    globalMat.coeffRef(iiMapped + s*uCompSize, jjMapped) += tmp;
                             }
                         }
                     }
@@ -464,10 +450,10 @@ void gsINSVisitorPU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
                         {
                             for (int t = 0; t < dim; t++)
                             {
-                                T tmp = m_periodicTransformMat(t, s) * m_locMatVec[s](i, j) * eliminatedDofs[m_trialUnkID](bb, 0);
+                                T tmp = m_periodicTransformMat(s, t) * m_locMatVec[t](i, j) * eliminatedDofs[m_trialUnkID](bb, 0);
                                 
                                 if (tmp != 0)
-                                    globalRhs(iiMapped + t*uCompSize, 0) -= tmp;
+                                    globalRhs(iiMapped + s*uCompSize, 0) -= tmp;
                             }
                         }
                     }
@@ -571,37 +557,23 @@ void gsINSVisitorPU_withUPrhs<T, MatOrder>::localToGlobal_per(const std::vector<
                     bool jjElim = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->isEliminated(jj);
                     const index_t jjMapped = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(jj);
 
-                    // ii and jj are not eliminated periodic dofs or only jj is eliminated:
+                    // ii is not eliminated periodic dof:
                     if (!iiElim) 
                     {
                         for (index_t d = 0; d < dim; d++)
                             globalMat.coeffRef(iiMapped + d*uCompSize, jjMapped) += m_locMatVec[d](i, j);
                     }
-                    // only ii is eliminated periodic dof:
-                    else if ( iiElim && !jjElim )
+                    // ii is eliminated periodic dof:
+                    else
                     {
                         for (int s = 0; s < dim; s++)
                         {
                             for (int t = 0; t < dim; t++)
                             {
-                                T tmp = m_periodicTransformMat(t, s) * m_locMatVec[s](i, j);
+                                T tmp = m_periodicTransformMat(s, t) * m_locMatVec[t](i, j);
 
                                 if (tmp != 0)
-                                    globalMat.coeffRef(iiMapped + t*uCompSize, jjMapped) += tmp;
-                            }
-                        }
-                    }
-                    // both ii and jj are eliminated periodic dofs:
-                    else 
-                    {
-                        for (int s = 0; s < dim; s++)
-                        {
-                            for (int t = 0; t < dim; t++)
-                            {
-                                T tmp = m_periodicTransformMat(t, s) * m_locMatVec[s](i, j);
-                                
-                                if (tmp != 0)
-                                    globalMat.coeffRef(iiMapped + t*uCompSize, jjMapped) += tmp;
+                                    globalMat.coeffRef(iiMapped + s*uCompSize, jjMapped) += tmp;
                             }
                         }
                     }
@@ -623,10 +595,10 @@ void gsINSVisitorPU_withUPrhs<T, MatOrder>::localToGlobal_per(const std::vector<
                         {
                             for (int t = 0; t < dim; t++)
                             {
-                                T tmp = m_periodicTransformMat(t, s) * m_locMatVec[s](i, j)* eliminatedDofs[m_trialUnkID](bb, 0);
-  
+                                T tmp = m_periodicTransformMat(s, t) * m_locMatVec[t](i, j) * eliminatedDofs[m_trialUnkID](bb, 0);
+                                
                                 if (tmp != 0)
-                                    globalRhs(iiMapped + t*uCompSize, 0) -= tmp;
+                                    globalRhs(iiMapped + s*uCompSize, 0) -= tmp;
                             }
                         }
                     }
@@ -735,37 +707,23 @@ void gsINSVisitorUP<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
                     bool jjElim = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->isEliminated(jj);
                     const index_t jjMapped = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(jj);
 
-                    // ii and jj are not eliminated periodic dofs or only ii is eliminated:
-                    if (!iiElim) 
+                    // jj is not eliminated periodic dof:
+                    if (!jjElim) 
                     {
                         for (index_t d = 0; d < dim; d++)
                             globalMat.coeffRef(iiMapped, jjMapped + d*uCompSize) += m_locMatVec[d](i, j);
                     }
-                    // only jj is eliminated periodic dof:
-                    else if ( !iiElim && jjElim )
+                    // jj is eliminated periodic dof:
+                    else
                     {
                         for (int s = 0; s < dim; s++)
                         {
                             for (int t = 0; t < dim; t++)
                             {
-                                T tmp = m_periodicTransformMat(t, s) * m_locMatVec[s](i, j);
+                                T tmp = m_periodicTransformMat(s, t) * m_locMatVec[t](i, j);
 
                                 if (tmp != 0)
-                                    globalMat.coeffRef(iiMapped, jjMapped + t*uCompSize) += tmp;
-                            }
-                        }
-                    }
-                    // both ii and jj are eliminated periodic dofs:
-                    else 
-                    {
-                        for (int s = 0; s < dim; s++)
-                        {
-                            for (int t = 0; t < dim; t++)
-                            {
-                                T tmp = m_periodicTransformMat(t, s) * m_locMatVec[s](i, j);
-                                
-                                if (tmp != 0)
-                                    globalMat.coeffRef(iiMapped, jjMapped + t*uCompSize) += tmp;
+                                    globalMat.coeffRef(iiMapped, jjMapped + s*uCompSize) += tmp;
                             }
                         }
                     }
@@ -924,10 +882,10 @@ void gsINSVisitorRhsU<T, MatOrder>::localToGlobal_per(gsMatrix<T>& globalRhs)
                 {
                     for (int t = 0; t < dim; t++)
                     {
-                        T tmp = m_periodicTransformMat(t, s) * m_localMat(i, s);
+                        T tmp = m_periodicTransformMat(s, t) * m_localMat(i, t);
 
                         if (tmp != 0)
-                            globalRhs.coeffRef(iiMapped + t*uCompSize, 0) += tmp;
+                            globalRhs.coeffRef(iiMapped + s*uCompSize, 0) += tmp;
                     }
                 }
             }

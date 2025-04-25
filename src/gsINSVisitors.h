@@ -22,10 +22,18 @@ namespace gismo
 // ===================================================================================================================
 // VELOCITY-VELOCITY VISITORS
 
-/// @brief Base visitor for the velocity-velocity part of the Navier-Stokes system.
-/// @tparam T           real number type
-/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-/// @ingroup IncompressibleFlow
+/**
+ * @brief Base visitor for the velocity-velocity part of the Navier-Stokes system.
+ * 
+ * Assumes identical matrix for all velocity components,
+ * i.e. only one local matrix is evaluated and 
+ * either global matrix for only one velocity component is assembled 
+ * or the local matrix is distributed into all diagonal blocks of the global velocity matrix.
+ * 
+ * @tparam T           real number type
+ * @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+ * @ingroup IncompressibleFlow
+ */
 template <class T, int MatOrder>
 class gsINSVisitorUU : public gsFlowVisitor<T, MatOrder>
 {

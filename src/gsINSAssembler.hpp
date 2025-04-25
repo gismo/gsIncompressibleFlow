@@ -85,8 +85,8 @@ void gsINSAssembler<T, MatOrder>::updateSizes()
     m_pshift = m_tarDim * m_udofs;
     m_dofs = m_pshift + m_pdofs;
 
-    m_ddof[0].setZero(m_dofMappers.front().boundarySize(), m_tarDim);
-    m_ddof[1].setZero(m_dofMappers.back().boundarySize(), 1);
+    m_ddof[0].setZero(m_dofMappers[0].boundarySize(), m_tarDim);
+    m_ddof[1].setZero(m_dofMappers[1].boundarySize(), 1);
 
     if (this->getAssemblerOptions().dirStrategy == dirichlet::elimination)
     {
