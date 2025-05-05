@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
     std::string yIn = magStr + "(-" + sinIn + "*x - " + cosIn + "*y)";
 
     gsFunctionExpr<> Uin(xIn, yIn, "0", 3);
-    gsFunctionExpr<> Uwall("0", "0", "0", 3);
+    //gsFunctionExpr<> Uwall("0", "0", "0", 3);
     gsFunctionExpr<> Ublade(util::to_string(-omega) + "*y", util::to_string(omega) + "*x", "0", 3);
     gsFunctionExpr<> f("0", "0", "0", 3);
 
@@ -133,14 +133,14 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bcInfo;
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, Uin, 0);
+    bcInfo.addCondition(0, boundary::front, condition_type::dirichlet, Ublade, 0);   
+    bcInfo.addCondition(0, boundary::back, condition_type::dirichlet, Ublade, 0);
     bcInfo.addCondition(1, boundary::west, condition_type::dirichlet, Ublade, 0);
     bcInfo.addCondition(1, boundary::east, condition_type::dirichlet, Ublade, 0);
-    bcInfo.addCondition(0, boundary::front, condition_type::dirichlet, Uwall, 0);
-    bcInfo.addCondition(0, boundary::back, condition_type::dirichlet, Uwall, 0);
-    bcInfo.addCondition(1, boundary::front, condition_type::dirichlet, Uwall, 0);
-    bcInfo.addCondition(1, boundary::back, condition_type::dirichlet, Uwall, 0);
-    bcInfo.addCondition(2, boundary::front, condition_type::dirichlet, Uwall, 0);
-    bcInfo.addCondition(2, boundary::back, condition_type::dirichlet, Uwall, 0);
+    bcInfo.addCondition(1, boundary::front, condition_type::dirichlet, Ublade, 0);
+    bcInfo.addCondition(1, boundary::back, condition_type::dirichlet, Ublade, 0);
+    bcInfo.addCondition(2, boundary::front, condition_type::dirichlet, Ublade, 0);
+    bcInfo.addCondition(2, boundary::back, condition_type::dirichlet, Ublade, 0);
     bcInfo.addPeriodic(0, boundary::west, 0, boundary::east, 3);
     bcInfo.addPeriodic(2, boundary::west, 2, boundary::east, 3);
     bcInfo.setTransformMatrix(transformMatrix);
