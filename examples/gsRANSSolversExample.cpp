@@ -28,12 +28,6 @@ int main(int argc, char *argv[])
 
     // ========================================= Settings ========================================= 
 
-    // solvers
-    bool steady = false;
-    bool steadyIt = false;
-    bool unsteady = true;
-    bool unsteadyIt = false;
-
     // domain definition
     index_t geo = 1; // 1 - step, 2 - cavity, 3 - blade profile 2D
     index_t dim = 2;
@@ -63,21 +57,16 @@ int main(int argc, char *argv[])
 
     // output settings
     bool quiet = false;
-    bool plot = true;
+    bool plot = false;
     bool plotMesh = false;
     index_t plotPts = 10000;
-    bool animation = true;
+    bool animation = false;
     index_t animStep = 1;
 
     // ---------------------------------------------------------------------------------
 
     //command line
     gsCmdLine cmd("Solves the Navier-Stokes problem in a given domain (step, cavity, blade profile).");
-
-    cmd.addSwitch("steady", "Solve steady problem with direct linear solver", steady);
-    cmd.addSwitch("steadyIt", "Solve steady problem with preconditioned GMRES as linear solver", steadyIt);
-    cmd.addSwitch("unsteady", "Solve unsteady problem with direct linear solver", unsteady);
-    cmd.addSwitch("unsteadyIt", "Solve unsteady problem with preconditioned GMRES as linear solver", unsteadyIt);
 
     cmd.addInt("g", "geo", "Computational domain (1 - step, 2 - cavity, 3 - profile (only 2D))", geo);
     cmd.addInt("d", "dim", "Space dimension", dim);

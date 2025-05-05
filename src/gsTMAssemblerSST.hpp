@@ -46,6 +46,17 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
 
     m_paramsPtr->setBCs(m_bc);
 
+    // periodic BC for RANS => interface for TM
+    for (size_t i = 0; i < m_bc.numPeriodic(); i++)
+    {
+        boundaryInterface ppair = m_bc.periodicPairs().at(i);
+        gsMultiBasis<T>* kBasisPtr = &m_paramsPtr->getBasesTM().at(0);
+        gsMultiBasis<T>* oBasisPtr = &m_paramsPtr->getBasesTM().at(1);
+
+        kBasisPtr->addInterface(&kBasisPtr->basis(ppair.first().patch), ppair.first().side(), &kBasisPtr->basis(ppair.second().patch), ppair.second().side());
+        oBasisPtr->addInterface(&oBasisPtr->basis(ppair.first().patch), ppair.first().side(), &oBasisPtr->basis(ppair.second().patch), ppair.second().side());
+    }
+    
     std::vector<gsMultiBasis<T> > bases = m_paramsPtr->getBases();
     gsBoundaryConditions<T> bc = m_paramsPtr->getBCs();
     for (size_t i = 0; i < bases.size(); i++)

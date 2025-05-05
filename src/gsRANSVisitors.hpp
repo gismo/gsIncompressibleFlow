@@ -93,15 +93,16 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_nonper(const s
                         globalMat.coeffRef(ii + d*uCompSize, jj + d*uCompSize) += m_locMatVec[0](i, j) + m_locMatVec[d+1](i, j); // block A + block Eii
 
                     // off-diagonal blocks asrising from symmetric gradient are put directly to right-hand side of the system
-                    globalRhs(ii, 0) -= m_locMatVec[dim+1](i, j) * m_solution(jj + uCompSize, 0); // - E12*u_2^*
-                    globalRhs(ii + uCompSize, 0) -= m_locMatVec[dim+1](j, i) * m_solution(jj, 0);     // - E21*u_1^*
-                    
-                    if (dim == 3)
+                    for (index_t s = 0; s < dim; s++)
                     {
-                        globalRhs(ii, 0) -= m_locMatVec[dim+2](i, j) * m_solution(jj + 2*uCompSize, 0); // - E13*u_3^*
-                        globalRhs(ii + uCompSize, 0) -= m_locMatVec[dim+3](i, j) * m_solution(jj + 2*uCompSize, 0);     // - E23*u_3^*
-                        globalRhs(ii + 2*uCompSize, 0) -= m_locMatVec[dim+2](j, i) * m_solution(jj, 0)                  // - E31*u_1^*
-                                                        + m_locMatVec[dim+3](j, i) * m_solution(jj + uCompSize, 0);   // - E32*u_2^* 
+                        for (index_t t = 0; t < dim; t++)
+                        {
+                            if (s == t) // diagonal block 
+                                continue;
+
+                            T matCoef = (s < t) ? m_locMatVec[dim+s+t](i, j) : m_locMatVec[dim+s+t](j, i); // Ets = Est^T
+                            globalRhs(ii + s*uCompSize, 0) -= matCoef * m_solution(jj + t*uCompSize, 0);
+                        }
                     }
                 }
                 else // is_boundary_index(jj)
@@ -109,20 +110,18 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_nonper(const s
                     const int bb = m_dofMappers[m_trialUnkID].global_to_bindex(jj);
 
                     for (index_t d = 0; d < dim; d++) 
-                    {
-                        globalRhs(ii + d*uCompSize, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_trialUnkID](bb, d);   // block A
-                        globalRhs(ii + d*uCompSize, 0) -= m_locMatVec[d+1](i, j) * eliminatedDofs[m_trialUnkID](bb, d);   // block Eii
-                    }
+                        globalRhs(ii + d*uCompSize, 0) -= (m_locMatVec[0](i, j) + m_locMatVec[d+1](i, j)) * eliminatedDofs[m_trialUnkID](bb, d);    // block A + Eii
 
-                    globalRhs(ii, 0) -= m_locMatVec[dim+1](i, j) * eliminatedDofs[m_trialUnkID](bb, 1);                 // - E12*u_2^*
-                    globalRhs(ii + uCompSize, 0) -= m_locMatVec[dim+1](j, i) * eliminatedDofs[m_trialUnkID](bb, 0);     // - E21*u_1^*
-                    
-                    if (dim == 3)
+                    for (index_t s = 0; s < dim; s++)
                     {
-                        globalRhs(ii, 0) -= m_locMatVec[dim+2](i, j) * eliminatedDofs[m_trialUnkID](bb, 2);                 // - E13*u_3^*
-                        globalRhs(ii + uCompSize, 0) -= m_locMatVec[dim+3](i, j) * eliminatedDofs[m_trialUnkID](bb, 2);     // - E23*u_3^*
-                        globalRhs(ii + 2*uCompSize, 0) -= m_locMatVec[dim+2](j, i) * eliminatedDofs[m_trialUnkID](bb, 0);   // - E31*u_1^*
-                        globalRhs(ii + 2*uCompSize, 0) -= m_locMatVec[dim+3](j, i) * eliminatedDofs[m_trialUnkID](bb, 1);   // - E32*u_2^*
+                        for (index_t t = 0; t < dim; t++)
+                        {
+                            if (s == t) // diagonal block 
+                                continue;
+
+                            T matCoef = (s < t) ? m_locMatVec[dim+s+t](i, j) : m_locMatVec[dim+s+t](j, i); 
+                            globalRhs(ii + s*uCompSize, 0) -= matCoef * eliminatedDofs[m_trialUnkID](bb, t);
+                        }
                     }
                 }
             }
@@ -169,18 +168,19 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
                     {
                         // diagonal blocks
                         for (index_t d = 0; d < dim; d++)
-                        globalMat.coeffRef(iiMapped + d*uCompSize, jjMapped + d*uCompSize) += m_locMatVec[0](i, j) + m_locMatVec[d+1](i, j); // block A + block Eii
+                            globalMat.coeffRef(iiMapped + d*uCompSize, jjMapped + d*uCompSize) += m_locMatVec[0](i, j) + m_locMatVec[d+1](i, j); // block A + block Eii
 
                         // off-diagonal blocks asrising from symmetric gradient are put directly to right-hand side of the system
-                        globalRhs(iiMapped, 0) -= m_locMatVec[dim+1](i, j) * m_solution(jjMapped + uCompSize, 0); // - E12*u_2^*
-                        globalRhs(iiMapped + uCompSize, 0) -= m_locMatVec[dim+1](j, i) * m_solution(jjMapped, 0);     // - E21*u_1^*
-                        
-                        if (dim == 3)
+                        for (index_t s = 0; s < dim; s++)
                         {
-                            globalRhs(iiMapped, 0) -= m_locMatVec[dim+2](i, j) * m_solution(jjMapped + 2*uCompSize, 0); // - E13*u_3^*
-                            globalRhs(iiMapped + uCompSize, 0) -= m_locMatVec[dim+3](i, j) * m_solution(jjMapped + 2*uCompSize, 0);     // - E23*u_3^*
-                            globalRhs(iiMapped + 2*uCompSize, 0) -= m_locMatVec[dim+2](j, i) * m_solution(jjMapped, 0)                  // - E31*u_1^*
-                                                            + m_locMatVec[dim+3](j, i) * m_solution(jjMapped + uCompSize, 0);   // - E32*u_2^* 
+                            for (index_t t = 0; t < dim; t++)
+                            {
+                                if (s == t) // diagonal block 
+                                    continue;
+
+                                T matCoef = (s < t) ? m_locMatVec[dim+s+t](i, j) : m_locMatVec[dim+s+t](j, i); // Ets = Est^T
+                                globalRhs(iiMapped + s*uCompSize, 0) -= matCoef * m_solution(jjMapped + t*uCompSize, 0);
+                            }
                         }
                     }
                     // only jj is eliminated periodic dof:
@@ -192,7 +192,17 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
                             {
                                 for (int t = 0; t < dim; t++)
                                 {
+                                    T rotCoef = m_periodicTransformMat(s, t);
 
+                                    if (rotCoef != 0)
+                                    {
+                                        if (t == r)     // diagonal blocks
+                                            globalMat.coeffRef(iiMapped + r*uCompSize, jjMapped + s*uCompSize) += rotCoef * ( m_locMatVec[0](i, j) + m_locMatVec[r+1](i, j) );
+                                        else if (r < t) // upper off-diagonal blocks
+                                            globalRhs(iiMapped + r*uCompSize, 0) -= rotCoef * m_locMatVec[dim+r+t](i, j) * m_solution(jjMapped + s*uCompSize, 0);
+                                        else            // lower off-diagonal blocks
+                                            globalRhs(iiMapped + r*uCompSize, 0) -= rotCoef * m_locMatVec[dim+r+t](j, i) * m_solution(jjMapped + s*uCompSize, 0);
+                                    }
                                 }
                             }
                         }
@@ -206,7 +216,17 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
                             {
                                 for (int t = 0; t < dim; t++)
                                 {
+                                    T rotCoef = m_periodicTransformMat(s, t);
 
+                                    if (rotCoef != 0)
+                                    {
+                                        if (t == r)     // diagonal blocks
+                                            globalMat.coeffRef(iiMapped + s*uCompSize, jjMapped + r*uCompSize) += rotCoef * ( m_locMatVec[0](i, j) + m_locMatVec[r+1](i, j) );
+                                        else if (t < r) // upper off-diagonal blocks
+                                            globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * m_locMatVec[dim+r+t](i, j) * m_solution(jjMapped + r*uCompSize, 0);
+                                        else            // lower off-diagonal blocks
+                                            globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * m_locMatVec[dim+r+t](j, i) * m_solution(jjMapped + r*uCompSize, 0);
+                                    }
                                 }
                             }
                         }
@@ -222,7 +242,17 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
                                 {
                                     for (int t = 0; t < dim; t++)
                                     {
+                                        T rotCoef = m_periodicTransformMat(q, s) * m_periodicTransformMat(r, t);
 
+                                        if (rotCoef != 0)
+                                        {
+                                            if (s == t)     // diagonal blocks
+                                                globalMat.coeffRef(iiMapped + q*uCompSize, jjMapped + r*uCompSize) += rotCoef * ( m_locMatVec[0](i, j) + m_locMatVec[s+1](i, j) );
+                                            else if (s < t) // upper off-diagonal blocks
+                                                globalRhs(iiMapped + q*uCompSize, 0) -= rotCoef * m_locMatVec[dim+s+t](i, j) * m_solution(jjMapped + r*uCompSize, 0);
+                                            else            // lower off-diagonal blocks
+                                                globalRhs(iiMapped + q*uCompSize, 0) -= rotCoef * m_locMatVec[dim+s+t](j, i) * m_solution(jjMapped + r*uCompSize, 0);
+                                        }
                                     }
                                 }
                             }
@@ -236,12 +266,45 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
                     // ii is not eliminated periodic dof:
                     if (!iiElim) 
                     {
+                        for (index_t d = 0; d < dim; d++) 
+                            globalRhs(iiMapped + d*uCompSize, 0) -= (m_locMatVec[0](i, j) + m_locMatVec[d+1](i, j)) * eliminatedDofs[m_trialUnkID](bb, d);   // block A + Eii
+
+                        for (index_t s = 0; s < dim; s++)
+                        {
+                            for (index_t t = 0; t < dim; t++)
+                            {
+                                if (s == t) // diagonal block 
+                                    continue;
+
+                                T matCoef = (s < t) ? m_locMatVec[dim+s+t](i, j) : m_locMatVec[dim+s+t](j, i); 
+                                globalRhs(iiMapped + s*uCompSize, 0) -= matCoef * eliminatedDofs[m_trialUnkID](bb, t);
+                            }
+                        }
                         
                     }
                     // ii is eliminated periodic dof:
                     else 
                     {
-                        
+                        for (int r = 0; r < dim; r++)
+                        {
+                            for (int s = 0; s < dim; s++)
+                            {
+                                for (int t = 0; t < dim; t++)
+                                {
+                                    T rotCoef = m_periodicTransformMat(s, t);
+
+                                    if (rotCoef != 0)
+                                    {
+                                        if (t == r)     // diagonal blocks
+                                            globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * ( m_locMatVec[0](i, j) + m_locMatVec[r+1](i, j) ) * eliminatedDofs[m_trialUnkID](bb, r);
+                                        else if (t < r) // upper off-diagonal blocks
+                                            globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * m_locMatVec[dim+r+t](i, j) * eliminatedDofs[m_trialUnkID](bb, r);
+                                        else            // lower off-diagonal blocks
+                                            globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * m_locMatVec[dim+r+t](j, i) * eliminatedDofs[m_trialUnkID](bb, r);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

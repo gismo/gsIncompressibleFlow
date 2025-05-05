@@ -820,8 +820,6 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
         for (int p = 0; p < 2; p++)
             basis.refine(p, box);
 
-    gsInfo << basis.piece(0).detail() << std::endl;
-
     if (dim == 3)
     {
         int wRefine = math::floor(std::log2(c / b)) + 1;
@@ -836,8 +834,6 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
     box(0,1) = addRefPart;
     for (int p = 0; p < 2; p++)
         basis.refine(p, box);
-
-    gsInfo << basis.piece(0).detail() << std::endl;
 
     for (int i = 0; i < numRefine; ++i)
         basis.uniformRefine();
