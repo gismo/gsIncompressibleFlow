@@ -22,7 +22,7 @@ void gsFlowBndEvaluator<T>::evalOnPatchSide(index_t patchID, boxSide side, bool 
     if (setZeroFirst)
         m_quantValue = 0.0;
 
-    const gsBasis<T>* basis = &m_paramsPtr->getBases().at(m_unkID).basis(patchID);
+    const gsBasis<T>* basis = &m_paramsPtr->getBasis(m_unkID).basis(patchID);
     short_t dim = m_paramsPtr->getPde().domain().targetDim();
     m_mapData.patchId = patchID;
 

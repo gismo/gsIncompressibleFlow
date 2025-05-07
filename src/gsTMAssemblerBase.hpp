@@ -20,14 +20,16 @@ void gsTMAssemblerBase<T, MatOrder>::initMembers()
 { 
     Base::initMembers();
 
+    GISMO_ASSERT(m_numVars > 0, "Number of TM variables not set yet.");
+
     m_viscosity = m_paramsPtr->getPde().viscosity();
 
-    m_bases = m_paramsPtr->getBases();
-    numTMvars = m_bases.size() - 2;
-    m_kdofs.resize(numTMvars);
+    //m_bases = m_paramsPtr->getBases();
+    //m_numVars = m_bases.size() - 2;
+    m_kdofs.resize(m_numVars);
 
-    m_dofMappers.resize(numTMvars+2);
-    m_ddof.resize(numTMvars+2);
+    m_dofMappers.resize(m_numVars+2);
+    m_ddof.resize(m_numVars+2);
     gsMatrix<T> ddof;
     m_ddof[0] = ddof.setZero(1, 1);
     m_ddof[1] = ddof.setZero(1, 1);
@@ -35,7 +37,7 @@ void gsTMAssemblerBase<T, MatOrder>::initMembers()
     m_nnzPerRowTM = 1;
     index_t maxDeg;
     // for (short_t i = 0; i < m_tarDim; i++)
-    //     for (short_t j = 0; j < numTMvars; j++)
+    //     for (short_t j = 0; j < m_numVars; j++)
     //         if (m_bases[j].maxDegree(i) > maxDeg)
     //             maxDeg = m_bases[j].maxDegree(i);
     // m_nnzPerRowTM = 2 * maxDeg + 1;
@@ -43,9 +45,10 @@ void gsTMAssemblerBase<T, MatOrder>::initMembers()
     for (short_t i = 0; i < m_tarDim; i++)
     {
         maxDeg = 0;
-        for (size_t j = 2; j < m_bases.size(); j++)
-            if (m_bases[j].maxDegree(i) > maxDeg)
-                maxDeg = m_bases[j].maxDegree(i);
+        for (short_t j = 0; j < m_numVars; j++)
+            if (getBasis(2+j).maxDegree(i) > maxDeg)
+                maxDeg = getBasis(2+j).maxDegree(i);
+
         m_nnzPerRowTM *= 2 * maxDeg + 1;
     }
     
@@ -58,7 +61,7 @@ void gsTMAssemblerBase<T, MatOrder>::updateSizes()
 {
     m_dofs = 0;
     gsMatrix<T> ddof;
-    for (short_t i = 0; i < numTMvars; i++)
+    for (short_t i = 0; i < m_numVars; i++)
     {
         m_kdofs[i] = m_dofMappers[i+2].freeSize();
         m_dofs += m_kdofs[i];
@@ -83,12 +86,12 @@ void gsTMAssemblerBase<T, MatOrder>::updateSizes()
 template<class T, int MatOrder>
 void gsTMAssemblerBase<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
 {
-    m_dofMappers[unk] = gsDofMapper(getBases().at(unk), getBCs(), unk);
+    m_dofMappers[unk] = gsDofMapper(getBasis(unk), getBCs(), unk);
 
     if (getAssemblerOptions().intStrategy == iFace::conforming)
         for (gsBoxTopology::const_iiterator it = getPatches().iBegin(); it != getPatches().iEnd(); ++it)
         {
-            getBases().at(unk).matchInterface(*it, m_dofMappers[unk]);
+            getBasis(unk).matchInterface(*it, m_dofMappers[unk]);
         }
 
     for (size_t i = 0; i < boundaryDofs.size(); i++)
@@ -120,7 +123,7 @@ gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& 
     for (size_t p = 0; p < this->getPatches().nPatches(); ++p)
     {
         // Reconstruct solution coefficients on patch p
-        const index_t sz = this->getBases().at(unk).piece(p).size();
+        const index_t sz = this->getBasis(unk).piece(p).size();
         coeffs.resize(sz, 1);
 
         for (index_t i = 0; i < sz; ++i)
@@ -135,7 +138,7 @@ gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& 
             }
         }
 
-        result->addPatch(this->getBases().at(unk).piece(p).makeGeometry(coeffs));
+        result->addPatch(this->getBasis(unk).piece(p).makeGeometry(coeffs));
     }
 
     return gsField<T>(this->getPatches(), typename gsFunctionSet<T>::Ptr(result), true);

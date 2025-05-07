@@ -134,7 +134,7 @@ template <class T, int MatOrder>
 void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
-    const index_t uCompSize = m_paramsPtr->getPerHelperPtr(m_testUnkID)->numFreeDofs(); // number of dofs for one velocity component
+    const index_t uCompSize = m_paramsPtr->getPerHelperPtr()->numFreeDofs(); // number of dofs for one velocity component
     index_t nComponents = globalMat.rows() / uCompSize;
 
     GISMO_ASSERT(nComponents == dim, "Wrong matrix size in gsINSVisitorUU::localToGlobal_per, matrix has to contain all components.");
@@ -151,8 +151,8 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
 
         if (m_dofMappers[m_testUnkID].is_free_index(ii))
         {
-            bool iiElim = m_paramsPtr->getPerHelperPtr(m_testUnkID)->isEliminated(ii);
-            const index_t iiMapped = m_paramsPtr->getPerHelperPtr(m_testUnkID)->map(ii);
+            bool iiElim = m_paramsPtr->getPerHelperPtr()->isEliminated(ii);
+            const index_t iiMapped = m_paramsPtr->getPerHelperPtr()->map(ii);
 
             for (index_t j = 0; j < numActTrial; ++j)
             {
@@ -160,8 +160,8 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
 
                 if (m_dofMappers[m_trialUnkID].is_free_index(jj))
                 {
-                    bool jjElim = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->isEliminated(jj);
-                    const index_t jjMapped = m_paramsPtr->getPerHelperPtr(m_trialUnkID)->map(jj);
+                    bool jjElim = m_paramsPtr->getPerHelperPtr()->isEliminated(jj);
+                    const index_t jjMapped = m_paramsPtr->getPerHelperPtr()->map(jj);
 
                     // ii and jj are not eliminated periodic dofs:
                     if (!iiElim && !jjElim) 

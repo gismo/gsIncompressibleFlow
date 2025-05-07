@@ -44,7 +44,7 @@ protected: // *** Class members ***
 
     typename gsNavStokesPde<T>::Ptr m_pdePtr;
     std::vector<gsMultiBasis<T> >   m_bases;
-    std::vector<gsMultiBasis<T> >   m_basesTM;
+    std::vector<gsDofMapper>        m_dofMappers;
     gsBoundaryConditions<T>         m_BC;
     gsAssemblerOptions              m_assembOpt;
     gsOptionList                    m_opt;
@@ -59,7 +59,8 @@ protected: // *** Class members ***
     gsField<T> m_distanceField;
     
     bool m_hasPeriodicBC;
-    std::vector< typename gsFlowPeriodicHelper<T>::Ptr > m_periodicHelpers;
+    typename gsFlowPeriodicHelper<T>::Ptr m_periodicHelper;
+    //std::vector< typename gsFlowPeriodicHelper<T>::Ptr > m_periodicHelpers;
 
 public: // *** Constructor/destructor ***
 
@@ -67,13 +68,15 @@ public: // *** Constructor/destructor ***
     
     /// @brief Constructor of the object.
     /// @param pde an incompressible Navier-Stokes problem
-    /// @param bases vector of discretization bases (velocity, pressure)
-    gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases, const std::vector<gsMultiBasis<T> >& basesTM = {})
-        : m_pdePtr(memory::make_shared_not_owned(&pde)), m_bases(bases), m_basesTM(basesTM)
+    /// @param bases vector of discretization bases {velocity, pressure, (bases for turb. model, if needed)}
+    gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases)
+        : m_pdePtr(memory::make_shared_not_owned(&pde)), m_bases(bases)
     {
         m_assembOpt.dirStrategy = dirichlet::elimination;
         m_assembOpt.dirValues = dirichlet::interpolation;
         m_assembOpt.intStrategy = iFace::glue;
+
+        updateDofMappers();
 
         m_opt = gsFlowSolverParams<T>::defaultOptions();
         m_precOpt = gsINSPreconditioner<T, RowMajor>::defaultOptions();
@@ -82,16 +85,24 @@ public: // *** Constructor/destructor ***
         m_isBndSet = false;
         m_hasPeriodicBC = false;
 
-        if (m_pdePtr->bc().numPeriodic() != 0)
+        size_t numPerSides = m_pdePtr->bc().numPeriodic();
+
+        if (numPerSides != 0)
         {
             m_hasPeriodicBC = true;
-            createPeriodicHelpers();
-        }
+            updatePeriodicHelper();
 
-        if (!basesTM.empty())
-        {
-            for (size_t i = 0; i < basesTM.size(); i++)
-                m_bases.push_back(basesTM[i]);
+            // periodic BC for velocity => interface for pressure and other scalar quantities
+            for (size_t i = 0; i < numPerSides; i++)
+            {
+                boundaryInterface ppair = m_pdePtr->bc().periodicPairs().at(i);
+
+                for (size_t j = 1; j < m_bases.size(); j++)
+                {
+                    gsMultiBasis<T>* basisPtr = &m_bases.at(j);
+                    basisPtr->addInterface(&basisPtr->basis(ppair.first().patch), ppair.first().side(), &basisPtr->basis(ppair.second().patch), ppair.second().side());
+                }
+            }
         }
     }
 
@@ -158,7 +169,7 @@ public: // *** Static functions ***
 
 public: // *** Member functions ***
 
-    /// @brief Create DOF mappers for velocity and pressure.
+    /// @brief Create DOF mappers for all bases in m_bases.
     /// @param[out] mappers     vector of created DOF mappers
     /// @param[in]  finalize    finalize the DOF mapper (yes/no)
     void createDofMappers(std::vector<gsDofMapper>& mappers, bool finalize = true)
@@ -171,16 +182,22 @@ public: // *** Member functions ***
         }
     }
 
-
-    /// @brief Create helpers for mapping of radial periodic conditions.
-    /// @param[in]  mappers     vector of DOF mappers
-    void createPeriodicHelpers(const std::vector<gsDofMapper>& mappers)
-    {
-        m_periodicHelpers.resize(2);
-
-        m_periodicHelpers[0] = gsFlowPeriodicHelper<T>::make(getBases().front(), mappers.front(), m_pdePtr->bc());
-        m_periodicHelpers[1] = gsFlowPeriodicHelper<T>::make(getBases().back(), mappers.back(), m_pdePtr->bc());
+    /// @brief Create helper for mapping of radial periodic conditions.
+    /// @param[in]  mapper     DOF mapper
+    void createPeriodicHelper(const gsDofMapper& mapper)
+    {    
+        m_periodicHelper = gsFlowPeriodicHelper<T>::make(getBases().at(0), mapper, m_pdePtr->bc());
     }
+
+    // /// @brief Create helpers for mapping of radial periodic conditions.
+    // /// @param[in]  mappers     vector of DOF mappers
+    // void createPeriodicHelpers(const std::vector<gsDofMapper>& mappers)
+    // {
+    //     m_periodicHelpers.resize(2);
+
+    //     m_periodicHelpers[0] = gsFlowPeriodicHelper<T>::make(getBases().front(), mappers.front(), m_pdePtr->bc());
+    //     m_periodicHelpers[1] = gsFlowPeriodicHelper<T>::make(getBases().back(), mappers.back(), m_pdePtr->bc());
+    // }
 
 
     /// @brief Set boundary parts (vectors of pairs [patch, side]).
@@ -199,13 +216,13 @@ public: // *** Member functions ***
 
 protected: // *** Member functions ***
 
-    /// @brief Create helpers for mapping of radial periodic conditions.
-    void createPeriodicHelpers()
-    {
-        std::vector<gsDofMapper> mappers;
-        createDofMappers(mappers);
-        createPeriodicHelpers(mappers);
-    }
+    /// @brief Update the stored DOF mappers for all bases in m_bases.
+    void updateDofMappers()
+    { createDofMappers(m_dofMappers); }
+
+    /// @brief Update the stored helper for mapping of radial periodic conditions.
+    void updatePeriodicHelper()
+    { createPeriodicHelper(m_dofMappers[0]); }
 
 
 public: // *** Getters/setters ***
@@ -220,7 +237,7 @@ public: // *** Getters/setters ***
     void setBCs(gsBoundaryConditions<T>& bcs) { m_BC = bcs; }
 
     /**
-     * @brief Returns a reference to the discretization bases for velocity and pressure
+     * @brief Returns a reference to the discretization bases.
      *
      * There is also a const version returning a const reference.
      */
@@ -228,12 +245,22 @@ public: // *** Getters/setters ***
     const std::vector<gsMultiBasis<T> >& getBases() const { return m_bases; }
 
     /**
-     * @brief Returns a reference to the discretization bases for turbulence model
+     * @brief Returns a reference to the discretization basis for variable \a unk.
+     * 
+     * @param[in] unk unknown index (0 - velocity, 1 - pressure, 2... - turb. model quantities)
      *
      * There is also a const version returning a const reference.
      */
-    std::vector<gsMultiBasis<T> >&       getBasesTM() { return m_basesTM; }
-    const std::vector<gsMultiBasis<T> >& getBasesTM() const { return m_basesTM; }
+    gsMultiBasis<T>& getBasis(index_t unk)
+    { 
+        // if m_bases.size() == 2:
+        // all other bases (for turb. model quantities) are assumed to be identical to the pressure basis
+        return m_bases.at(math::min(unk, (index_t)(m_bases.size()-1)));
+    }
+
+    const gsMultiBasis<T>& getBasis(index_t unk) const
+    { return m_bases.at(math::min(unk, (index_t)(m_bases.size()-1))); }
+
 
     /**
      * @brief Returns a reference to the assembler option list.
@@ -297,10 +324,14 @@ public: // *** Getters/setters ***
     bool hasPeriodicBC()
     { return m_hasPeriodicBC; }
 
-    /// @brief Returns shared pointer to the helper class for radial periodic conditions for unknown \a unk.
-    /// @param[in] unk unknown
-    typename gsFlowPeriodicHelper<T>::Ptr getPerHelperPtr(index_t unk)
-    { return m_periodicHelpers[unk]; }
+    /// @brief Returns shared pointer to the helper class for radial periodic conditions.
+    typename gsFlowPeriodicHelper<T>::Ptr getPerHelperPtr()
+    { return m_periodicHelper; }
+
+    // /// @brief Returns shared pointer to the helper class for radial periodic conditions for unknown \a unk.
+    // /// @param[in] unk unknown
+    // typename gsFlowPeriodicHelper<T>::Ptr getPerHelperPtr(index_t unk)
+    // { return m_periodicHelpers[unk]; }
 
     gsField<T> getVelocitySolution() { return m_USolField; }
     gsField<T> getKSolution() { return m_KSolField; }

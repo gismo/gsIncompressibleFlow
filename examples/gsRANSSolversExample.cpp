@@ -218,18 +218,18 @@ int main(int argc, char *argv[])
             GISMO_ERROR("Unknown domain.");
     }
         
-    std::vector< gsMultiBasis<> >  discreteBases, discreteBasesTM;
+    std::vector< gsMultiBasis<> >  discreteBases;
     discreteBases.push_back(basis); // basis for velocity
     discreteBases.push_back(basis); // basis for pressure
     discreteBases[0].degreeElevate(1); // elevate the velocity space (Taylor-Hood element type)
 
-    discreteBasesTM.push_back(basis); // basis for k
-    discreteBasesTM.push_back(basis); // basis for omega
+    discreteBases.push_back(basis); // basis for k
+    discreteBases.push_back(basis); // basis for omega
 
     // ========================================= Solve ========================================= 
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
-    gsFlowSolverParams<real_t> params(NSpde, discreteBases, discreteBasesTM);
+    gsFlowSolverParams<real_t> params(NSpde, discreteBases);
     params.options().setSwitch("quiet", quiet);
     params.options().setString("assemb.loop", matFormation);
     params.setBndParts(bndIn, bndOut, bndWall);

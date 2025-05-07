@@ -68,16 +68,15 @@ protected: // *** Base class members ***
     using Base::m_matrix;
     using Base::m_baseRhs;
     using Base::m_rhs;
-    using Base::m_bases;
     using Base::m_bc;
     using Base::m_nnzPerRowTM;
-    using Base::numTMvars;
+    using Base::m_numVars;
     using Base::m_kdofs;
     using Base::m_isInitialized;
 
 public: // *** Base class member functions ***
 
-    using Base::getBases;
+    using Base::getBasis;
     using Base::getPatches;
     using Base::getAssemblerOptions;
     using Base::getBCs;
@@ -89,6 +88,7 @@ public: // *** Constructor/destructor ***
     gsTMAssemblerSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr):
     Base(paramsPtr), m_TMModelPtr(TMModelPtr)
     { 
+        m_numVars = 2;
         initMembers();
     }
 

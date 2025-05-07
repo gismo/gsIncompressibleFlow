@@ -119,8 +119,8 @@ protected: // *** Member functions ***
     /// Set pointers to test and trial basis.
     virtual void defineTestTrialBases()
     { 
-        m_testBasisPtr = &(m_paramsPtr->getBases()[m_testUnkID].piece(m_patchID));
-        m_trialBasisPtr = &(m_paramsPtr->getBases()[m_trialUnkID].piece(m_patchID));
+        m_testBasisPtr = &(m_paramsPtr->getBasis(m_testUnkID).piece(m_patchID));
+        m_trialBasisPtr = &(m_paramsPtr->getBasis(m_trialUnkID).piece(m_patchID));
     }
 
     /// Setup the quadrature rule.
@@ -303,8 +303,8 @@ public: // *** Member functions ***
 //      /// @brief Set pointers to test and trial basis.
 //     virtual void defineTestTrialBases()
 //     { 
-//         m_testBasisPtr = &(m_paramsPtr->getBases()[m_testUnkID].piece(m_patchID).boundaryBasis(m_side));
-//         m_trialBasisPtr = &(m_paramsPtr->getBases()[m_trialUnkID].piece(m_patchID).boundaryBasis(m_side));
+//         m_testBasisPtr = &(m_paramsPtr->getBasis(m_testUnkID).piece(m_patchID).boundaryBasis(m_side));
+//         m_trialBasisPtr = &(m_paramsPtr->getBasis(m_trialUnkID).piece(m_patchID).boundaryBasis(m_side));
 //     }
 
 //     /// @brief Setup the quadrature rule.

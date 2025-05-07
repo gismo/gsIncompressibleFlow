@@ -37,7 +37,7 @@ template <class T>
 void gsTMModelData<T>::plotTurbulentViscosity(typename gsFlowSolverParams<T>::Ptr paramsPtr, std::string str)
 {
     gsMultiPatch<T> patches = paramsPtr->getPde().patches();    // multipatch representing the computational domain
-    gsMultiBasis<T> basis = paramsPtr->getBases()[1];
+    gsMultiBasis<T> basis = paramsPtr->getBasis(1);
     
     size_t np = patches.nPatches();
     gsMultiPatch<T>* turbViscMP = new gsMultiPatch<T>;
@@ -100,7 +100,7 @@ void gsTMModelData_SST<T>::evalVelocityQuantities(gsMatrix<T>& quNodes, index_t 
 {
     index_t nQuPoints = quNodes.cols();
     index_t dim = quNodes.rows();
-    gsMultiBasis<T> basis = m_paramsPtr->getBases()[0];
+    gsMultiBasis<T> basis = m_paramsPtr->getBasis(0);
     gsField<T> USolField = m_paramsPtr->getVelocitySolution();
     
     gsMapData<T> mapData;
@@ -158,7 +158,7 @@ template <class T>
 void gsTMModelData_SST<T>::evalKSol(gsMatrix<T>& quNodes, index_t patchId, index_t der)
 {
     index_t nQuPoints = quNodes.cols();
-    gsMultiBasis<T> basis = m_paramsPtr->getBases()[2];
+    gsMultiBasis<T> basis = m_paramsPtr->getBasis(2);
     gsField<T> KSolField = m_paramsPtr->getKSolution();
     
     m_KSolVals.resize(1, nQuPoints);
@@ -199,7 +199,7 @@ template <class T>
 void gsTMModelData_SST<T>::evalOSol(gsMatrix<T>& quNodes, index_t patchId, index_t der)
 {
     index_t nQuPoints = quNodes.cols();
-    gsMultiBasis<T> basis = m_paramsPtr->getBases()[3];
+    gsMultiBasis<T> basis = m_paramsPtr->getBasis(3);
     gsField<T> OSolField = m_paramsPtr->getOmegaSolution();
     
     m_OSolVals.resize(1, nQuPoints);

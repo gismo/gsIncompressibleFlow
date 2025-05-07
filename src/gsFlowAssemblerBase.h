@@ -177,12 +177,24 @@ public: // *** Getters/setters ***
     /**
      * @brief Returns a reference to the discretization bases.
      *
-     * In the case of velocity and pressure, the velocity basis is stored first, the  pressure basis is second.
+     * In the case of velocity and pressure, the velocity basis is stored first, the pressure basis is second.
      * 
      * There is also a const version returning a const reference.
      */
     virtual std::vector< gsMultiBasis<T> >& getBases() { return m_paramsPtr->getBases(); }
     virtual const std::vector< gsMultiBasis<T> >& getBases() const { return m_paramsPtr->getBases(); }
+
+    /**
+     * @brief Returns a reference to the discretization bases for variable \a unk.
+     *
+     * In the case of velocity and pressure, the velocity basis is stored first, the pressure basis is second.
+     * 
+     * @param[in] unk unknown index
+     * 
+     * There is also a const version returning a const reference.
+     */
+    virtual gsMultiBasis<T>& getBasis(index_t unk) { return m_paramsPtr->getBasis(unk); }
+    virtual const gsMultiBasis<T>& getBasis(index_t unk) const { return m_paramsPtr->getBasis(unk); }
 
     /// @brief Returns a const reference to the boundary conditions.
     virtual const gsBoundaryConditions<T>& getBCs() const { return m_paramsPtr->getBCs(); }

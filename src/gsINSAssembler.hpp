@@ -27,11 +27,11 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 
     m_nnzPerOuterU = 1;
     for (short_t i = 0; i < m_tarDim; i++)
-        m_nnzPerOuterU *= 2 * getBases().at(0).maxDegree(i) + 1;
+        m_nnzPerOuterU *= 2 * getBasis(0).maxDegree(i) + 1;
 
     m_nnzPerOuterP = 1;
     for (short_t i = 0; i < m_tarDim; i++)
-        m_nnzPerOuterP *= 2 * getBases().at(1).maxDegree(i) + 1;
+        m_nnzPerOuterP *= 2 * getBasis(1).maxDegree(i) + 1;
 
     if (MatOrder == RowMajor)
         m_nnzPerOuterUP = m_nnzPerOuterP;
@@ -39,7 +39,7 @@ void gsINSAssembler<T, MatOrder>::initMembers()
     {
         m_nnzPerOuterUP = 1;
         for (short_t i = 0; i < m_tarDim; i++)
-            m_nnzPerOuterUP *= 3 * getBases().at(0).maxDegree(i) - 1;
+            m_nnzPerOuterUP *= 3 * getBasis(0).maxDegree(i) - 1;
 
         m_nnzPerOuterUP *= m_tarDim;
     }
@@ -71,17 +71,23 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 template<class T, int MatOrder>
 void gsINSAssembler<T, MatOrder>::updateSizes()
 {
-    if (m_paramsPtr->hasPeriodicBC())
-    {
-        m_udofs = m_paramsPtr->getPerHelperPtr(0)->numFreeDofs();
-        m_pdofs = m_paramsPtr->getPerHelperPtr(1)->numFreeDofs();
-    }
-    else
-    {
-        m_udofs = m_dofMappers[0].freeSize();
-        m_pdofs = m_dofMappers[1].freeSize();
-    }
+    // if (m_paramsPtr->hasPeriodicBC())
+    // {
+    //     m_udofs = m_paramsPtr->getPerHelperPtr(0)->numFreeDofs();
+    //     m_pdofs = m_paramsPtr->getPerHelperPtr(1)->numFreeDofs();
+    // }
+    // else
+    // {
+    //     m_udofs = m_dofMappers[0].freeSize();
+    //     m_pdofs = m_dofMappers[1].freeSize();
+    // }
 
+    if (m_paramsPtr->hasPeriodicBC())
+        m_udofs = m_paramsPtr->getPerHelperPtr()->numFreeDofs();
+    else
+        m_udofs = m_dofMappers[0].freeSize();
+
+    m_pdofs = m_dofMappers[1].freeSize();
     m_pshift = m_tarDim * m_udofs;
     m_dofs = m_pshift + m_pdofs;
 
@@ -438,7 +444,7 @@ void gsINSAssembler<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< g
     m_dofMappers[0].finalize();
     m_dofMappers[1].finalize();
 
-    m_paramsPtr->createPeriodicHelpers(m_dofMappers);
+    m_paramsPtr->createPeriodicHelper(m_dofMappers[0]);
 
     this->updateDofMappers();
     this->updateSizes();
@@ -487,7 +493,7 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
     gsDofMapper rotMapper; // mapper for omega x r coeffs
 
     if (unk == 0 && customSwitch)
-        this->getBases().at(unk).getMapper(getAssemblerOptions().intStrategy, rotMapper);
+        this->getBasis(0).getMapper(getAssemblerOptions().intStrategy, rotMapper);
 
     const index_t dim = (unk == 0 ? m_tarDim : 1);
     gsMatrix<T> coeffs;
@@ -502,7 +508,7 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
     for (size_t p = 0; p < this->getPatches().nPatches(); ++p)
     {
         // Reconstruct solution coefficients on patch p
-        const index_t sz = this->getBases().at(unk).piece(p).size();
+        const index_t sz = this->getBasis(unk).piece(p).size();
         coeffs.resize(sz, dim);
 
         for (index_t i = 0; i < sz; ++i)
@@ -516,7 +522,7 @@ gsField<T> gsINSAssembler<T, MatOrder>::constructSolution(const gsMatrix<T>& sol
                 coeffs.row(i) -= m_omegaXrCoeffs.row(rotMapper.index(i, p));
         }
 
-        result->addPatch(this->getBases().at(unk).piece(p).makeGeometry(coeffs));
+        result->addPatch(this->getBasis(unk).piece(p).makeGeometry(coeffs));
     }
 
     return gsField<T>(this->getPatches(), result, true);
@@ -531,7 +537,7 @@ T gsINSAssembler<T, MatOrder>::computeFlowRate(index_t patch, boxSide side, gsMa
     gsField<T> solutionField = constructSolution(solution, 0); // velocity field
 
     const gsGeometry<T>& geo = this->getPatches().patch(patch);
-    const gsBasis<T>& basis = this->getBases().at(0).basis(patch);
+    const gsBasis<T>& basis = this->getBasis(0).basis(patch);
 
     gsVector<index_t> numQuadNodes(m_tarDim);
     const index_t dir = side.direction();
@@ -669,21 +675,20 @@ void gsINSAssembler<T, MatOrder>::nonper2per_into(const gsMatrix<T>& fullVector,
     index_t fullUdofs = m_dofMappers[0].freeSize();
     index_t fullPshift = m_tarDim * fullUdofs;
 
-    for (index_t row = 0; row < fullVector.rows(); row++)
+    // mapping velocity DOFs
+    for (index_t row = 0; row < fullPshift; row++)
     {
         if (!isEliminatedPeriodic(row))
             perVector(mapPeriodic(row), 0) += fullVector(row, 0);
         else
         {
-            if (row < fullPshift)
-            {
-                for (int d = 0; d < m_tarDim; d++)
-                    perVector( m_paramsPtr->getPerHelperPtr(0)->map(row % fullUdofs) + d * m_udofs, 0) += m_paramsPtr->getPde().bc().getTransformMatrix()(d, row / fullUdofs) * fullVector(row, 0);
-            }
-            else
-                perVector(mapPeriodic(row), 0) += fullVector(row, 0);
+            for (int d = 0; d < m_tarDim; d++)
+                perVector( m_paramsPtr->getPerHelperPtr()->map(row % fullUdofs) + d * m_udofs, 0) += m_paramsPtr->getPde().bc().getTransformMatrix()(d, row / fullUdofs) * fullVector(row, 0);
         }
     }
+
+    // pressure DOFS
+    perVector.bottomRows(m_pdofs) = fullVector.bottomRows(m_pdofs);
 }
 
 template<class T, int MatOrder>
@@ -691,30 +696,26 @@ void gsINSAssembler<T, MatOrder>::per2nonper_into(const gsMatrix<T>& perVector, 
 {
     index_t fullUdofs = m_dofMappers[0].freeSize();
     index_t fullPshift = m_tarDim * fullUdofs;
-    index_t fullDofs = fullPshift + m_dofMappers[1].freeSize();
+    index_t fullDofs = fullPshift + m_pdofs;
     
     fullVector.setZero(fullDofs, 1);
 
     for (index_t row = 0; row < m_dofs; row++)
         fullVector(invMapPeriodic(row), 0) += perVector(row, 0);
 
-    std::vector<index_t> elimDofsU = m_paramsPtr->getPerHelperPtr(0)->getElimPeriodicDofs();
-    std::vector<index_t> elimDofsP = m_paramsPtr->getPerHelperPtr(1)->getElimPeriodicDofs();
+    std::vector<index_t> elimDofsU = m_paramsPtr->getPerHelperPtr()->getElimPeriodicDofs();
 
     for (size_t i = 0; i < elimDofsU.size(); i++)
     {
         gsMatrix<T> u(m_tarDim, 1);
         for (int d = 0; d < m_tarDim; d++)
-            u(d, 0) = perVector(m_paramsPtr->getPerHelperPtr(0)->map(elimDofsU[i]) + d * m_udofs, 0);
+            u(d, 0) = perVector(m_paramsPtr->getPerHelperPtr()->map(elimDofsU[i]) + d * m_udofs, 0);
 
         u = m_paramsPtr->getPde().bc().getTransformMatrix().transpose() * u; // multiplication by an inverse tranform matrix
 
         for (int d = 0; d < m_tarDim; d++)
             fullVector(elimDofsU[i] + d * fullUdofs, 0) = u(d, 0);
     }
-
-    for (size_t i = 0; i < elimDofsP.size(); i++)
-        fullVector(elimDofsP[i] + fullPshift, 0) = perVector(mapPeriodic(elimDofsP[i] + fullPshift), 0);
 }
 
 
@@ -745,7 +746,7 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
     }
 
     gsDofMapper mapperOxR;
-    getBases().at(0).getMapper(getAssemblerOptions().intStrategy, mapperOxR);
+    getBasis(0).getMapper(getAssemblerOptions().intStrategy, mapperOxR);
     int ndofsOxR = mapperOxR.freeSize();
 
     gsBoundaryConditions<T> dummyBC;
@@ -771,8 +772,8 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
         visitorMass.initOnPatch(p);
         visitorRhs.initOnPatch(p);
 
-        typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).domain()->beginAll();
-        typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBases().front().piece(p).domain()->endAll();
+        typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(0).piece(p).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(0).piece(p).domain()->endAll();
 
         while (domIt!=domItEnd)
         {
@@ -820,7 +821,7 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
 // template<class T, int MatOrder>
 // void gsINSAssembler<T, MatOrder>::findPressureBoundaryPartIDs(std::vector<std::pair<int, boxSide> > bndPart, std::vector<index_t>& idVector)
 //     {
-//         const gsMultiBasis<T>& pBasis = getBases()[1];
+//         const gsMultiBasis<T>& pBasis = getBasis(1);
 
 //         gsMatrix<index_t> bnd;
 //         idVector.clear();

@@ -102,12 +102,13 @@ void gsRANSSolverUnsteady<T, MatOrder>::initialize()
             f = gsFunctionExpr<>("0", "0", "0", 3);
             break;
     }
-    std::vector<gsMultiBasis<T> > discbases;
-    discbases.push_back(m_paramsPtr->getBases().at(0));
-    discbases.push_back(m_paramsPtr->getBases().at(1));
-    gsNavStokesPde<real_t> NSSteadyPde(m_paramsPtr->getPde().patches(), m_paramsPtr->getPde().bc(), &f, 0.1);
-    gsFlowSolverParams<real_t> paramsSteady(NSSteadyPde, discbases);
-    gsINSSolverSteady<real_t, ColMajor> NSSteadySolver(paramsSteady);
+
+    // std::vector<gsMultiBasis<T> > discbases;
+    // discbases.push_back(m_paramsPtr->getBases().at(0));
+    // discbases.push_back(m_paramsPtr->getBases().at(1));
+    gsNavStokesPde<T> NSSteadyPde(m_paramsPtr->getPde().patches(), m_paramsPtr->getPde().bc(), &f, 0.1);
+    gsFlowSolverParams<T> paramsSteady(NSSteadyPde, m_paramsPtr->getBases());
+    gsINSSolverSteady<T, MatOrder> NSSteadySolver(paramsSteady);
 
     gsInfo << "\n-------------------------------------------------------------------------------\n";
     gsInfo << "Computing initial solution for RANS by solving steady N-S problem for viscosity \n";

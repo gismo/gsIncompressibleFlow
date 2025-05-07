@@ -544,7 +544,10 @@ protected: // *** Member functions ***
 
     virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
-    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+    {
+        localToGlobal_nonper(eliminatedDofs, globalMat, globalRhs);
+    }
 };
 
 // ===================================================================================================================
@@ -919,7 +922,10 @@ protected: // *** Member functions ***
 
     virtual void localToGlobal_nonper(gsMatrix<T>& globalRhs);
 
-    virtual void localToGlobal_per(gsMatrix<T>& globalRhs);
+    virtual void localToGlobal_per(gsMatrix<T>& globalRhs)
+    {
+        localToGlobal_nonper(globalRhs);
+    }
 
 public: // *** Member functions ***
 

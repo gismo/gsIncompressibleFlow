@@ -968,7 +968,7 @@ gsField<T> computeDistanceField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
     gsInfo << "Computing required distance field ... ";
 
     gsMultiPatch<T> patches = paramsPtr->getPde().patches();    // multipatch representing the computational domain
-    gsMultiBasis<T> basis = paramsPtr->getBases()[1];           // pressure basis as base basis for distance computation
+    gsMultiBasis<T> basis = paramsPtr->getBasis(1);             // pressure basis as base basis for distance computation
 
     std::vector<std::pair<int, boxSide> > bndIn = paramsPtr->getBndIn();
     std::vector<std::pair<int, boxSide> > bndWall = paramsPtr->getBndWall();

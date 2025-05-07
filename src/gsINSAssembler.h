@@ -76,7 +76,7 @@ protected: // *** Base class members ***
 
 public: // *** Base class member functions ***
 
-    using Base::getBases;
+    using Base::getBasis;
     using Base::getPatches;
     using Base::getAssemblerOptions;
     using Base::getBCs;
@@ -145,11 +145,11 @@ protected: // *** Member functions ***
     {
         index_t fullUdofs = m_dofMappers[0].freeSize();
         index_t fullPshift = m_tarDim * fullUdofs;
-        
+
         if (i < fullPshift)
-            return ( m_paramsPtr->getPerHelperPtr(0)->map(i % fullUdofs) + (i / fullUdofs) * m_udofs );
+            return ( m_paramsPtr->getPerHelperPtr()->map(i % fullUdofs) + (i / fullUdofs) * m_udofs );
         else
-            return ( m_paramsPtr->getPerHelperPtr(1)->map(i % fullPshift) + m_pshift);
+            return ( (i % fullPshift) + m_pshift);
     }
 
     inline index_t invMapPeriodic(int i) const
@@ -158,20 +158,18 @@ protected: // *** Member functions ***
         index_t fullPshift = m_tarDim * fullUdofs;
 
         if (i < m_pshift)
-            return ( m_paramsPtr->getPerHelperPtr(0)->invMap(i % m_udofs) + (i / m_udofs) * fullUdofs );
+            return ( m_paramsPtr->getPerHelperPtr()->invMap(i % m_udofs) + (i / m_udofs) * fullUdofs );
         else
-            return ( m_paramsPtr->getPerHelperPtr(1)->invMap(i % m_pshift) + fullPshift);
+            return ( (i % m_pshift) + fullPshift);
     }
 
     inline bool isEliminatedPeriodic(int i) const
     {
         index_t fullUdofs = m_dofMappers[0].freeSize();
         index_t fullPshift = m_tarDim * fullUdofs;
+        GISMO_ASSERT(i < fullPshift, "Index out of range, i should be a velocity DOF.");
 
-        if (i < fullPshift)
-            return ( m_paramsPtr->getPerHelperPtr(0)->isEliminated(i % fullUdofs) );
-        else
-            return ( m_paramsPtr->getPerHelperPtr(1)->isEliminated(i % fullPshift) );
+        return ( m_paramsPtr->getPerHelperPtr()->isEliminated(i % fullUdofs) );
     }
 
     void nonper2per_into(const gsMatrix<T>& fullVector, gsMatrix<T>& perVector) const;

@@ -37,9 +37,9 @@ protected: // *** Class members ***
     gsMatrix<T> m_baseRhs, m_rhs;
 
     gsBoundaryConditions<T> m_bc;
-    std::vector<gsMultiBasis<T> > m_bases;
+    //std::vector<gsMultiBasis<T> > m_bases;
     index_t m_nnzPerRowTM;
-    index_t numTMvars;
+    short_t m_numVars;
     std::vector<index_t> m_kdofs;
     gsField<T> m_currentSolField;
     gsMatrix<T> m_RANSsolution;
@@ -58,7 +58,7 @@ protected: // *** Base class members ***
 
 public: // *** Base class member functions ***
 
-    using Base::getBases;
+    using Base::getBasis;
     using Base::getPatches;
     using Base::getAssemblerOptions;
     using Base::getBCs;
@@ -69,7 +69,8 @@ public: // *** Constructor/destructor ***
     gsTMAssemblerBase(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr)
     { 
-        initMembers();
+        m_numVars = 0;
+        //initMembers();
     }
 
     virtual ~gsTMAssemblerBase()
@@ -78,7 +79,7 @@ public: // *** Constructor/destructor ***
 protected: // *** Member functions ***
 
     /// @brief Initialize the class members.
-    virtual void initMembers();
+    void initMembers();
 
     /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
     virtual void updateSizes();
