@@ -19,8 +19,6 @@
 using namespace gismo;
 
 template<class T, int MatOrder> void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
-template<class T, int MatOrder, class LinSolver> void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr);
-template<class T, int MatOrder> void markElimDof(gsRANSSolverUnsteady<T, MatOrder>& NSsolver);
 
 int main(int argc, char *argv[])
 {
@@ -28,15 +26,20 @@ int main(int argc, char *argv[])
 
     // ========================================= Settings ========================================= 
 
+    // lin. solvers
+    bool direct = false;
+    bool iter = false;
+
     // domain definition
     index_t geo = 1; // 1 - step, 2 - cavity, 3 - blade profile 2D
     index_t dim = 2;
+    std::string inputFile = "";
     
     // discretization settings
-    index_t deg = 1;
     index_t numRefine = 4;
     index_t wallRefine = 0;
     index_t leadRefine = 0; // for profile2D
+    int numElevate = 0; // number of degree elevations (before refinement)
 
     // problem parameters
     real_t viscosity = 0.00001;
@@ -44,7 +47,7 @@ int main(int argc, char *argv[])
     real_t inVelY = 0; // inlet y-velocity for profile2D
     
     // solver settings
-    index_t maxIt = 400;
+    index_t maxIt = 20;
     index_t picardIt = 5;
     index_t linIt = 50;
     real_t timeStep = 0.05;
@@ -61,20 +64,24 @@ int main(int argc, char *argv[])
     bool plotMesh = false;
     index_t plotPts = 10000;
     bool animation = false;
-    index_t animStep = 1;
+    index_t animStep = 5;
 
     // ---------------------------------------------------------------------------------
 
     //command line
-    gsCmdLine cmd("Solves the Navier-Stokes problem in a given domain (step, cavity, blade profile).");
+    gsCmdLine cmd("Solves the RANS equations with turbulence model in a given domain (step, cavity, blade profile).");
+
+    cmd.addSwitch("direct", "Solve with direct linear solver", direct);
+    cmd.addSwitch("iter", "Solve with preconditioned GMRES as linear solver", iter);
 
     cmd.addInt("g", "geo", "Computational domain (1 - step, 2 - cavity, 3 - profile (only 2D))", geo);
     cmd.addInt("d", "dim", "Space dimension", dim);
+    cmd.addString("", "input", "Full path to the input xml file containing geometry, right-hand side functin and boundary conditions", inputFile);
 
-    cmd.addInt("", "deg", "B-spline degree for geometry representation", deg);
     cmd.addInt("r", "uniformRefine", "Number of uniform h-refinement steps to perform before solving", numRefine);
     cmd.addInt("", "wallRefine", "Number of h-refinement steps near step corner, cavity walls of blade profile", wallRefine);
     cmd.addInt("", "leadRefine", "Number of h-refinement steps near the beginning of the blade (for profile geometry)", leadRefine);
+    cmd.addInt("e", "degElevate", "Number of degree elevations (performed before h-refinement)", numElevate);
 
     cmd.addReal("v", "visc", "Viscosity value", viscosity);
     cmd.addReal("", "inVelX", "x-coordinate of inflow velocity (for profile geometry)", inVelX);
@@ -99,123 +106,100 @@ int main(int argc, char *argv[])
     cmd.addInt("", "animStep", "Number of iterations between screenshots for animation (used when animation = true)", animStep);
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
+    
+    if (!inputFile.empty())
+        geo = 0;
 
+    if ( !(direct || iter) )
+        gsWarn << "All computation flags set to false - nothing will be computed.\nPlease select at least one of the flags: --direct, --iter\n\n";
 
-    // ========================================= Define geometry ========================================= 
+    // ========================================= Define problem (geometry, BCs, rhs) ========================================= 
     
     gsMultiPatch<> patches;
-    real_t a, b, c, a_in;
-    std::string geoStr;
+    gsBoundaryConditions<> bcInfo;
+    gsFunctionExpr<> f; // external force
+
+    std::string fn, geoStr;
 
     switch(geo)
     {
+        case 0:
+            break; // inputFile is given from cmd
+        
+        default:
+            gsWarn << "Unknown geometry ID, using backward-facing step.\n";
+            geo = 1;
+
         case 1:
-        {
-            geoStr = util::to_string(dim) + "D backward-facing step";
-
-            a = 16;
-            b = 2;
-            a_in = 3;
-
-            switch(dim)
-            {
-                case 2:
-                default:
-                    patches = BSplineStep2D<real_t>(deg, a, b, a_in);
-                    break;
-
-                case 3:
-                    c = 2;
-                    patches = BSplineStep3D<real_t>(deg, a, b, c, a_in);
-                    break;
-            }
-
+            geoStr = "BFS" + util::to_string(dim) + "D";
+            fn = geoStr + "_problem.xml";
+            inputFile = fn;
             break;
-        }
+
         case 2:
-        {
-            geoStr = util::to_string(dim) + "D lid-driven cavity";
-
-            a = 1;
-            b = 1; 
-
-            switch(dim)
-            {
-                case 2:
-                default:
-                    patches = BSplineCavity2D<real_t>(deg, a, b);
-                    break;
-
-                case 3:
-                    c = 1;
-                    patches = BSplineCavity3D<real_t>(deg, a, b, c);
-                    break;
-            }
-
+            geoStr = "LDC" + util::to_string(dim) + "D";
+            fn = geoStr + "_problem.xml";
+            inputFile = fn;
             break;
-        }
-        case 3:
-        {
-            geoStr = util::to_string(dim) + "D blade profile";
 
+        case 3:
             if (dim == 3)
                 gsWarn << "Geometry 3 is only 2D!\n";
 
-            //gsReadFile<>(FLOW_DATA_DIR "geo_profile2D.xml", patches);
+            geoStr = "profile2D";
+            inputFile = geoStr + "_problem.xml";
             break;
-        }
-        default:
-            GISMO_ERROR("Unknown domain.");
     }
+
+    gsInfo << "Reading problem definition from file:\n" << inputFile << "\n\n";
+
+    std::string path = gsFileManager::find(inputFile);
+    if ( path.empty() )
+    {
+        gsWarn<<"Input file not found, quitting.\n";
+        return 1;
+    }
+
+    gsFileData<> fd(inputFile);
+    fd.getId(0, patches);   // id=0: multipatch domain
+    fd.getId(1, f);         // id=1: source function
+    fd.getId(2, bcInfo);    // id=2: boundary conditions
 
     gsInfo << "Solving RANS problem with k-omega SST model in " << geoStr << " domain.\n";
-    gsInfo << "viscosity = " << viscosity << "\n";
     gsInfo << patches;
+    gsInfo << "viscosity = " << viscosity << "\n";
+    gsInfo << "source function = " << f << "\n";
+
+    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall;
+    defineBndParts(geo, dim, bndIn, bndOut, bndWall);
 
 
-    // ========================================= Define problem and basis ========================================= 
-
-    gsBoundaryConditions<> bcInfo;
-    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall; // containers of patch sides corresponding to inflow, outflow and wall boundaries
-    gsFunctionExpr<> f; // external force
-
-    switch(dim)
-    {
-        case 2:
-        default:
-            f = gsFunctionExpr<>("0", "0", 2);
-            break;
-
-        case 3:
-            f = gsFunctionExpr<>("0", "0", "0", 3);
-            break;
-    }
+    // ========================================= Define basis ========================================= 
 
     // Define discretization space by refining the basis of the geometry
     gsMultiBasis<> basis(patches);
+    basis.degreeElevate(numElevate);
 
     switch(geo)
     {
-        case 1:
-        {
-            defineBCs_step(bcInfo, bndIn, bndOut, bndWall, dim); // bcInfo, bndIn, bndOut, bndWall are defined here
-            refineBasis_step2(patches, basis, numRefine, wallRefine, 0, 2, 0, dim, a, b, a_in);
+        case 0:
+            for (int r = 0; r < numRefine; ++r)
+                basis.uniformRefine();
             break;
-        }
+
+        case 1:
+        default:
+
+            refineBasis_step(basis, numRefine, 0, wallRefine, 0, 0, dim, 8.0, 2.0, 2.0); // 8, 2, 2 are dimensions of the domain in the input xml file
+            break;
+
         case 2:
-        {
-            defineBCs_cavity(bcInfo, bndWall, dim, 1); // bcInfo and bndWall are defined here, bndIn and bndOut remain empty
             refineBasis_cavity(basis, numRefine, wallRefine, dim);
             break;
-        }
+
         case 3:
-        {
-            defineBCs_profile2D(bcInfo, bndIn, bndOut, bndWall, inVelX, inVelY);
             refineBasis_profile2D(basis, numRefine, wallRefine, leadRefine);
             break;
-        }
-        default:
-            GISMO_ERROR("Unknown domain.");
     }
         
     std::vector< gsMultiBasis<> >  discreteBases;
@@ -250,15 +234,38 @@ int main(int argc, char *argv[])
     params.options().setReal("timeStep", timeStep);
     params.options().setInt("nonlin.maxIt", picardIt);
     params.options().setReal("nonlin.tol", picardTol);
-    params.options().setString("lin.solver", "direct");
 
-    gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
+    if (direct)
+    {
+        solveOpt.setString("id", "direct");
+        params.options().setString("lin.solver", "direct");
 
-    gsInfo << "\n-----------------------------------------------------------\n";
-    gsInfo << "Solving the unsteady RANS problem with direct linear solver\n";
-    gsInfo << "-----------------------------------------------------------\n";
+        gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
 
-    solveProblem(NSsolver, solveOpt, geo);
+        gsInfo << "\n-----------------------------------------------------------\n";
+        gsInfo << "Solving the unsteady RANS problem with direct linear solver\n";
+        gsInfo << "-----------------------------------------------------------\n";
+
+        solveProblem(NSsolver, solveOpt, geo);
+    }
+
+    if (iter)
+    {
+        solveOpt.setString("id", "iter");
+        params.options().setString("lin.solver", "iter");
+        params.options().setInt("lin.maxIt", linIt);
+        params.options().setReal("lin.tol", linTol);
+        params.options().setString("lin.precType", precond);
+
+        gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
+
+        gsInfo << "\n-----------------------------------------------------------\n";
+        gsInfo << "Solving the unsteady RANS problem with iterative linear solver\n";
+        gsInfo << "-----------------------------------------------------------\n";
+
+        solveProblem(NSsolver, solveOpt, geo);
+    }
+
 
     return 0; 
 }
@@ -282,31 +289,26 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
 
         switch(opt.getInt("geo"))
         {
+            case 0:
+                geoStr = "customGeo";
+                break;
             case 1:
-            {
+            default:
                 geoStr = "BFS" + dimStr;
                 break;
-            }
+
             case 2:
-            {
                 geoStr = "LDC" + dimStr;
                 break;
-            }
+
             case 3:
-            {
-                geoStr = "profile" + dimStr;
+                geoStr = "profile2D";
                 break;
-            }
-            default:
-                GISMO_ERROR("Unknown domain.");
         }
     }
 
     // ------------------------------------
     // solve problem
-
-    if(geo == 2)
-        markElimDof(NSsolver);
 
     gsInfo << "\nInitialization...\n";
     NSsolver.initialize();
@@ -314,14 +316,11 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     gsInfo << "RANS numDofs: " << NSsolver.numDofs() << "\n";
     gsInfo << "TM numDofs: " << NSsolver.numDofsTM() << "\n\n";
 
-    gsRANSSolverUnsteady<real_t>* pSolver = dynamic_cast<gsRANSSolverUnsteady<real_t>* >(&NSsolver);
+    if (opt.getSwitch("stokesInit"))
+        NSsolver.solveStokes();
 
-    if (pSolver)
-        if (opt.getSwitch("stokesInit"))
-            pSolver->solveStokes();
-
-    if (pSolver && opt.getSwitch("animation"))
-        pSolver->solveWithAnimation(opt.getInt("maxIt"), opt.getInt("animStep"), geoStr + "_" + id, opt.getReal("tol"), opt.getInt("plotPts"), true, 1);
+    if (opt.getSwitch("animation"))
+        NSsolver.solveWithAnimation(opt.getInt("maxIt"), opt.getInt("animStep"), geoStr + "_" + id, opt.getReal("tol"), opt.getInt("plotPts"), true, 1);
     else
         NSsolver.solve(opt.getInt("maxIt"), opt.getReal("tol"), 0);    
 
@@ -351,26 +350,4 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
         gsWriteParaview<>(omegasol, geoStr + "_" + id + "_omega", plotPts);
         gsInfo << "Done.\n";
     }
-}
-
-template<class T, int MatOrder, class LinSolver>
-void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr)
-{
-    std::vector<index_t> itVector = linSolverPtr->getLinIterVector();
-
-    gsInfo << "Iterations of linear solver in each Picard iteration:\n";
-    for (size_t i = 0; i < itVector.size(); i++)
-        gsInfo << itVector[i] << ", ";
-
-    gsInfo << "\nAverage number of linear solver iterations per Picard iteration: " << linSolverPtr->getAvgLinIterations() << "\n";
-}
-
-// mark one pressure DoF in the domain corner as fixed zero (for the lid driven cavity problem)
-template<class T, int MatOrder>
-void markElimDof(gsRANSSolverUnsteady<T, MatOrder>& NSsolver)
-{
-    std::vector<gsMatrix<index_t> > elimDof(1);
-    elimDof[0].setZero(1,1);
-
-    NSsolver.markDofsAsEliminatedZeros(elimDof, 1);
 }
