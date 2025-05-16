@@ -48,7 +48,6 @@ protected: // *** Base class members ***
     using Base::m_udofs;
     using Base::m_tarDim;
     using Base::m_nnzPerOuterU;
-    using Base::m_dofMappers;
     using Base::m_solution;
     using Base::m_baseMatrix;
     using Base::m_matrix;
@@ -74,11 +73,8 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     void initMembers();
 
-    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
-
-    /// @brief Update the DOF mappers in all visitors (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
-    virtual void updateDofMappers();
 
     /// @brief Assemble the linear part of the matrix.
     virtual void assembleLinearPart();

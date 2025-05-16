@@ -47,38 +47,18 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     addBCs(m_bc, bndIn, bndWall, Oin, Owall, 3);
 
     m_paramsPtr->setBCs(m_bc);
-
-    // periodic BC for RANS => interface for TM
-    // for (size_t i = 0; i < m_bc.numPeriodic(); i++)
-    // {
-    //     boundaryInterface ppair = m_bc.periodicPairs().at(i);
-    //     gsMultiBasis<T>* kBasisPtr = &m_paramsPtr->getBasesTM().at(0);
-    //     gsMultiBasis<T>* oBasisPtr = &m_paramsPtr->getBasesTM().at(1);
-
-    //     kBasisPtr->addInterface(&kBasisPtr->basis(ppair.first().patch), ppair.first().side(), &kBasisPtr->basis(ppair.second().patch), ppair.second().side());
-    //     oBasisPtr->addInterface(&oBasisPtr->basis(ppair.first().patch), ppair.first().side(), &oBasisPtr->basis(ppair.second().patch), ppair.second().side());
-    // }
-    
-    std::vector<gsMultiBasis<T> > bases = m_paramsPtr->getBases();
-    gsBoundaryConditions<T> bc = m_paramsPtr->getBCs();
-    for (size_t i = 0; i < bases.size(); i++)
-        bases[i].getMapper(getAssemblerOptions().dirStrategy, getAssemblerOptions().intStrategy, bc, m_dofMappers[i], i);
-
+    m_paramsPtr->updateDofMappers();
     updateSizes();
 
     m_visitorLinearSST_K = gsTMVisitorLinearSST<T, MatOrder>(m_paramsPtr, 2);
     m_visitorLinearSST_O = gsTMVisitorLinearSST<T, MatOrder>(m_paramsPtr, 3);
     m_visitorLinearSST_K.initialize();
     m_visitorLinearSST_O.initialize();
-    m_visitorLinearSST_K.updateDofMappers(m_dofMappers);
-    m_visitorLinearSST_O.updateDofMappers(m_dofMappers);
 
     m_visitorTimeIterationSST_K = gsTMVisitorTimeIterationSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 2);
     m_visitorTimeIterationSST_O = gsTMVisitorTimeIterationSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 3);
     m_visitorTimeIterationSST_K.initialize();
     m_visitorTimeIterationSST_O.initialize();
-    m_visitorTimeIterationSST_K.updateDofMappers(m_dofMappers);
-    m_visitorTimeIterationSST_O.updateDofMappers(m_dofMappers);
     gsField<T> velocity = m_paramsPtr->getVelocitySolution();
     m_visitorTimeIterationSST_K.setCurrentSolution(velocity);
     m_visitorTimeIterationSST_O.setCurrentSolution(velocity);
@@ -89,8 +69,6 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     m_visitorNonlinearSST_O.initialize();
     m_visitorNonlinearSST_K.setCurrentSolution(m_solution);
     m_visitorNonlinearSST_O.setCurrentSolution(m_solution);
-    m_visitorNonlinearSST_K.updateDofMappers(m_dofMappers);
-    m_visitorNonlinearSST_O.updateDofMappers(m_dofMappers);
 
 }
 
@@ -126,18 +104,6 @@ void gsTMAssemblerSST<T, MatOrder>::updateSizes()
     m_oldTimeFieldK = m_currentFieldK;
     m_oldTimeFieldO = m_currentFieldO;
     
-}
-
-
-template<class T, int MatOrder>
-void gsTMAssemblerSST<T, MatOrder>::updateDofMappers()
-{
-    m_visitorLinearSST_K.updateDofMappers(m_dofMappers);
-    m_visitorLinearSST_O.updateDofMappers(m_dofMappers);
-    m_visitorTimeIterationSST_K.updateDofMappers(m_dofMappers);
-    m_visitorTimeIterationSST_O.updateDofMappers(m_dofMappers);
-    m_visitorNonlinearSST_K.updateDofMappers(m_dofMappers);
-    m_visitorNonlinearSST_O.updateDofMappers(m_dofMappers);
 }
 
 

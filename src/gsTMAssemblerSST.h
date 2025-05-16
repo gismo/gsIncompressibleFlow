@@ -57,7 +57,6 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_dofs;
     using Base::m_tarDim;
-    using Base::m_dofMappers;
     using Base::m_ddof;
     using Base::m_solution;
     using Base::m_isBaseReady;
@@ -100,11 +99,8 @@ protected: // *** Member functions ***
     /// @brief Initialize the class members.
     void initMembers();
 
-    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
-
-    /// @brief Update the DOF mappers in all visitors (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
-    virtual void updateDofMappers();
 
     /// @brief Update the current solution field stored in the assembler.
     /// @param[in] solVector    new solution vector

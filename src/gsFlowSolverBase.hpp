@@ -192,14 +192,6 @@ void gsFlowSolverBase<T, MatOrder>::writeSolChangeRelNorm(gsMatrix<T> solOld, gs
 
 
 template<class T, int MatOrder>
-void gsFlowSolverBase<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk)
-{
-    getAssembler()->markDofsAsEliminatedZeros(boundaryDofs, unk);
-    updateSizes();
-}
-
-
-template<class T, int MatOrder>
 int gsFlowSolverBase<T, MatOrder>::checkGeoJacobian(int npts, T dist, T tol)
 {
     // default values

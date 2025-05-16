@@ -49,7 +49,6 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_dofs;
     using Base::m_tarDim;
-    using Base::m_dofMappers;
     using Base::m_ddof;
     using Base::m_solution;
     using Base::m_isBaseReady;
@@ -81,15 +80,10 @@ protected: // *** Member functions ***
     /// @brief Initialize the class members.
     void initMembers();
 
-    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
 
 public: // *** Member functions ***
-
-    /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.
-    /// @param[in] boundaryDofs     indices of the given boundary DOFs
-    /// @param[in] unk              the considered unknown
-    virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk);
 
     /// @brief Construct solution from computed solution vector for unknown \a unk.
     /// @param[in]  unk         the considered unknown

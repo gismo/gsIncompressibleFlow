@@ -59,8 +59,7 @@ protected: // *** Class members ***
     gsField<T> m_distanceField;
     
     bool m_hasPeriodicBC;
-    typename gsFlowPeriodicHelper<T>::Ptr m_periodicHelper;
-    //std::vector< typename gsFlowPeriodicHelper<T>::Ptr > m_periodicHelpers;
+    typename gsFlowPeriodicHelper<T>::Ptr m_periodicHelperPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -76,8 +75,6 @@ public: // *** Constructor/destructor ***
         m_assembOpt.dirValues = dirichlet::interpolation;
         m_assembOpt.intStrategy = iFace::glue;
 
-        updateDofMappers();
-
         m_opt = gsFlowSolverParams<T>::defaultOptions();
         m_precOpt = gsINSPreconditioner<T, RowMajor>::defaultOptions();
 
@@ -85,12 +82,13 @@ public: // *** Constructor/destructor ***
         m_isBndSet = false;
         m_hasPeriodicBC = false;
 
+        updateDofMappers(); // create DOF mappers for m_bases and m_assembOpt and store in m_dofMappers
+
         size_t numPerSides = m_pdePtr->bc().numPeriodic();
 
         if (numPerSides != 0)
         {
             m_hasPeriodicBC = true;
-            updatePeriodicHelper();
 
             // periodic BC for velocity => interface for pressure and other scalar quantities
             for (size_t i = 0; i < numPerSides; i++)
@@ -103,6 +101,9 @@ public: // *** Constructor/destructor ***
                     basisPtr->addInterface(&basisPtr->basis(ppair.first().patch), ppair.first().side(), &basisPtr->basis(ppair.second().patch), ppair.second().side());
                 }
             }
+
+            updateDofMappers();
+            updatePeriodicHelper(); // create periodic helper for velocity basis with m_dofMappers[0]
         }
     }
 
@@ -169,6 +170,11 @@ public: // *** Static functions ***
 
 public: // *** Member functions ***
 
+    /// @brief Update the stored DOF mappers for all bases in m_bases.
+    /// @param[in]  finalize    finalize the DOF mapper (yes/no)
+    void updateDofMappers(bool finalize = true)
+    { createDofMappers(m_dofMappers, finalize); }
+
     /// @brief Create DOF mappers for all bases in m_bases.
     /// @param[out] mappers     vector of created DOF mappers
     /// @param[in]  finalize    finalize the DOF mapper (yes/no)
@@ -177,27 +183,29 @@ public: // *** Member functions ***
         mappers.resize(m_bases.size());
    
         for (size_t i = 0; i < m_bases.size(); i++)
-        {
             m_bases[i].getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_BC, mappers[i], i, finalize);
-        }
+    }
+
+    /// @brief Finalize all stored DOF mappers.
+    void finalizeDofMappers()
+    {
+        for (size_t i = 0; i < m_dofMappers.size(); i++)
+            m_dofMappers[i].finalize();
+    }
+
+    /// @brief Update the stored helper for mapping of radial periodic conditions.
+    void updatePeriodicHelper()
+    { 
+        if (m_hasPeriodicBC)
+            createPeriodicHelper(m_dofMappers[0]);
     }
 
     /// @brief Create helper for mapping of radial periodic conditions.
     /// @param[in]  mapper     DOF mapper
     void createPeriodicHelper(const gsDofMapper& mapper)
     {    
-        m_periodicHelper = gsFlowPeriodicHelper<T>::make(getBases().at(0), mapper, m_pdePtr->bc());
+        m_periodicHelperPtr = gsFlowPeriodicHelper<T>::make(getBases().at(0), mapper, m_pdePtr->bc());
     }
-
-    // /// @brief Create helpers for mapping of radial periodic conditions.
-    // /// @param[in]  mappers     vector of DOF mappers
-    // void createPeriodicHelpers(const std::vector<gsDofMapper>& mappers)
-    // {
-    //     m_periodicHelpers.resize(2);
-
-    //     m_periodicHelpers[0] = gsFlowPeriodicHelper<T>::make(getBases().front(), mappers.front(), m_pdePtr->bc());
-    //     m_periodicHelpers[1] = gsFlowPeriodicHelper<T>::make(getBases().back(), mappers.back(), m_pdePtr->bc());
-    // }
 
 
     /// @brief Set boundary parts (vectors of pairs [patch, side]).
@@ -213,16 +221,16 @@ public: // *** Member functions ***
         m_isBndSet = true;
     }
 
+    void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
+    {
+        updateDofMappers(false);
 
-protected: // *** Member functions ***
+        for (size_t i = 0; i < boundaryDofs.size(); i++)
+            m_dofMappers[unk].markBoundary(i, boundaryDofs[i]);
 
-    /// @brief Update the stored DOF mappers for all bases in m_bases.
-    void updateDofMappers()
-    { createDofMappers(m_dofMappers); }
-
-    /// @brief Update the stored helper for mapping of radial periodic conditions.
-    void updatePeriodicHelper()
-    { createPeriodicHelper(m_dofMappers[0]); }
+        finalizeDofMappers();
+        createPeriodicHelper(m_dofMappers[0]);
+    }
 
 
 public: // *** Getters/setters ***
@@ -239,6 +247,8 @@ public: // *** Getters/setters ***
     /**
      * @brief Returns a reference to the discretization bases.
      *
+     * Order of bases: velocity, pressure, (turb. model quantities)
+     * 
      * There is also a const version returning a const reference.
      */
     std::vector<gsMultiBasis<T> >&       getBases() { return m_bases; }
@@ -247,20 +257,50 @@ public: // *** Getters/setters ***
     /**
      * @brief Returns a reference to the discretization basis for variable \a unk.
      * 
-     * @param[in] unk unknown index (0 - velocity, 1 - pressure, 2... - turb. model quantities)
+     * @param[in] unk unknown index (0 - velocity, 1 - pressure, (2, 3 - turb. model quantities) )
      *
      * There is also a const version returning a const reference.
      */
     gsMultiBasis<T>& getBasis(index_t unk)
     { 
-        // if m_bases.size() == 2:
-        // all other bases (for turb. model quantities) are assumed to be identical to the pressure basis
-        return m_bases.at(math::min(unk, (index_t)(m_bases.size()-1)));
+        GISMO_ASSERT(unk < (index_t)m_bases.size(), "Index of unknown out of range.");
+        return m_bases.at(unk);
     }
 
     const gsMultiBasis<T>& getBasis(index_t unk) const
-    { return m_bases.at(math::min(unk, (index_t)(m_bases.size()-1))); }
+    { 
+        GISMO_ASSERT(unk < (index_t)m_bases.size(), "Index of unknown out of range.");
+        return m_bases.at(unk);
+    }
 
+    /**
+     * @brief Returns a reference to the DOF mappers.
+     *
+     * Order of mappers: velocity, pressure, (turb. model quantities)
+     * 
+     * There is also a const version returning a const reference.
+     */
+    std::vector< gsDofMapper >&        getMappers() { return m_dofMappers; }
+    const std::vector< gsDofMapper >&  getMappers() const { return m_dofMappers; }
+
+    /**
+     * @brief Returns a reference to the DOF mapper for variable \a unk.
+     * 
+     * @param[in] unk unknown index (0 - velocity, 1 - pressure, (2, 3 - turb. model quantities) )
+     *
+     * There is also a const version returning a const reference.
+     */
+    gsDofMapper& getMapper(index_t unk)
+    {
+        GISMO_ASSERT(unk < (index_t)m_dofMappers.size(), "Index of unknown out of range.");
+        return m_dofMappers.at(unk);
+    }
+
+    const gsMultiBasis<T>& getMapper(index_t unk) const
+    { 
+        GISMO_ASSERT(unk < (index_t)m_dofMappers.size(), "Index of unknown out of range.");
+        return m_dofMappers.at(unk);
+    }
 
     /**
      * @brief Returns a reference to the assembler option list.
@@ -326,7 +366,7 @@ public: // *** Getters/setters ***
 
     /// @brief Returns shared pointer to the helper class for radial periodic conditions.
     typename gsFlowPeriodicHelper<T>::Ptr getPerHelperPtr()
-    { return m_periodicHelper; }
+    { return m_periodicHelperPtr; }
 
     // /// @brief Returns shared pointer to the helper class for radial periodic conditions for unknown \a unk.
     // /// @param[in] unk unknown

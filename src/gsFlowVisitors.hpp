@@ -137,8 +137,6 @@ template<class T, int MatOrder>
 void gsFlowVisitor<T, MatOrder>::initialize()
 {
     defineTestTrialUnknowns();  
-    m_paramsPtr->createDofMappers(m_dofMappers);  
-
     deleteTerms();
     defineTerms();
     gatherEvalFlags();

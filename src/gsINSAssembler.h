@@ -68,7 +68,6 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_dofs;
     using Base::m_tarDim;
-    using Base::m_dofMappers;
     using Base::m_ddof;
     using Base::m_solution;
     using Base::m_isBaseReady;
@@ -95,11 +94,8 @@ protected: // *** Member functions ***
     /// @brief Initialize the class members.
     void initMembers();
 
-    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
-
-    /// @brief Update the DOF mappers in all visitors (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
-    virtual void updateDofMappers();
 
     /// @brief Update the current solution field stored in the assembler (used as convection coefficient).
     /// @param[in] solVector    new solution vector
@@ -143,7 +139,7 @@ protected: // *** Member functions ***
 
     inline index_t mapPeriodic(int i) const
     {
-        index_t fullUdofs = m_dofMappers[0].freeSize();
+        index_t fullUdofs = this->getMapper(0).freeSize();
         index_t fullPshift = m_tarDim * fullUdofs;
 
         if (i < fullPshift)
@@ -154,7 +150,7 @@ protected: // *** Member functions ***
 
     inline index_t invMapPeriodic(int i) const
     {
-        index_t fullUdofs = m_dofMappers[0].freeSize();
+        index_t fullUdofs = this->getMapper(0).freeSize();
         index_t fullPshift = m_tarDim * fullUdofs;
 
         if (i < m_pshift)
@@ -165,7 +161,7 @@ protected: // *** Member functions ***
 
     inline bool isEliminatedPeriodic(int i) const
     {
-        index_t fullUdofs = m_dofMappers[0].freeSize();
+        index_t fullUdofs = this->getMapper(0).freeSize();
         index_t fullPshift = m_tarDim * fullUdofs;
         GISMO_ASSERT(i < fullPshift, "Index out of range, i should be a velocity DOF.");
 
@@ -197,11 +193,6 @@ public: // *** Member functions ***
     /// @param solVector 
     /// @param[in] updateSol    true - save solVector into m_solution (false is used in the inner Picard iteration for unsteady problem)
     virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
-
-    /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.
-    /// @param[in] boundaryDofs     indices of the given boundary DOFs
-    /// @param[in] unk              the considered unknown
-    virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk);
 
     /// @brief Fill the matrix and right-hand side for the Stokes problem.
     virtual void fillStokesSystem(gsSparseMatrix<T, MatOrder>& stokesMat, gsMatrix<T>& stokesRhs);
@@ -378,7 +369,6 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_pshift;
     using Base::m_nnzPerOuterU;
-    using Base::m_dofMappers;
     using Base::m_solution;
     using Base::m_baseMatrix;
     using Base::m_matrix;
@@ -403,11 +393,8 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     void initMembers();
 
-    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
-
-    /// @brief Update the DOF mappers in all visitors (e.g. after markDofsAsEliminatedZeros() ).
-    virtual void updateDofMappers();
 
     /// @brief Update the current solution field stored in the assembler (used as convection coefficient).
     /// @param[in] solVector    new solution vector

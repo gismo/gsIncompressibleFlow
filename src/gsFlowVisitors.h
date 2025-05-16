@@ -50,7 +50,6 @@ protected: // *** Class members ***
     unsigned m_geoFlags, m_testFunFlags, m_trialFunFlags;
     const gsBasis<T>* m_testBasisPtr;
     const gsBasis<T>* m_trialBasisPtr;
-    std::vector< gsDofMapper > m_dofMappers;
     std::vector< gsFlowTerm<T>* > m_terms;
 
     // updated repeatedly
@@ -169,11 +168,7 @@ public: // *** Member functions ***
 
     /// Initialize the visitor.
     void initialize();
-
-    /// @brief Update DoF mappers.
-    /// @param[in] mappers new mappers
-    void updateDofMappers(const std::vector<gsDofMapper>& mappers) { m_dofMappers = mappers; }
-
+    
     /// @brief Initialize the visitor on the given patch.
     /// @param[in] patchID the patch number
     void initOnPatch(index_t patchID);

@@ -41,14 +41,6 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::updateSizes()
 }
 
 template<class T, int MatOrder>
-void gsRANSAssemblerUnsteady<T, MatOrder>::updateDofMappers()
-{
-    Base::updateDofMappers();
-
-    m_visitorRANSsymgrad.updateDofMappers(m_dofMappers);
-}
-
-template<class T, int MatOrder>
 void gsRANSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
 {
     Base::assembleLinearPart();

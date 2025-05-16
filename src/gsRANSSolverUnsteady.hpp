@@ -115,14 +115,6 @@ void gsRANSSolverUnsteady<T, MatOrder>::initialize()
 
     gsStopwatch clock;
 
-    // if(m_paramsPtr->options().getInt("geo") == 2)
-    // {
-    //     std::vector<gsMatrix<index_t> > elimDof(1);
-    //     elimDof[0].setZero(1,1);
-
-    //     NSSteadySolver.markDofsAsEliminatedZeros(elimDof, 1);
-    // }
-
     gsInfo << "Initialization...\n";
     NSSteadySolver.initialize();
 

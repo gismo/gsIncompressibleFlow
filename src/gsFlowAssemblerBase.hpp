@@ -29,9 +29,9 @@ void gsFlowAssemblerBase<T, MatOrder>::initMembers()
 template<class T, int MatOrder>
 void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofs(const index_t unk, const index_t basisID, gsMatrix<T>& ddofVector)
 {
-    GISMO_ASSERT(ddofVector.rows() == m_dofMappers[basisID].boundarySize(), "Dirichlet DOF vector has wrong size.");
+    GISMO_ASSERT(ddofVector.rows() == getMapper(basisID).boundarySize(), "Dirichlet DOF vector has wrong size.");
 
-    const gsDofMapper & mapper = m_dofMappers[basisID];
+    const gsDofMapper & mapper = getMapper(basisID);
     const gsMultiBasis<T> & mbasis = getBasis(basisID);
 
     switch (getAssemblerOptions().dirValues)

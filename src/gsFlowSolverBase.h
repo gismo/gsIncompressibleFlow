@@ -79,7 +79,7 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     virtual void initMembers();
 
-    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    /// @brief Update sizes of members (when DOF numbers change after constructing the solver).
     virtual void updateSizes();
 
     /// @brief Create output file.
@@ -159,11 +159,6 @@ public: // *** Member functions ***
     /// @param[in] customSwitch a switch to be used for any purpose by derived classes
     virtual gsField<T> constructSolution(int unk, bool customSwitch = false) const
     { return getAssembler()->constructSolution(m_solution, unk, customSwitch); }
-
-    /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.
-    /// @param[in] boundaryDofs     indices of the given boundary DOFs
-    /// @param[in] unk              the considered unknown
-    virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk);
 
     /// @brief Check values of jacobian near boundaries of all patches. 
     /// @param npts[in] number of evaluation points along a patch side in each direction

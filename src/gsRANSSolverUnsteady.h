@@ -114,7 +114,7 @@ public: // *** Member functions ***
     gsField<T> constructSolution(int unk, bool customSwitch = false) const
     { 
         if (unk < 2)
-            return Base::constructSolution(unk);
+            return Base::constructSolution(unk, customSwitch);
         else
             return m_TMsolverPtr->getAssembler()->constructSolution(unk, customSwitch); 
     }

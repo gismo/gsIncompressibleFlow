@@ -28,7 +28,6 @@ void gsTMAssemblerBase<T, MatOrder>::initMembers()
     //m_numVars = m_bases.size() - 2;
     m_kdofs.resize(m_numVars);
 
-    m_dofMappers.resize(m_numVars+2);
     m_ddof.resize(m_numVars+2);
     gsMatrix<T> ddof;
     m_ddof[0] = ddof.setZero(1, 1);
@@ -63,10 +62,10 @@ void gsTMAssemblerBase<T, MatOrder>::updateSizes()
     gsMatrix<T> ddof;
     for (short_t i = 0; i < m_numVars; i++)
     {
-        m_kdofs[i] = m_dofMappers[i+2].freeSize();
+        m_kdofs[i] = this->getMapper(i+2).freeSize();
         m_dofs += m_kdofs[i];
 
-        ddof.setZero(m_dofMappers[i+2].boundarySize(), 1);
+        ddof.setZero(this->getMapper(i+2).boundarySize(), 1);
         m_ddof[i+2] = ddof;
 
         if (this->getAssemblerOptions().dirStrategy == dirichlet::elimination)
@@ -83,26 +82,6 @@ void gsTMAssemblerBase<T, MatOrder>::updateSizes()
 }
 
 
-template<class T, int MatOrder>
-void gsTMAssemblerBase<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
-{
-    m_dofMappers[unk] = gsDofMapper(getBasis(unk), getBCs(), unk);
-
-    if (getAssemblerOptions().intStrategy == iFace::conforming)
-        for (gsBoxTopology::const_iiterator it = getPatches().iBegin(); it != getPatches().iEnd(); ++it)
-        {
-            getBasis(unk).matchInterface(*it, m_dofMappers[unk]);
-        }
-
-    for (size_t i = 0; i < boundaryDofs.size(); i++)
-        m_dofMappers[unk].markBoundary(i, boundaryDofs[i]);
-
-    m_dofMappers[unk].finalize();
-
-    this->updateDofMappers();
-    this->updateSizes();
-}
-
 // TODO: update with respect to the new version in gsINSAssembler.hpp
 template<class T, int MatOrder>
 gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& solVector, index_t unk, bool customSwitch) const
@@ -111,7 +90,7 @@ gsField<T> gsTMAssemblerBase<T, MatOrder>::constructSolution(const gsMatrix<T>& 
 
     gsMultiPatch<T>* result = new gsMultiPatch<T>;
 
-    const gsDofMapper& mapper = m_dofMappers[unk];
+    const gsDofMapper& mapper = this->getMapper(unk);
 
     gsMatrix<T> coeffs;
 

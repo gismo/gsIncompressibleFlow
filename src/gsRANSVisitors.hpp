@@ -65,13 +65,13 @@ template <class T, int MatOrder>
 void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
-    const index_t uCompSize = m_dofMappers[m_testUnkID].freeSize(); // number of dofs for one velocity component
+    const index_t uCompSize = m_paramsPtr->getMapper(m_testUnkID).freeSize(); // number of dofs for one velocity component
     index_t nComponents = globalMat.rows() / uCompSize;
 
     GISMO_ASSERT(nComponents == dim, "Wrong matrix size in gsRANSVisitorUU::localToGlobal.");
 
-    m_dofMappers[m_testUnkID].localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
-    m_dofMappers[m_trialUnkID].localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
+    m_paramsPtr->getMapper(m_testUnkID).localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
+    m_paramsPtr->getMapper(m_trialUnkID).localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
 
     index_t numActTest = m_testFunActives.rows();
     index_t numActTrial = m_trialFunActives.rows();
@@ -80,13 +80,13 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_nonper(const s
     {
         const index_t ii = m_testFunActives(i);
 
-        if (m_dofMappers[m_testUnkID].is_free_index(ii))
+        if (m_paramsPtr->getMapper(m_testUnkID).is_free_index(ii))
         {
             for (index_t j = 0; j < numActTrial; ++j)
             {
                 const index_t jj = m_trialFunActives(j);
 
-                if (m_dofMappers[m_trialUnkID].is_free_index(jj))
+                if (m_paramsPtr->getMapper(m_trialUnkID).is_free_index(jj))
                 {
                     // diagonal blocks
                     for (index_t d = 0; d < dim; d++)
@@ -107,7 +107,7 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_nonper(const s
                 }
                 else // is_boundary_index(jj)
                 {
-                    const int bb = m_dofMappers[m_trialUnkID].global_to_bindex(jj);
+                    const int bb = m_paramsPtr->getMapper(m_trialUnkID).global_to_bindex(jj);
 
                     for (index_t d = 0; d < dim; d++) 
                         globalRhs(ii + d*uCompSize, 0) -= (m_locMatVec[0](i, j) + m_locMatVec[d+1](i, j)) * eliminatedDofs[m_trialUnkID](bb, d);    // block A + Eii
@@ -139,8 +139,8 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
 
     GISMO_ASSERT(nComponents == dim, "Wrong matrix size in gsINSVisitorUU::localToGlobal_per, matrix has to contain all components.");
 
-    m_dofMappers[m_testUnkID].localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
-    m_dofMappers[m_trialUnkID].localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
+    m_paramsPtr->getMapper(m_testUnkID).localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
+    m_paramsPtr->getMapper(m_trialUnkID).localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
 
     index_t numActTest = m_testFunActives.rows();
     index_t numActTrial = m_trialFunActives.rows();
@@ -149,7 +149,7 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
     {
         const index_t ii = m_testFunActives(i);
 
-        if (m_dofMappers[m_testUnkID].is_free_index(ii))
+        if (m_paramsPtr->getMapper(m_testUnkID).is_free_index(ii))
         {
             bool iiElim = m_paramsPtr->getPerHelperPtr()->isEliminated(ii);
             const index_t iiMapped = m_paramsPtr->getPerHelperPtr()->map(ii);
@@ -158,7 +158,7 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
             {
                 const index_t jj = m_trialFunActives(j);
 
-                if (m_dofMappers[m_trialUnkID].is_free_index(jj))
+                if (m_paramsPtr->getMapper(m_trialUnkID).is_free_index(jj))
                 {
                     bool jjElim = m_paramsPtr->getPerHelperPtr()->isEliminated(jj);
                     const index_t jjMapped = m_paramsPtr->getPerHelperPtr()->map(jj);
@@ -261,7 +261,7 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
                 }
                 else // is_boundary_index(jj)
                 {
-                    const int bb = m_dofMappers[m_trialUnkID].global_to_bindex(jj);
+                    const int bb = m_paramsPtr->getMapper(m_trialUnkID).global_to_bindex(jj);
 
                     // ii is not eliminated periodic dof:
                     if (!iiElim) 

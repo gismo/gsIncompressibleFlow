@@ -33,7 +33,6 @@ protected: // *** Class members ***
     bool m_isInitialized;
     bool m_isBaseReady;
     bool m_isSystemReady;
-    std::vector<gsDofMapper> m_dofMappers;
     std::vector<gsMatrix<T> > m_ddof;
     gsMatrix<T> m_solution;
 
@@ -53,12 +52,8 @@ protected: // *** Member functions ***
     /// @brief Initialize the class members.
     void initMembers();
 
-    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes()
-    { GISMO_NO_IMPLEMENTATION }
-
-    /// @brief Update the DOF mappers in all visitors (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
-    virtual void updateDofMappers()
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Compute the coefficients of the basis functions at the Dirichlet boundaries.
@@ -124,12 +119,6 @@ public: // *** Member functions ***
     /// @param[in] updateSol    true - save solVector into m_solution
     virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
 
-    /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.
-    /// @param[in] boundaryDofs     indices of the given boundary DOFs
-    /// @param[in] unk              the considered unknown
-    virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
-    {GISMO_NO_IMPLEMENTATION}
-
     /// @brief Construct solution from computed solution vector for unknown \a unk.
     /// @param[in]  solVector    the solution vector obtained from the linear system
     /// @param[out] result       the resulting solution as a gsMultiPatch object
@@ -155,13 +144,6 @@ public: // *** Getters/setters ***
     bool isInitialized() { return m_isInitialized; }
 
     /**
-     * @brief Returns a const reference to the DOF mappers.
-     *
-     * In the case of velocity and pressure, the mapper for velocity is stored first, the mapper for pressure is second.
-     */
-    const std::vector<gsDofMapper>& getMappers() const { return m_dofMappers; }
-
-    /**
      * @brief Returns a const reference to the vectors of coefficients at the Dirichlet boundaries.
      *
      * In the case of velocity and pressure, the vector of velocity coefficients is stored first, the vector of pressure coefficients is second.
@@ -177,7 +159,7 @@ public: // *** Getters/setters ***
     /**
      * @brief Returns a reference to the discretization bases.
      *
-     * In the case of velocity and pressure, the velocity basis is stored first, the pressure basis is second.
+     * Order of bases: velocity, pressure, (turb. model quantities)
      * 
      * There is also a const version returning a const reference.
      */
@@ -187,7 +169,7 @@ public: // *** Getters/setters ***
     /**
      * @brief Returns a reference to the discretization bases for variable \a unk.
      *
-     * In the case of velocity and pressure, the velocity basis is stored first, the pressure basis is second.
+     * Order of bases: velocity, pressure, (turb. model quantities)
      * 
      * @param[in] unk unknown index
      * 
@@ -195,6 +177,28 @@ public: // *** Getters/setters ***
      */
     virtual gsMultiBasis<T>& getBasis(index_t unk) { return m_paramsPtr->getBasis(unk); }
     virtual const gsMultiBasis<T>& getBasis(index_t unk) const { return m_paramsPtr->getBasis(unk); }
+
+    /**
+     * @brief Returns a reference to the DOF mappers.
+     *
+     * Order of mappers: velocity, pressure, (turb. model quantities)
+     * 
+     * There is also a const version returning a const reference.
+     */
+    virtual std::vector< gsDofMapper >& getMappers() { return m_paramsPtr->getMappers(); }
+    virtual const std::vector< gsDofMapper >& getMappers() const { return m_paramsPtr->getMappers(); }
+
+    /**
+     * @brief Returns a reference to the DOF mapper for variable \a unk.
+     *
+     * Order of mappers: velocity, pressure, (turb. model quantities)
+     * 
+     * @param[in] unk unknown index
+     * 
+     * There is also a const version returning a const reference.
+     */
+    virtual gsDofMapper& getMapper(index_t unk) { return m_paramsPtr->getMapper(unk); }
+    virtual const gsDofMapper& getMapper(index_t unk) const { return m_paramsPtr->getMapper(unk); }
 
     /// @brief Returns a const reference to the boundary conditions.
     virtual const gsBoundaryConditions<T>& getBCs() const { return m_paramsPtr->getBCs(); }

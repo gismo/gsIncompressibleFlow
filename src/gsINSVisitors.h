@@ -48,7 +48,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_localMat;
@@ -227,7 +226,6 @@ protected: // *** Base class members ***
 
     using Base::m_paramsPtr;
     using Base::m_terms;
-    using Base::m_dofMappers;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
     using Base::m_testFunActives;
@@ -335,7 +333,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_terms;
@@ -400,7 +397,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_hasPeriodicBC;
@@ -455,7 +451,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_terms;
@@ -514,7 +509,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_localMat;
@@ -813,7 +807,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_localMat;
     using Base::m_mapData;
@@ -885,7 +878,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_localMat;
     using Base::m_mapData;
