@@ -98,12 +98,14 @@ int main(int argc, char *argv[])
     std::string cosIn = util::to_string(math::cos(inVelAngleRad));
     std::string sinIn = util::to_string(math::sin(inVelAngleRad));
     std::string magStr = "(" + util::to_string(inVelMag) + "/sqrt(x^2+y^2))*";
-    std::string xIn = magStr + "(-" + cosIn + "*x + " + sinIn + "*y)";
-    std::string yIn = magStr + "(-" + sinIn + "*x - " + cosIn + "*y)";
+    std::string rotX = util::to_string(-omega) + "*y";
+    std::string rotY = util::to_string(omega) + "*x";
+    std::string xIn = rotX + "+" + magStr + "(-" + cosIn + "*x + " + sinIn + "*y)";
+    std::string yIn = rotY + "+" + magStr + "(-" + sinIn + "*x - " + cosIn + "*y)";
 
     gsFunctionExpr<> Uin(xIn, yIn, "0", 3);
     //gsFunctionExpr<> Uwall("0", "0", "0", 3);
-    gsFunctionExpr<> Ublade(util::to_string(-omega) + "*y", util::to_string(omega) + "*x", "0", 3);
+    gsFunctionExpr<> Ublade(rotX, rotY, "0", 3);
     gsFunctionExpr<> f("0", "0", "0", 3);
 
     // transformation matrix for periodic sides
