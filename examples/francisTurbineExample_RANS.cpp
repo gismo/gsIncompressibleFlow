@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 
     std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall; 
     bndIn.push_back(std::make_pair(0, boundary::south));
-    bndOut.push_back(std::make_pair(0, boundary::north));
+    bndOut.push_back(std::make_pair(2, boundary::north));
     bndWall.push_back(std::make_pair(0, boundary::front));
     bndWall.push_back(std::make_pair(0, boundary::back));
     bndWall.push_back(std::make_pair(1, boundary::front));
