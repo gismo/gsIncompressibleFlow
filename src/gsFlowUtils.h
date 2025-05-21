@@ -396,6 +396,144 @@ gsMultiPatch<T> BSplineStep3D(int deg, const T a, const T b, const T c, const T 
     return mp;
 }
 
+
+inline void defineBndParts_step(index_t dim, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, bool periodic = false)
+{
+    switch(dim)
+    {
+        case 2:
+            if (!periodic)
+            {
+                bndIn.push_back(std::make_pair(2, boundary::west));
+                bndWall.push_back(std::make_pair(0, boundary::west));
+                bndWall.push_back(std::make_pair(0, boundary::south));
+                bndWall.push_back(std::make_pair(1, boundary::north));
+                bndWall.push_back(std::make_pair(2, boundary::south));
+                bndWall.push_back(std::make_pair(2, boundary::north));
+                bndOut.push_back(std::make_pair(0, boundary::east));
+                bndOut.push_back(std::make_pair(1, boundary::east));
+            }
+            else
+            {
+                bndIn.push_back(std::make_pair(2, boundary::west));
+                bndWall.push_back(std::make_pair(0, boundary::west));
+                bndWall.push_back(std::make_pair(2, boundary::south));
+                bndWall.push_back(std::make_pair(2, boundary::north));
+                bndOut.push_back(std::make_pair(0, boundary::east));
+                bndOut.push_back(std::make_pair(1, boundary::east));
+            }
+            break;
+
+        case 3:
+            if (!periodic)
+            {
+                bndIn.push_back(std::make_pair(2, boundary::west));
+                bndWall.push_back(std::make_pair(0, boundary::west));
+                bndWall.push_back(std::make_pair(0, boundary::south));
+                bndWall.push_back(std::make_pair(0, boundary::front));
+                bndWall.push_back(std::make_pair(0, boundary::back));
+                bndWall.push_back(std::make_pair(1, boundary::north));
+                bndWall.push_back(std::make_pair(1, boundary::front));
+                bndWall.push_back(std::make_pair(1, boundary::back));
+                bndWall.push_back(std::make_pair(2, boundary::south));
+                bndWall.push_back(std::make_pair(2, boundary::north));
+                bndWall.push_back(std::make_pair(2, boundary::front));
+                bndWall.push_back(std::make_pair(2, boundary::back));
+                bndOut.push_back(std::make_pair(0, boundary::east));
+                bndOut.push_back(std::make_pair(1, boundary::east));
+            }
+            else
+            {
+                bndIn.push_back(std::make_pair(2, boundary::west));
+                bndWall.push_back(std::make_pair(0, boundary::west));
+                bndWall.push_back(std::make_pair(0, boundary::south));
+                bndWall.push_back(std::make_pair(1, boundary::north));
+                bndWall.push_back(std::make_pair(2, boundary::south));
+                bndWall.push_back(std::make_pair(2, boundary::north));
+                bndOut.push_back(std::make_pair(0, boundary::east));
+                bndOut.push_back(std::make_pair(1, boundary::east));
+            }
+            break;
+
+        default:
+            GISMO_ERROR("Wrong dimension!");
+    }
+}
+
+inline void defineBndParts_cavity(index_t dim, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, const int np = 1)
+{
+    switch(dim)
+    {
+        case 2:
+            for (int i = 1; i <= np; i++)
+                bndWall.push_back(std::make_pair(np*np - i, boundary::north));
+
+            for (int i = 0; i < np; i++)
+            {
+                bndWall.push_back(std::make_pair(i, boundary::south));
+                bndWall.push_back(std::make_pair(i * np, boundary::west));
+                bndWall.push_back(std::make_pair((i + 1)*np - 1, boundary::east));
+            }
+            break;
+
+        case 3:
+            GISMO_ASSERT(np == 1, "Number of patches in each direction must be 1 for 3D cavity.");
+            bndWall.push_back(std::make_pair(0, boundary::north));
+            bndWall.push_back(std::make_pair(0, boundary::south));
+            bndWall.push_back(std::make_pair(0, boundary::west));
+            bndWall.push_back(std::make_pair(0, boundary::east));
+            bndWall.push_back(std::make_pair(0, boundary::front));
+            bndWall.push_back(std::make_pair(0, boundary::back));
+            break;
+
+        default:
+            GISMO_ERROR("Wrong dimension!");
+    }
+}
+
+inline void defineBndParts_profile2D(std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall)
+{
+    bndIn.push_back(std::make_pair(0, boundary::west));
+    bndWall.push_back(std::make_pair(1, boundary::north));
+    bndWall.push_back(std::make_pair(1, boundary::south));
+    bndOut.push_back(std::make_pair(2, boundary::east));
+}
+
+/// @brief Define which patch sides belong to the inflow/outflow/wall boundary part for predefined domain geometries.
+/// @param[in]  geo      geometry ID (1 - backward facing step, 2 - cavity, 3 - blade profile) 
+/// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
+/// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
+/// @param[out] bndWall  reference to a container of patch sides corresponding to solid walls
+/// @param[in]  periodic periodic domain (true/false, applicable for step)
+/// @param[in]  np       number of patches in each direction (applicable for 2D cavity)
+inline void defineBndParts(index_t geo, index_t dim, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, bool periodic = false, int np = 1)
+{
+    bndIn.clear();
+    bndOut.clear();
+    bndWall.clear();
+
+    switch(geo)
+    {
+        default:
+            gsWarn << "Unknown geometry ID in function defineBndParts(), using geo = 1 (backward facing step).";
+
+        case 1:
+            defineBndParts_step(dim, bndIn, bndOut, bndWall, periodic);
+            break;
+
+        case 2:
+            defineBndParts_cavity(dim, bndIn, bndOut, bndWall, np);
+            break;
+
+        case 3:
+            if (dim == 3)
+                gsWarn << "Geometry 3 is only 2D!\n";
+            defineBndParts_profile2D(bndIn, bndOut, bndWall);
+            break;
+    }
+}
+
+
 /// @brief Define boundary conditions for the corresponding boundary parts.
 /// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
@@ -433,216 +571,116 @@ void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide>
 }
 
 
-
-/// @brief Define boundary conditions for the 2D lid-driven cavity problem.
-/// @tparam T           real number type
-/// @param[out] bcInfo  reference to the boundary conditions as gsBoundaryConditions 
-/// @param[in]  np      number of patches in each direction
-/// @param[out] bndWall reference to a container of patch sides corresponding to solid walls
-/// @param[in]  lidVel  the \a x component of the lid velocity
+/// @brief Define boundary conditions for the backward-facing step problem.
+/// @tparam T            real number type
+/// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
+/// @param dim           space dimension
+/// @param[in]  periodic periodic domain (true/false)
+/// @param[in]  inVel    the \a x component of the inflow velocity as string
 template <class T>
-void defineBCs_cavity2D(gsBoundaryConditions<T>& bcInfo, const int np, std::vector<std::pair<int, boxSide> >& bndWall, std::string lidVel = "1")
+void defineBCs_step(gsBoundaryConditions<T>& bcInfo, int dim, bool periodic = false, std::string inVel = "default")
 {
-    gsFunctionExpr<T> Uwall("0", "0", 2);
-    gsFunctionExpr<T> Ulid(lidVel, "0", 2);
+    gsFunctionExpr<T> Uin, Uwall;
 
-    for (int i = 1; i <= np; i++)
+    switch (dim)
     {
-        bcInfo.addCondition(np*np - i, boundary::north, condition_type::dirichlet, Ulid, 0);
-        bndWall.push_back(std::make_pair(np*np - i, boundary::north));
+    case 2:
+    {
+        if (inVel == "default")
+            inVel = "(-4*(y-1.5)^2 + 1)";
+        Uin = gsFunctionExpr<T>(inVel, "0", 2);
+        Uwall = gsFunctionExpr<T>("0", "0", 2);
+        break;
     }
 
-    for (int i = 0; i < np; i++)
+    case 3:
     {
-        bcInfo.addCondition(i, boundary::south, condition_type::dirichlet, Uwall, 0);
-        bndWall.push_back(std::make_pair(i, boundary::south));
+        if (!periodic)
+        {
+            if (inVel == "default")
+                inVel = "(-4*(y-1.5)^2 + 1)*(-(z-1)^2 + 1)";
+
+            Uin = gsFunctionExpr<T>(inVel, "0", "0", 3);
+            Uwall = gsFunctionExpr<T>("0", "0", "0", 3);
+        }
+        else
+        {
+            if (inVel == "default")
+                inVel = "(-4*(y-1.5)^2 + 1)";
+
+            Uin = gsFunctionExpr<T>(inVel, "0", "0", 3);
+            Uwall = gsFunctionExpr<T>("0", "0", "0", 3);
+        }
+        break;
+    }
+        
+    default:
+        GISMO_ERROR("Wrong dimension!");
+        break;
     }
 
-    for (int i = 0; i < np; i++)
-    {
-        bcInfo.addCondition(i * np, boundary::west, condition_type::dirichlet, Uwall, 0);
-        bcInfo.addCondition((i + 1)*np - 1, boundary::east, condition_type::dirichlet, Uwall, 0);
-        bndWall.push_back(std::make_pair(i * np, boundary::west));
-        bndWall.push_back(std::make_pair((i + 1)*np - 1, boundary::east));
-    }
-}
-
-
-/// @brief Define boundary conditions for the 3D lid-driven cavity problem.
-/// @tparam T           real number type
-/// @param[out] bcInfo  reference to the boundary conditions as gsBoundaryConditions 
-/// @param[out] bndWall reference to a container of patch sides corresponding to solid walls
-/// @param[in]  lidVel  the \a x component of the lid velocity
-template <class T>
-void defineBCs_cavity3D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndWall, std::string lidVel = "1")
-{
-    gsFunctionExpr<T> Uwall("0", "0", "0", 3);
-    gsFunctionExpr<T> Ulid(lidVel, "0", "0", 3);
-
-    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, Ulid, 0);
-    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, Uwall, 0);
-    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, Uwall, 0);
-    bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, Uwall, 0);
-    bcInfo.addCondition(0, boundary::front, condition_type::dirichlet, Uwall, 0);
-    bcInfo.addCondition(0, boundary::back, condition_type::dirichlet, Uwall, 0);
-    bndWall.push_back(std::make_pair(0, boundary::north));
-    bndWall.push_back(std::make_pair(0, boundary::south));
-    bndWall.push_back(std::make_pair(0, boundary::west));
-    bndWall.push_back(std::make_pair(0, boundary::east));
-    bndWall.push_back(std::make_pair(0, boundary::front));
-    bndWall.push_back(std::make_pair(0, boundary::back));
+    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall;
+    defineBndParts_step(dim, bndIn, bndOut, bndWall, periodic);
+    addBCs(bcInfo, bndIn, bndWall, Uin, Uwall);
 }
 
 
 /// @brief Define boundary conditions for the lid-driven cavity problem.
 /// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions
-/// @param[out] bndWall  reference to a container of patch sides corresponding to solid walls
 /// @param dim           space dimension
 /// @param[in]  np       number of patches in each direction
 /// @param[in]  lidVel   the \a x component of the lid velocity
+/// @param[in]  fixPressure   set pressure to zero in one corner
 template <class T>
-void defineBCs_cavity(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndWall, int dim, const int np = 1, std::string lidVel = "1")
+void defineBCs_cavity(gsBoundaryConditions<T>& bcInfo, int dim, const int np = 1, std::string lidVel = "1", bool fixPressure = true)
 {
+    gsFunctionExpr<T> Uwall, Ulid;
+
     switch (dim)
     {
     case 2:
-        defineBCs_cavity2D(bcInfo, np, bndWall, lidVel);
+    {
+        Uwall = gsFunctionExpr<T>("0", "0", 2);
+        Ulid = gsFunctionExpr<T>(lidVel, "0", 2);
+
+        for (int i = 1; i <= np; i++)
+            bcInfo.addCondition(np*np - i, boundary::north, condition_type::dirichlet, Ulid, 0);
+
+        for (int i = 0; i < np; i++)
+        {
+            bcInfo.addCondition(i, boundary::south, condition_type::dirichlet, Uwall, 0);
+            bcInfo.addCondition(i * np, boundary::west, condition_type::dirichlet, Uwall, 0);
+            bcInfo.addCondition((i + 1)*np - 1, boundary::east, condition_type::dirichlet, Uwall, 0);
+        }
+
+        if (fixPressure)
+            bcInfo.addCornerValue(boundary::southwest, 0.0, 0, 1); // corner, value, patch, unknown
+
         break;
+    }
+
     case 3:
-        defineBCs_cavity3D(bcInfo, bndWall, lidVel);
+    {
+        GISMO_ASSERT(np == 1, "Number of patches in each direction must be 1 for 3D cavity.");
+        Uwall = gsFunctionExpr<T>("0", "0", "0", 3);
+        Ulid = gsFunctionExpr<T>(lidVel, "0", "0", 3);
+
+        bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, Ulid, 0);
+        bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, Uwall, 0);
+        bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, Uwall, 0);
+        bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, Uwall, 0);
+        bcInfo.addCondition(0, boundary::front, condition_type::dirichlet, Uwall, 0);
+        bcInfo.addCondition(0, boundary::back, condition_type::dirichlet, Uwall, 0);
+
+        if (fixPressure)
+            bcInfo.addCornerValue(boundary::southwestfront, 0.0, 0, 1); // corner, value, patch, unknown
+
         break;
+    }
+
     default:
         GISMO_ERROR("Wrong dimension!");
-        break;
-    }
-}
-
-
-/// @brief Define boundary conditions for the 2D backward-facing step problem.
-/// @tparam T            real number type
-/// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
-/// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
-/// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
-/// @param[out] bndWall  reference to a container of patch sides corresponding to solid walls
-/// @param[in]  periodic periodic domain (true/false)
-/// @param[in]  inVel    the \a x component of the inflow velocity as string
-template <class T>
-void defineBCs_step2D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, bool periodic = false, std::string inVel = "default")
-{
-    if (inVel == "default")
-        inVel = "(-4*(y-1.5)^2 + 1)";
-
-    gsFunctionExpr<T> Uin, Uwall;
-    Uin = gsFunctionExpr<T>(inVel, "0", 2);
-    Uwall = gsFunctionExpr<T>("0", "0", 2);
-
-    if (!periodic)
-    {
-        bndIn.push_back(std::make_pair(2, boundary::west));
-        bndWall.push_back(std::make_pair(0, boundary::west));
-        bndWall.push_back(std::make_pair(0, boundary::south));
-        bndWall.push_back(std::make_pair(1, boundary::north));
-        bndWall.push_back(std::make_pair(2, boundary::south));
-        bndWall.push_back(std::make_pair(2, boundary::north));
-        bndOut.push_back(std::make_pair(0, boundary::east));
-        bndOut.push_back(std::make_pair(1, boundary::east));
-    }
-    else
-    {
-        bndIn.push_back(std::make_pair(2, boundary::west));
-        bndWall.push_back(std::make_pair(0, boundary::west));
-        bndWall.push_back(std::make_pair(2, boundary::south));
-        bndWall.push_back(std::make_pair(2, boundary::north));
-        bndOut.push_back(std::make_pair(0, boundary::east));
-        bndOut.push_back(std::make_pair(1, boundary::east));
-    }
-
-    addBCs(bcInfo, bndIn, bndWall, Uin, Uwall);
-}
-
-
-/// @brief Define boundary conditions for the 3D backward-facing step problem.
-/// @tparam T            real number type
-/// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
-/// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
-/// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
-/// @param[out] bndWall  reference to a container of patch sides corresponding to solid walls
-/// @param[in]  periodic periodic domain (true/false)
-/// @param[in]  inVel    the \a x component of the inflow velocity as string
-template <class T>
-void defineBCs_step3D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, bool periodic = false, std::string inVel = "default")
-{
-    gsFunctionExpr<T> Uin, Uwall;
-
-    if (!periodic)
-    {
-        if (inVel == "default")
-            inVel = "(-4*(y-1.5)^2 + 1)*(-(z-1)^2 + 1)";
-
-        Uin = gsFunctionExpr<T>(inVel, "0", "0", 3);
-        Uwall = gsFunctionExpr<T>("0", "0", "0", 3);
-
-        bndIn.push_back(std::make_pair(2, boundary::west));
-        bndWall.push_back(std::make_pair(0, boundary::west));
-        bndWall.push_back(std::make_pair(0, boundary::south));
-        bndWall.push_back(std::make_pair(0, boundary::front));
-        bndWall.push_back(std::make_pair(0, boundary::back));
-        bndWall.push_back(std::make_pair(1, boundary::north));
-        bndWall.push_back(std::make_pair(1, boundary::front));
-        bndWall.push_back(std::make_pair(1, boundary::back));
-        bndWall.push_back(std::make_pair(2, boundary::south));
-        bndWall.push_back(std::make_pair(2, boundary::north));
-        bndWall.push_back(std::make_pair(2, boundary::front));
-        bndWall.push_back(std::make_pair(2, boundary::back));
-        bndOut.push_back(std::make_pair(0, boundary::east));
-        bndOut.push_back(std::make_pair(1, boundary::east));
-    }
-    else
-    {
-        if (inVel == "default")
-            inVel = "(-4*(y-1.5)^2 + 1)";
-
-        Uin = gsFunctionExpr<T>(inVel, "0", "0", 3);
-        Uwall = gsFunctionExpr<T>("0", "0", "0", 3);
-
-        bndIn.push_back(std::make_pair(2, boundary::west));
-        bndWall.push_back(std::make_pair(0, boundary::west));
-        bndWall.push_back(std::make_pair(0, boundary::south));
-        bndWall.push_back(std::make_pair(1, boundary::north));
-        bndWall.push_back(std::make_pair(2, boundary::south));
-        bndWall.push_back(std::make_pair(2, boundary::north));
-        bndOut.push_back(std::make_pair(0, boundary::east));
-        bndOut.push_back(std::make_pair(1, boundary::east));
-    }
-
-    addBCs(bcInfo, bndIn, bndWall, Uin, Uwall);
-}
-
-
-/// @brief Define boundary conditions for the backward-facing step problem.
-/// @tparam T            real number type
-/// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
-/// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
-/// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
-/// @param[out] bndWall  reference to a container of patch sides corresponding to solid walls
-/// @param dim           space dimension
-/// @param[in]  periodic periodic domain (true/false)
-/// @param[in]  inVel    the \a x component of the inflow velocity as string
-template <class T>
-void defineBCs_step(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, int dim, bool periodic = false, std::string inVel = "default")
-{
-    switch (dim)
-    {
-    case 2:
-        defineBCs_step2D(bcInfo, bndIn, bndOut, bndWall, periodic, inVel);
-        break;
-    case 3:
-        defineBCs_step3D(bcInfo, bndIn, bndOut, bndWall, periodic, inVel);
-        break;
-    default:
-        GISMO_ERROR("Wrong dimension!");
-        break;
     }
 }
 
@@ -650,23 +688,17 @@ void defineBCs_step(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, 
 /// @brief Define boundary conditions for the 2D blade profile problem.
 /// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
-/// @param[out] bndIn    reference to a container of patch sides corresponding to inflow boundaries
-/// @param[out] bndOut   reference to a container of patch sides corresponding to outflow boundaries
-/// @param[out] bndWall  reference to a container of patch sides corresponding to solid walls
 /// @param[in]  inVel    the \a x component of the inflow velocity as string
 /// @param[in] inVelX    x-coordinate of inflow velocity
 /// @param[in] inVelY    y-coordinate of inflow velocity
 template <class T>
-void defineBCs_profile2D(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndOut, std::vector<std::pair<int, boxSide> >& bndWall, T inVelX, T inVelY)
+void defineBCs_profile2D(gsBoundaryConditions<T>& bcInfo, T inVelX, T inVelY)
 {
     gsFunctionExpr<T> Uin = gsFunctionExpr<T>(util::to_string(inVelX), util::to_string(inVelY), 2);
     gsFunctionExpr<T> Uwall = gsFunctionExpr<T>("0", "0", 2);
 
-    bndIn.push_back(std::make_pair(0, boundary::west));
-    bndWall.push_back(std::make_pair(1, boundary::north));
-    bndWall.push_back(std::make_pair(1, boundary::south));
-    bndOut.push_back(std::make_pair(2, boundary::east));
-
+    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall;
+    defineBndParts_profile2D(bndIn, bndOut, bndWall);
     addBCs(bcInfo, bndIn, bndWall, Uin, Uwall);
 }
 
