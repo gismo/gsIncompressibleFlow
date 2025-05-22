@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
     // solver settings
     index_t maxIt = 20;
     index_t picardIt = 5;
+    index_t maxItTM = 10;
     index_t linIt = 50;
     real_t timeStep = 0.05;
     real_t tol = 1e-5;
@@ -89,6 +90,7 @@ int main(int argc, char *argv[])
 
     cmd.addInt("", "maxIt", "Max. number of Picard iterations or time steps", maxIt);
     cmd.addInt("", "picardIt", "Max. number of inner Picard iterations for unsteady problem", picardIt);
+    cmd.addInt("", "maxItTM", "Max. number of turbulence model iterations", maxItTM);
     cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
     cmd.addReal("", "timeStep", "Time discretization step for unsteady problem", timeStep);
     cmd.addReal("", "tol", "Stopping tolerance", tol);
@@ -216,6 +218,7 @@ int main(int argc, char *argv[])
     gsFlowSolverParams<real_t> params(NSpde, discreteBases);
     params.options().setSwitch("quiet", quiet);
     params.options().setString("assemb.loop", matFormation);
+    params.options().setInt("TM.maxIt", maxItTM);
     params.setBndParts(bndIn, bndOut, bndWall);
 
     gsOptionList solveOpt;

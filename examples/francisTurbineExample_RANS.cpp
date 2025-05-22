@@ -24,11 +24,11 @@ int main(int argc, char *argv[])
 
     // domain definition
     std::string inFile = FLOW_DATA_DIR "francisTurbine_domain.xml";
-    int nBlades = 14; // given by the domain geometry in inFile
+    index_t nBlades = 14; // given by the domain geometry in inFile
 
     // discretization settings
-    int numRefine = 0;
-    int wallRefine = 0;
+    index_t numRefine = 0;
+    index_t wallRefine = 0;
 
     // problem parameters
     real_t viscosity = 0.01;
@@ -37,9 +37,10 @@ int main(int argc, char *argv[])
     real_t omega = 0; // angular velocity for rotation
 
     // solver settings
-    int maxIt = 10;
-    int picardIt = 5;
-    int linIt = 50;
+    index_t maxIt = 10;
+    index_t picardIt = 5;
+    index_t maxItTM = 10;
+    index_t linIt = 50;
     real_t timeStep = 0.1;
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
@@ -50,7 +51,7 @@ int main(int argc, char *argv[])
     // output settings
     bool quiet = false;
     bool plot = false;
-    int plotPts = 50000;
+    index_t plotPts = 50000;
     bool plotMesh = false;
     std::string outPath = "";
     
@@ -71,6 +72,7 @@ int main(int argc, char *argv[])
 
     cmd.addInt("", "maxIt", "Max. number of Picard iterations or time steps", maxIt);
     cmd.addInt("", "picardIt", "Max. number of inner Picard iterations for unsteady problem", picardIt);
+    cmd.addInt("", "maxItTM", "Max. number of turbulence model iterations", maxItTM);
     cmd.addInt("", "linIt", "Max. number of GMRES iterations", linIt);
     cmd.addReal("", "timeStep", "Time discretization step for unsteady problem", timeStep);
     cmd.addReal("", "tol", "Stopping tolerance", tol);
@@ -141,7 +143,7 @@ int main(int argc, char *argv[])
     // bcInfo.addCondition(2, boundary::west, condition_type::dirichlet, Uwall, 0);
     // bcInfo.addCondition(2, boundary::east, condition_type::dirichlet, Uwall, 0);
 
-    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall; 
+    std::vector<std::pair<index_t, boxSide> > bndIn, bndOut, bndWall; 
     bndIn.push_back(std::make_pair(0, boundary::south));
     bndOut.push_back(std::make_pair(2, boundary::north));
     bndWall.push_back(std::make_pair(0, boundary::front));
@@ -193,6 +195,7 @@ int main(int argc, char *argv[])
     params.options().setReal("lin.tol", linTol);
     params.options().setString("lin.precType", precond);
     params.options().setReal("omega", omega);
+    params.options().setInt("TM.maxIt", maxItTM);
     params.setBndParts(bndIn, bndOut, bndWall);
 
     gsOptionList solveOpt;
@@ -250,7 +253,7 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt)
     if (opt.getSwitch("plot")) 
     {
         bool rot = NSsolver.getParams()->isRotation();
-        int plotPts = opt.getInt("plotPts");
+        index_t plotPts = opt.getInt("plotPts");
 
         gsField<> velocity = NSsolver.constructSolution(0);
         gsField<> pressure = NSsolver.constructSolution(1);
