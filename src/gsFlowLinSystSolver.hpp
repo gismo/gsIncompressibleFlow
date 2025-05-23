@@ -103,7 +103,8 @@ template<class T, int MatOrder, class SolverType>
 void gsFlowLinSystSolver_iter<T, MatOrder, SolverType>::setupPreconditioner(const gsSparseMatrix<T, MatOrder>& mat)
 {
     real_t time0 = stopwatchStart();
-    m_precPtr = gsGaussSeidelOp< gsSparseMatrix<T, MatOrder>, gsGaussSeidel::symmetric >::make(mat);
+    m_precPtr = gsIncompleteLUOp< gsSparseMatrix<T, MatOrder> >::make(mat);
+    //m_precPtr = gsGaussSeidelOp< gsSparseMatrix<T, MatOrder>, gsGaussSeidel::symmetric >::make(mat);
     real_t time1 = stopwatchStop();
 
     m_setupT += time1 - time0;
