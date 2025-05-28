@@ -57,13 +57,6 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
-    gsField<T> USolField = m_paramsPtr->getVelocitySolution();
-    gsTMTerm_VecCoeffGradVal<T>* termPtr = dynamic_cast< gsTMTerm_VecCoeffGradVal<T>* > (m_terms.back());
-    if (termPtr)
-    {
-        termPtr->setCurrentSolution(USolField);
-    } 
-
     m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
 }
 
@@ -72,26 +65,19 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::evaluate(const gsDomainIterator<T
 {
     Base::evaluate(domIt);
 
-    gsField<T> USolField = m_paramsPtr->getVelocitySolution();
-    gsTMTerm_VecCoeffGradVal<T>* termPtr = dynamic_cast< gsTMTerm_VecCoeffGradVal<T>* > (m_terms.back());
-    if (termPtr)
-    {
-        termPtr->setCurrentSolution(USolField);
-    }   
-
     m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
 }
 
 template <class T, int MatOrder>
 void gsTMVisitorTimeIterationSST<T, MatOrder>::assemble()
 {
-    m_locMatVec.resize(2);
+    m_locMatVec.resize(1);
 
-    m_locMatVec[0].setZero(m_testFunActives.rows(), m_trialFunActives.rows());
+    //m_locMatVec[0].setZero(m_testFunActives.rows(), m_trialFunActives.rows());
+    //m_terms[0]->assemble(m_mapData, m_quWeights, m_testFunData, m_trialFunData, m_locMatVec[0]);
+
+    m_locMatVec[0].setZero(m_testFunActives.rows(), 1);
     m_terms[0]->assemble(m_mapData, m_quWeights, m_testFunData, m_trialFunData, m_locMatVec[0]);
-
-    m_locMatVec[1].setZero(m_testFunActives.rows(), 1);
-    m_terms[1]->assemble(m_mapData, m_quWeights, m_testFunData, m_trialFunData, m_locMatVec[1]);
 }
 
 template <class T, int MatOrder>
@@ -109,9 +95,9 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::localToGlobal(const std::vector<g
 
         if (m_paramsPtr->getMapper(m_testUnkID).is_free_index(ii))
         {
-            globalRhs(ii, 0) += m_locMatVec[1](i, 0); 
+            globalRhs(ii, 0) += m_locMatVec[0](i, 0); 
             
-            for (index_t j = 0; j < numActShape; ++j)
+            /*for (index_t j = 0; j < numActShape; ++j)
             {
                 const index_t jj = m_trialFunActives(j);
 
@@ -125,7 +111,7 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::localToGlobal(const std::vector<g
 
                     globalRhs(ii, 0) -= m_locMatVec[0](i, j) * eliminatedDofs[m_trialUnkID](bb, 0);
                 }
-            }
+            }*/
         }
     }
 
@@ -145,6 +131,16 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
+    gsField<T> USolField = m_paramsPtr->getVelocitySolution();
+    for (size_t i = 0; i < m_terms.size(); i++)
+    {
+        gsTMTerm_VecCoeffGradVal<T>* termPtr = dynamic_cast< gsTMTerm_VecCoeffGradVal<T>* > (m_terms[i]);
+        if (termPtr)
+        {
+            termPtr->setCurrentSolution(USolField);
+        } 
+    }
+
     m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
 
 }
@@ -154,6 +150,16 @@ template <class T, int MatOrder>
 void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     Base::evaluate(domIt);
+
+    gsField<T> USolField = m_paramsPtr->getVelocitySolution();
+    for (size_t i = 0; i < m_terms.size(); i++)
+    {
+        gsTMTerm_VecCoeffGradVal<T>* termPtr = dynamic_cast< gsTMTerm_VecCoeffGradVal<T>* > (m_terms[i]);
+        if (termPtr)
+        {
+            termPtr->setCurrentSolution(USolField);
+        } 
+    }
 
     m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
 

@@ -28,7 +28,8 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
 
     // boundary conditions are automatically set based on boundary conditions for RANS
     m_kin = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
-    m_kwall = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
+    //m_kwall = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
+    m_kwall = 1e-10;
     gsInfo << "kin = " << util::to_string(m_kin) << ", ";
     gsInfo << "kwall = " << util::to_string(m_kwall) << std::endl;
     gsFunctionExpr<T> Kin(util::to_string(m_kin), m_tarDim);
@@ -38,7 +39,20 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     addBCs(m_bc, bndIn, bndWall, Kin, Kwall, 2);
 
     m_oin = m_kin / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at inlet
-    m_owall = m_kwall / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at the wall
+    real_t inletWidth = 1.0;
+    real_t Re = uFreeStream * inletWidth / m_viscosity; 
+    int numSamplePts = 50; //number of sample points for which the distance to the boundary is computed
+    real_t maxYplus = 2.5; //maximum dimensionless wall distance which is accepted
+    real_t wallDistance = computeDimensionlessWallDistance<T>(m_paramsPtr, m_viscosity, Re, uFreeStream, maxYplus, numSamplePts, true, true);
+    gsInfo << "\nminimum wallDistance = " << wallDistance << "\n";
+    if (wallDistance > 0)
+    {
+        real_t beta = 0.0708;
+        m_owall = 6 * m_viscosity / (beta * math::pow(wallDistance, 2)); // omega on the wall
+    }
+    else
+        m_owall = 500; 
+    //m_owall = m_kwall / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at the wall
     //real_t oBlade = 6 * viscosity / (beta * math::pow(wallDistance, 2)); // other way for prescribing this boundary condition
     gsInfo << "oin = " << util::to_string(m_oin) << ", ";
     gsInfo << "owall = " << util::to_string(m_owall) << std::endl;
@@ -59,9 +73,9 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     m_visitorTimeIterationSST_O = gsTMVisitorTimeIterationSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 3);
     m_visitorTimeIterationSST_K.initialize();
     m_visitorTimeIterationSST_O.initialize();
-    gsField<T> velocity = m_paramsPtr->getVelocitySolution();
-    m_visitorTimeIterationSST_K.setCurrentSolution(velocity);
-    m_visitorTimeIterationSST_O.setCurrentSolution(velocity);
+    //gsField<T> velocity = m_paramsPtr->getVelocitySolution();
+    //m_visitorTimeIterationSST_K.setCurrentSolution(velocity);
+    //m_visitorTimeIterationSST_O.setCurrentSolution(velocity);
 
     m_visitorNonlinearSST_K = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 2);
     m_visitorNonlinearSST_O = gsTMVisitorNonlinearSST<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 3);
@@ -79,8 +93,8 @@ void gsTMAssemblerSST<T, MatOrder>::updateSizes()
     Base:: updateSizes();
 
     m_solution.resize(m_dofs, 1);
-    m_solution.topRows(m_kdofs[0]).setConstant(m_kwall);
-    m_solution.bottomRows(m_kdofs[1]).setConstant(m_owall);
+    m_solution.topRows(m_kdofs[0]).setConstant(m_kin);
+    m_solution.bottomRows(m_kdofs[1]).setConstant(m_oin);
     
     m_currentFieldK = constructSolution(m_solution, 2);
     m_currentFieldO = constructSolution(m_solution, 3);

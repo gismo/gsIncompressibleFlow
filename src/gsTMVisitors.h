@@ -122,8 +122,6 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsTMTerm_VecCoeffGradVal<T>() );
-
         // production term going to rhs
         m_terms.push_back( new gsTMTerm_ProductionRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
     
@@ -202,13 +200,17 @@ protected: // *** Member functions ***
         m_numRhsTerms = 1;
         
         // further, define all lhs terms first and all rhs terms then
+        // LHS
         // diffusion term with coefficient (m_konst1 * F1 + m_konst2 * (1 - F1)) * turbulent viscosity + m_konst3
         m_terms.push_back( new gsTMTerm_CoeffGradGrad<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
+        // advection terrm
+        m_terms.push_back( new gsTMTerm_VecCoeffGradVal<T>() );
         // nonlinear reaction term
         m_terms.push_back( new gsTMTerm_CoeffValVal<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         // blended term 2 * (1 - F1) * sigma0mega2 / omega * grad(k) * grad(omega) for omega equation
-        m_terms.push_back( new gsTMTerm_BlendCoeff<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
+        //m_terms.push_back( new gsTMTerm_BlendCoeff<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         
+        // RHS
         m_terms.push_back( new gsTMTerm_BlendCoeffRhs<T>(m_paramsPtr, m_TMModelPtr, m_unknown) );
         
     }

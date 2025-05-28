@@ -1104,6 +1104,192 @@ gsField<T> computeDistanceField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
     return result;
 }
 
+template<class T>
+T computeDimensionlessWallDistance(typename gsFlowSolverParams<T>::Ptr paramsPtr, /*gsMatrix<T> solution, std::vector<gsMultiBasis<T>> multiBasis, gsVector<int> distancePatches, std::vector<boxSide> distanceSides,*/ T viscosity, T reynoldsNumber, T uFreeStream, T maxYplus, unsigned npts, bool print, bool estimate)
+{
+    std::ofstream ofile;
+    if (print)
+    {
+        time_t t = std::time(0);   // get time now
+        struct tm * now = std::localtime(&t);
+        std::stringstream filename;
+        filename << "wallDistance_" << (now->tm_mon + 1) << "-" << now->tm_mday << "_" << now->tm_hour << "-" << now->tm_min << ".txt";
+
+        ofile.open(filename.str().c_str());
+
+        ofile << "\n             Dimensionless wall distance information                       \n";
+        ofile << "=========================================================================================================\n";
+        ofile << "patch index  |     side      |   number of unfit points (y+ > " << maxYplus << ") |   min y+   |   max y+   |   average y+   \n";
+        ofile << "---------------------------------------------------------------------------------------------------------\n";
+    }
+
+    gsMultiPatch<T> patches = paramsPtr->getPde().patches();    // multipatch representing the computational domain
+    std::vector<gsMultiBasis<T> > basis = paramsPtr->getBases();           // pressure basis as base basis for distance computation
+    std::vector<std::pair<int, boxSide> > bndWall = paramsPtr->getBndWall();
+    index_t tarDim = patches.targetDim();
+
+    gsVector<T> minYPlusOverSides;
+    minYPlusOverSides.setZero(bndWall.size());
+
+    T skinFrCoeff = math::pow(2.0*math::log10(reynoldsNumber) - 0.65, -2.3);
+    T tau_w = 0.5 * skinFrCoeff * math::pow(uFreeStream, 2);
+    T u_tau = math::sqrt(tau_w);
+
+    int unfitPointsNum;
+    for (size_t numSide = 0; numSide < bndWall.size(); numSide++)
+    {
+        int patchIndex = bndWall[numSide].first;
+        boxSide side = bndWall[numSide].second;
+
+        typename gsGeometry<T>::uPtr geomBoundary = patches.patch(patchIndex).boundary(side);
+
+        gsMatrix<T> ab = geomBoundary->support();
+        gsVector<T> a = ab.col(0);
+        gsVector<T> b = ab.col(1);
+
+        gsVector<unsigned> np = uniformSampleCount(a, b, npts);
+        gsMatrix<T> paramBoundaryNodes = gsPointGrid(a, b, np);
+        int numOfPoints = paramBoundaryNodes.cols();
+
+        gsMatrix<T> paramBoundaryNodesFull;
+        paramBoundaryNodesFull.setZero(patches.dim(), paramBoundaryNodes.cols());
+        gsMatrix<T> paramFirstNodesFull = paramBoundaryNodesFull;
+
+        int param = side.parameter();
+        int index = 0;
+
+        const gsBasis<T>& basisPatch = (basis.at(1)).piece(patchIndex);
+        bool THB = false;
+        //----------------------------------------------
+        if (tarDim == 2)
+        {
+            if (dynamic_cast<const gsTHBSplineBasis<2, T>*>(&basisPatch))
+                THB = true;
+        }
+        else
+        {
+            if (dynamic_cast<const gsTHBSplineBasis<3, T>*>(&basisPatch))
+                THB = true;
+        }
+        //----------------------------------------------
+
+        for (int s = 0; s < patches.dim(); s++)
+        {
+            if (s == side.direction())
+            {
+                if (param == 1) // east or north or back
+                {
+                    paramBoundaryNodesFull.middleRows(s, 1).setOnes();
+
+                    real_t nodeValue;
+                    if (THB)
+                    {
+                        if (tarDim == 2)
+                        {
+                            const gsTHBSplineBasis<2, T>* pBasisTHB = dynamic_cast<const gsTHBSplineBasis<2, T>*>(&basis.at(1).piece(patchIndex));
+                            nodeValue = pBasisTHB->knot(pBasisTHB->maxLevel(),s, pBasisTHB->numKnots(pBasisTHB->maxLevel(),s) - pBasisTHB->degree(s) - 2);
+                        }
+                        else
+                        {
+                            const gsTHBSplineBasis<3, T>* pBasisTHB = dynamic_cast<const gsTHBSplineBasis<3, T>*>(&basis.at(1).piece(patchIndex));
+                            nodeValue = pBasisTHB->knot(pBasisTHB->maxLevel(),s, pBasisTHB->numKnots(pBasisTHB->maxLevel(),s) - pBasisTHB->degree(s) - 2);
+                        }
+                    }
+                    else
+                    {
+                        if (tarDim == 2)
+                        {
+                            const gsTensorBSplineBasis<2, T>* pBasis = dynamic_cast<const gsTensorBSplineBasis<2, T>*>(&basis.at(1).piece(patchIndex));
+                            nodeValue = pBasis->knot(s, pBasis->knots(s).size() - pBasis->degree(s) - 2);
+                        }
+                        else
+                        {
+                            const gsTensorBSplineBasis<3, T>* pBasis = dynamic_cast<const gsTensorBSplineBasis<3, T>*>(&basis.at(1).piece(patchIndex));
+                            nodeValue = pBasis->knot(s, pBasis->knots(s).size() - pBasis->degree(s) - 2);
+                        }
+                    }
+                    //basis->knot(0, basis->knots(0).size() - basis->degree(0) - 2)//east
+                    //basis->knot(1, basis->knots(1).size() - basis->degree(1) - 2)//north
+                    //basis->knot(2, basis->knots(2).size() - basis->degree(2) - 2)//back
+
+                    paramFirstNodesFull.middleRows(s, 1).setConstant(nodeValue);
+                }
+                else // param = 0 ... i.e. west or south or front
+                {
+                    real_t nodeValue;
+                    if (THB)
+                    {
+                        if (tarDim == 2)
+                        {
+                            const gsTHBSplineBasis<2, T>* pBasisTHB = dynamic_cast<const gsTHBSplineBasis<2, T>*>(&basis.at(1).piece(patchIndex));
+                            nodeValue = pBasisTHB->knot(pBasisTHB->maxLevel(),s, pBasisTHB->degree(s) + 1);
+                        }
+                        else
+                        {
+                            const gsTHBSplineBasis<3, T>* pBasisTHB = dynamic_cast<const gsTHBSplineBasis<3, T>*>(&basis.at(1).piece(patchIndex));
+                            nodeValue = pBasisTHB->knot(pBasisTHB->maxLevel(),s, pBasisTHB->degree(s) + 1);
+                        }
+                    }
+                    else
+                    {
+                        if (tarDim == 2)
+                        {
+                            const gsTensorBSplineBasis<2, T>* pBasis = dynamic_cast<const gsTensorBSplineBasis<2, T>*>(&basis.at(1).piece(patchIndex));
+                            nodeValue = pBasis->knot(s, pBasis->degree(s) + 1);
+                        }
+                        else
+                        {
+                            const gsTensorBSplineBasis<3, T>* pBasis = dynamic_cast<const gsTensorBSplineBasis<3, T>*>(&basis.at(1).piece(patchIndex));
+                            nodeValue = pBasis->knot(s, pBasis->degree(s) + 1);
+                        }
+                    }
+                    //basis->knot(0, basis->degree(0) + 1)//west
+                    //basis->knot(1, basis->degree(1) + 1)//south
+                    //basis->knot(2, basis->degree(2) + 1)//front
+
+                    paramFirstNodesFull.middleRows(s, 1).setConstant(nodeValue);
+                }
+
+            }
+            else
+            {
+                paramBoundaryNodesFull.middleRows(s, 1) = paramBoundaryNodes.middleRows(index, 1);
+                paramFirstNodesFull.middleRows(s, 1) = paramBoundaryNodes.middleRows(index, 1);
+                index++;
+            }
+        }
+
+        gsMatrix<T> physBoundaryNodesFull;
+        gsMatrix<T> physFirstNodesFull;
+        patches.patch(patchIndex).eval_into(paramBoundaryNodesFull, physBoundaryNodesFull); // physical coordinates of paramBoundaryNodes
+        patches.patch(patchIndex).eval_into(paramFirstNodesFull, physFirstNodesFull); // physical coordinates of paramBoundaryNodes
+
+        T averageValue = 0.;
+        unfitPointsNum = 0;
+        gsVector<T> yPlusAtSide;
+        yPlusAtSide.setZero(numOfPoints);
+        for (int nodeIndex = 0; nodeIndex < numOfPoints; nodeIndex++)
+        {
+            T distanceToWall = (physFirstNodesFull.col(nodeIndex) - physBoundaryNodesFull.col(nodeIndex)).norm();
+            yPlusAtSide[nodeIndex] = distanceToWall * u_tau / viscosity;
+
+            averageValue += yPlusAtSide[nodeIndex];
+            if (yPlusAtSide[nodeIndex] > maxYplus)
+                unfitPointsNum++;
+        }
+        if (print)
+            ofile << "      " << patchIndex << "      |   " << side << "    |                 " << unfitPointsNum << "                 |   " << yPlusAtSide.minCoeff() <<
+            "  |   " << yPlusAtSide.maxCoeff() << "  |   " << averageValue / numOfPoints << "\n";
+
+        minYPlusOverSides[numSide] = yPlusAtSide.minCoeff();
+    }
+    //ofile << "=========================================================================================================\n\n";
+    if (print)
+        ofile.close();
+
+    return minYPlusOverSides.minCoeff() * viscosity / u_tau;
+} 
+
 
 // -----------------------------------------------
 
