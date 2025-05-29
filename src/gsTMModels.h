@@ -52,7 +52,7 @@ protected: // *** Class members ***
     std::vector< gsMatrix<T> > m_StrainRateTensor;
     gsVector<T> m_turbulentViscosityVals;
 
-    bool m_average = false;
+    bool m_average = true;
     bool m_isInitialized = false;
 
 

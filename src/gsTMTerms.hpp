@@ -125,7 +125,7 @@ void gsTMTerm_BlendCoeff<T>::evalCoeff(const gsMapData<T>& mapData)
     {
         gsMatrix<T> u = KSolDers[k];
         gsMatrix<T> v = OSolDers[k];
-        m_coeff(k) = math::max((-1) * 2 * (1 - F1(k)) * sigmaO2 / math::pow(OSolVals(0, k), 2) * (u.row(0).dot(v.row(0))), 0.);
+        m_coeff(k) = math::max((-1) * 2 * (1 - F1(k)) * sigmaO2 / math::pow(math::max(OSolVals(0, k), 1e-6), 2) * (u.row(0).dot(v.row(0))), 0.);
     }
 }
 
