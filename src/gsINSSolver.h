@@ -193,7 +193,7 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     virtual void initMembers();
 
-    void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNameSuffix, unsigned plotPts);
+    void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNamePrefix, unsigned plotPts);
 
 
 public: // *** Member functions ***
@@ -201,7 +201,7 @@ public: // *** Member functions ***
     /// @brief Perform next iteration step.
     virtual void nextIteration();
 
-    void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, const int minIterations = 1);
+    void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNamePrefix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, const int minIterations = 1);
 
     /// @brief Solve the generalized Stokes problem.
     virtual void solveGeneralizedStokes(const int maxIterations, const T epsilon, const int minIterations = 1)

@@ -34,23 +34,6 @@ inline void pardisoSetup(typename gsSparseSolver<T>::PardisoLU& solver)
 #endif
 
 
-// forward declaration
-template<class T, int MatOrder, class LinSolver>
-class gsFlowLinSystSolver_iter;
-
-template<class T, int MatOrder, class LinSolver>
-void reportLinIterations(gsFlowLinSystSolver_iter<T, MatOrder, LinSolver>* linSolverPtr)
-{
-    std::vector<index_t> itVector = linSolverPtr->getLinIterVector();
-
-    gsInfo << "Iterations of linear solver in each Picard iteration:\n";
-    for (size_t i = 0; i < itVector.size(); i++)
-        gsInfo << itVector[i] << ", ";
-
-    gsInfo << "\nAverage number of linear solver iterations per Picard iteration: " << linSolverPtr->getAvgLinIterations() << "\n";
-}
-
-
 inline void startAnimationFile(std::ofstream& file)
 {
     file << "<?xml version=\"1.0\"?>\n";
@@ -347,6 +330,20 @@ gsMultiPatch<T> BSplineStep2D(int deg, const T a, const T b, const T a_in, T h =
     mp.addPatch(BSplineRectangle(deg, 0.0, h, a, b - h));
     mp.addPatch(BSplineRectangle(deg, -a_in, h, a_in, b - h));
 
+    // basic refinement
+    index_t aNumElem = std::floor(2*a/b);
+    index_t ainNumElem = std::floor(2*a_in/b);
+    T aStep = 1.0 / aNumElem;
+    T ainStep = 1.0 / ainNumElem;
+
+    for (index_t p = 0; p < 2; p++)
+        for (index_t i = 1; i < aNumElem; i++)
+            mp.patch(p).insertKnot(i * aStep, 0);
+
+    for (index_t i = 1; i < ainNumElem; i++)
+        mp.patch(2).insertKnot(i * ainStep, 0);
+
+    // topology
     mp.addInterface(0, boundary::north, 1, boundary::south);
     mp.addInterface(1, boundary::west, 2, boundary::east);
 
@@ -380,16 +377,35 @@ gsMultiPatch<T> BSplineStep3D(int deg, const T a, const T b, const T c, const T 
     mp.addPatch(BSplineBlock<T>(deg, 0.0, h, 0.0, a, b - h, c));
     mp.addPatch(BSplineBlock<T>(deg, -a_in, h, 0.0, a_in, b - h, c));
 
+    // basic refinement
+    index_t aNumElem = std::floor(2*a/b);
+    index_t ainNumElem = std::floor(2*a_in/b);
+    index_t cNumElem = std::floor(2*c/b);
+    T aStep = 1.0 / aNumElem;
+    T ainStep = 1.0 / ainNumElem;
+    T cStep = 1.0 / cNumElem;
+
+    for (index_t p = 0; p < 2; p++)
+        for (index_t i = 1; i < aNumElem; i++)
+            mp.patch(p).insertKnot(i * aStep, 0);
+
+    for (index_t i = 1; i < ainNumElem; i++)
+        mp.patch(2).insertKnot(i * ainStep, 0);
+
+    for (index_t p = 0; p < 3; p++)
+        for (index_t i = 1; i < cNumElem; i++)
+            mp.patch(p).insertKnot(i * cStep, 2);
+
+    // topology
     mp.addInterface(0, boundary::north, 1, boundary::south);
     mp.addInterface(2, boundary::east, 1, boundary::west);
 
-    // TODO: does it work?
-    // if (periodic)
-    // {
-    //     mp.addInterface(0, boundary::front, 0, boundary::back);
-    //     mp.addInterface(1, boundary::front, 1, boundary::back);
-    //     mp.addInterface(2, boundary::front, 2, boundary::back);
-    // }
+    if (periodic)
+    {
+        mp.addInterface(0, boundary::front, 0, boundary::back);
+        mp.addInterface(1, boundary::front, 1, boundary::back);
+        mp.addInterface(2, boundary::front, 2, boundary::back);
+    }
     
     mp.addAutoBoundaries();
 
@@ -633,7 +649,7 @@ void defineBCs_step(gsBoundaryConditions<T>& bcInfo, int dim, bool periodic = fa
 /// @param[in]  lidVel   the \a x component of the lid velocity
 /// @param[in]  fixPressure   set pressure to zero in one corner
 template <class T>
-void defineBCs_cavity(gsBoundaryConditions<T>& bcInfo, int dim, const int np = 1, std::string lidVel = "1", bool fixPressure = true)
+void defineBCs_cavity(gsBoundaryConditions<T>& bcInfo, int dim, const int np = 1, std::string lidVelX = "1", std::string lidVelZ = "0", bool fixPressure = true)
 {
     gsFunctionExpr<T> Uwall, Ulid;
 
@@ -642,7 +658,7 @@ void defineBCs_cavity(gsBoundaryConditions<T>& bcInfo, int dim, const int np = 1
     case 2:
     {
         Uwall = gsFunctionExpr<T>("0", "0", 2);
-        Ulid = gsFunctionExpr<T>(lidVel, "0", 2);
+        Ulid = gsFunctionExpr<T>(lidVelX, "0", 2);
 
         for (int i = 1; i <= np; i++)
             bcInfo.addCondition(np*np - i, boundary::north, condition_type::dirichlet, Ulid, 0);
@@ -664,7 +680,7 @@ void defineBCs_cavity(gsBoundaryConditions<T>& bcInfo, int dim, const int np = 1
     {
         GISMO_ASSERT(np == 1, "Number of patches in each direction must be 1 for 3D cavity.");
         Uwall = gsFunctionExpr<T>("0", "0", "0", 3);
-        Ulid = gsFunctionExpr<T>(lidVel, "0", "0", 3);
+        Ulid = gsFunctionExpr<T>(lidVelX, "0", lidVelZ, 3);
 
         bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, Ulid, 0);
         bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, Uwall, 0);
@@ -837,30 +853,10 @@ void refineLocal_step(gsMultiBasis<T>& basis, int numRefineWalls, int numRefineC
 /// @param numRefineU       number of uniform refinements of patches 0 and 1 in \a u direction
 /// @param addRefPart       a value of the \a u parameter for additional refinement behind the step 
 /// @param dim              space dimension
-/// @param a                length of the domain behind the step
-/// @param b                total height of the domain
-/// @param c                width of the domain (3D case)
 template <class T>
-void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t c = 0.0)
+void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim)
 {
     gsMatrix<T> box(dim, 2);
-
-    int uRefine = math::floor(std::log2(a / b)) + 1 + numRefineU;
-    box.setZero();
-    box(0, 1) = 1; 
-    for (int i = 0; i < uRefine; i++)
-        for (int p = 0; p < 2; p++)
-            basis.refine(p, box);
-
-    if (dim == 3)
-    {
-        int wRefine = math::floor(std::log2(c / b)) + 1;
-        box.setZero();
-        box(2, 1) = 1;
-        for (int i = 0; i < wRefine; i++)
-            for (int p = 0; p < 3; p++)
-                basis.refine(p, box);
-    }
 
     box.setZero();
     box(0,1) = addRefPart;
@@ -882,33 +878,6 @@ void refineBasis_step(gsMultiBasis<T>& basis, int numRefine, int numRefineWalls,
         GISMO_ERROR("Wrong dimension!");
         break;
     }
-
-}
-
-// TODO: Unify with refineBasis_step()
-template<class T>
-void refineBasis_step2(gsMultiPatch<T>& patches, gsMultiBasis<T>& basis, int numRefine, int numRefineWalls, int numRefineCorner, int numRefineU, real_t addRefPart, int dim, real_t a, real_t b, real_t a_in, real_t c = 0.0)
-{
-    for (index_t p = 0; p < 2; p++)
-    {
-        for (index_t i = 1; i < a; i++)
-            patches.patch(p).insertKnot((real_t) i/a, 0);
-
-        for (index_t i = 1; i < b/2; i++)
-            patches.patch(p).insertKnot((real_t) 2 * i/b, 1);
-    }
-
-    for (index_t i = 1; i < a_in; i++)
-        patches.patch(2).insertKnot((real_t) i/a_in, 0);
-    
-    for (index_t i = 1; i < b/2; i++)
-        patches.patch(2).insertKnot((real_t) 2* i/b, 1);
-
-    gsMultiBasis<T> basis2(patches);
-    basis = basis2;
-
-    for (int i = 0; i < numRefine; ++i)
-        basis.uniformRefine();
 
 }
 

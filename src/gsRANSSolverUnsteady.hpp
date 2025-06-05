@@ -29,32 +29,32 @@ void gsRANSSolverUnsteady<T, MatOrder>::initMembers()
 
 
 template<class T, int MatOrder>
-void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileK, std::ofstream& fileO, std::ofstream& fileTV, std::string fileNameSuffix, unsigned plotPts)
+void gsRANSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileK, std::ofstream& fileO, std::ofstream& fileTV, std::string fileNamePrefix, unsigned plotPts)
 {
     int numPatches = m_paramsPtr->getPde().patches().nPatches();
 
     gsField<T> uSol = this->constructSolution(0);
     std::stringstream filenameU;
-    filenameU << "velocity" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    filenameU << fileNamePrefix + "_velocity_" << m_iterationNumber << "it";
     gsWriteParaview<T>(uSol, filenameU.str(), plotPts);
 
     gsField<T> pSol = this->constructSolution(1);
     std::stringstream filenameP;
-    filenameP << "pressure" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    filenameP << fileNamePrefix + "_pressure_" << m_iterationNumber << "it";
     gsWriteParaview<T>(pSol, filenameP.str(), plotPts);
 
     gsField<T> kSol = constructSolution(2);
     std::stringstream filenameK;
-    filenameK << "Ksol" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    filenameK << fileNamePrefix + "_Ksol_" << m_iterationNumber << "it";
     gsWriteParaview<T>(kSol, filenameK.str(), plotPts);
 
     gsField<T> oSol = constructSolution(3);
     std::stringstream filenameO;
-    filenameO << "Osol_" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    filenameO << fileNamePrefix + "_Osol__" << m_iterationNumber << "it";
     gsWriteParaview<T>(oSol, filenameO.str(), plotPts);
     
     std::stringstream filenameTV;
-    filenameTV << "turbViscosity" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    filenameTV << fileNamePrefix + "_turbViscosity_" << m_iterationNumber << "it";
     m_TMModelPtr->plotTurbulentViscosity(m_paramsPtr, filenameTV.str());
         
     for (int p = 0; p < numPatches; p++)
@@ -181,30 +181,30 @@ void gsRANSSolverUnsteady<T, MatOrder>::nextIteration()
 
 
 template<class T, int MatOrder>
-void gsRANSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix, const T epsilon, unsigned plotPts, bool plotTurb, const int minIterations)
+void gsRANSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, const int iterStep, std::string fileNamePrefix, const T epsilon, unsigned plotPts, bool plotTurb, const int minIterations)
 {
     if (!plotTurb)
             Base::solveWithAnimation(totalIter, iterStep, "", epsilon, plotPts);
     else
     {
         // prepare plotting
-        std::string fileNameU = "velocity" + fileNameSuffix + "_animation.pvd";
+        std::string fileNameU = fileNamePrefix + "_velocity_animation.pvd";
         std::ofstream fileU(fileNameU.c_str());
         GISMO_ASSERT(fileU.is_open(), "Error creating " << fileNameU);
 
-        std::string fileNameP = "pressure" + fileNameSuffix + "_animation.pvd";
+        std::string fileNameP = fileNamePrefix + "_pressure_animation.pvd";
         std::ofstream fileP(fileNameP.c_str());
         GISMO_ASSERT(fileP.is_open(), "Error creating " << fileNameP);
 
-        std::string fileNameK = "Ksol" + fileNameSuffix + "_animation.pvd";
+        std::string fileNameK = fileNamePrefix + "_Ksol_animation.pvd";
         std::ofstream fileK(fileNameK.c_str());
         GISMO_ASSERT(fileK.is_open(), "Error creating " << fileNameK);
 
-        std::string fileNameO = "Osol" + fileNameSuffix + "_animation.pvd";
+        std::string fileNameO = fileNamePrefix + "_Osol_animation.pvd";
         std::ofstream fileO(fileNameO.c_str());
         GISMO_ASSERT(fileO.is_open(), "Error creating " << fileNameO);
 
-        std::string fileNameTV = "turbViscosity" + fileNameSuffix + "_animation.pvd";
+        std::string fileNameTV = fileNamePrefix + "_turbViscosity_animation.pvd";
         std::ofstream fileTV(fileNameTV.c_str());
         GISMO_ASSERT(fileTV.is_open(), "Error creating " << fileNameTV);
 
@@ -214,13 +214,13 @@ void gsRANSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, 
         startAnimationFile(fileO);
         startAnimationFile(fileTV);
 
-        plotCurrentTimeStep(fileU, fileP, fileK, fileO, fileTV, fileNameSuffix, plotPts);
+        plotCurrentTimeStep(fileU, fileP, fileK, fileO, fileTV, fileNamePrefix, plotPts);
 
         for (int i = 0; i < totalIter; i += iterStep)
         {
             this->solve(math::min(iterStep, totalIter), epsilon, minIterations);
 
-            plotCurrentTimeStep(fileU, fileP, fileK, fileO, fileTV, fileNameSuffix, plotPts);
+            plotCurrentTimeStep(fileU, fileP, fileK, fileO, fileTV, fileNamePrefix, plotPts);
         }
 
         endAnimationFile(fileU);

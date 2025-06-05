@@ -64,18 +64,18 @@ void gsINSSolverUnsteady<T, MatOrder>::initMembers()
 
 
 template<class T, int MatOrder>
-void gsINSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNameSuffix, unsigned plotPts)
+void gsINSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNamePrefix, unsigned plotPts)
 {
     int numPatches = m_paramsPtr->getPde().patches().nPatches();
 
     gsField<T> uSol = this->constructSolution(0);
     std::stringstream filenameU;
-    filenameU << "velocity" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    filenameU << fileNamePrefix + "_velocity_" << m_iterationNumber << "it";
     gsWriteParaview<T>(uSol, filenameU.str(), plotPts);
 
     gsField<T> pSol = this->constructSolution(1);
     std::stringstream filenameP;
-    filenameP << "pressure" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    filenameP << fileNamePrefix + "_pressure_" << m_iterationNumber << "it";
     gsWriteParaview<T>(pSol, filenameP.str(), plotPts);
 
     for (int p = 0; p < numPatches; p++)
@@ -135,27 +135,27 @@ void gsINSSolverUnsteady<T, MatOrder>::nextIteration()
 
 
 template<class T, int MatOrder>
-void gsINSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix, const T epsilon, unsigned plotPts, const int minIterations)
+void gsINSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, const int iterStep, std::string fileNamePrefix, const T epsilon, unsigned plotPts, const int minIterations)
 {
     // prepare plotting
-    std::string fileNameU = "velocity" + fileNameSuffix + "_animation.pvd";
+    std::string fileNameU = fileNamePrefix + "_velocity_animation.pvd";
     std::ofstream fileU(fileNameU.c_str());
     GISMO_ASSERT(fileU.is_open(), "Error creating " << fileNameU);
 
-    std::string fileNameP = "pressure" + fileNameSuffix + "_animation.pvd";
+    std::string fileNameP = fileNamePrefix + "_pressure_animation.pvd";
     std::ofstream fileP(fileNameP.c_str());
     GISMO_ASSERT(fileP.is_open(), "Error creating " << fileNameP);
 
     startAnimationFile(fileU);
     startAnimationFile(fileP);
 
-    plotCurrentTimeStep(fileU, fileP, fileNameSuffix, plotPts);
+    plotCurrentTimeStep(fileU, fileP, fileNamePrefix, plotPts);
 
     for (int i = 0; i < totalIter; i += iterStep)
     {
         this->solve(math::min(iterStep, totalIter), epsilon, minIterations);
 
-        plotCurrentTimeStep(fileU, fileP, fileNameSuffix, plotPts);
+        plotCurrentTimeStep(fileU, fileP, fileNamePrefix, plotPts);
     }
 
     endAnimationFile(fileU);

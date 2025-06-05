@@ -95,7 +95,7 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     virtual void initMembers();
 
-    void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileK, std::ofstream& fileO, std::ofstream& fileTV, std::string fileNameSuffix, unsigned plotPts);
+    void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::ofstream& fileK, std::ofstream& fileO, std::ofstream& fileTV, std::string fileNamePrefix, unsigned plotPts);
 
 
 public: // *** Member functions ***
@@ -106,7 +106,7 @@ public: // *** Member functions ***
     /// @brief Perform next iteration step.
     virtual void nextIteration();
 
-    void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, bool plotTurb = false, const int minIterations = 1);
+    void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNamePrefix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, bool plotTurb = false, const int minIterations = 1);
 
     /// @brief Construct solution field for the unknown \a unk for the current solution vector.
     /// @param unk the considered unknown (0 - velocity, 1 - pressure, >=2 - turbulent variables)

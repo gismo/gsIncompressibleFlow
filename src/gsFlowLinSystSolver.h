@@ -80,6 +80,9 @@ public: // *** Member functions ***
     /// @param[in]  pdofs       number of pressure DOFs
     virtual void applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution, real_t alpha_u, real_t alpha_p, index_t usize, index_t pdofs);
 
+    /// @brief Prints the linear iteration counts per call of \a applySolver() (only for iterative solvers).
+    virtual void reportLinIterations() {GISMO_NO_IMPLEMENTATION}
+
 
 public: // *** Getters ***
 
@@ -199,6 +202,16 @@ public: // *** Member functions ***
     /// @brief Solve the linear system.
     /// @param[out] solution    a reference to the vector, where the computed solution will be stored
     virtual void applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution);
+
+    /// @brief Prints the linear iteration counts per call of \a applySolver().
+    virtual void reportLinIterations()
+    {
+        gsInfo << "Iterations of linear solver for each call of applySolver():\n";
+        for (size_t i = 0; i < m_linIterVector.size(); i++)
+            gsInfo << m_linIterVector[i] << ", ";
+
+        gsInfo << "\nAverage number of linear solver iterations per call of applySolver(): " << getAvgLinIterations() << "\n";
+    }
 
 
 public: // *** Getters/setters ***

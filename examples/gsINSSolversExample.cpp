@@ -1,5 +1,10 @@
 /** @file gsINSSolversExample.cpp
  
+    This example demonstrates capabilities of the incompressible Navier-Stokes solver
+    for several predefined domains: backward-facing step (2D and 3D), lid-driven
+    cavity (2D and 3D) and a 2D blade profile. The user can choose parameters
+    of the domain, problem definition and computation (see help).
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -33,20 +38,30 @@ int main(int argc, char *argv[])
     bool unsteadyIt = false;
 
     // domain definition
-    int geo = 1; // 0 - custom input file, 1 - step, 2 - cavity, 3 - blade profile 2D
-    int dim = 2; // relevant for step and cavity
-    std::string inputFile = "";
+    int geo = 1; // 1 - step, 2 - cavity, 3 - blade profile 2D
+    int dim = 2;
+    real_t a = 8;   // length of backward facing step domain behind step
+    real_t b = 2;   // height of backward facing step domain
+    real_t c = 2;   // depth of backward facing step domain (3D)
+    real_t h = 1;   // height of the backward facing step
+    real_t a_in = 1; // length of the inflow part of backward facing step domain
+    real_t aa = 1;  // width of cavity
+    real_t bb = 1;  // height of cavity
+    real_t cc = 1;  // depth of cavity (3D)
     
     // discretization settings
     int numRefine = 3;
-    int wallRefine = 0; // relevant for step, cavity, profile2D
+    int wallRefine = 0;
     int leadRefine = 0; // relevant for profile2D
     int numElevate = 0; // number of degree elevations (before refinement)
 
     // problem parameters
     real_t viscosity = 0.1;
+    std::string UinStr = "default"; // inlet x-velocity for step (default = -4*(y-1.5)^2 + 1)
+    std::string lidVelX = "1"; // x-velocity of the cavity lid
+    std::string lidVelZ = "0"; // z-velocity of the cavity lid
     real_t inVelX = 1; // inlet x-velocity for profile2D
-    real_t inVelY = 0; // inlet y-velocity for profile2D
+    real_t inVelY = 0.53; // inlet y-velocity for profile2D
     
     // solver settings
     int maxIt = 10;
@@ -78,9 +93,16 @@ int main(int argc, char *argv[])
     cmd.addSwitch("unsteady", "Solve unsteady problem with direct linear solver", unsteady);
     cmd.addSwitch("unsteadyIt", "Solve unsteady problem with preconditioned GMRES as linear solver", unsteadyIt);
 
-    cmd.addInt("g", "geo", "Computational domain (0 - custom file, 1 - step, 2 - cavity, 3 - profile (only 2D))", geo);
+    cmd.addInt("g", "geo", "Computational domain (1 - step, 2 - cavity, 3 - profile (only 2D))", geo);
     cmd.addInt("d", "dim", "Space dimension", dim);
-    cmd.addString("", "input", "Full path to the input xml file containing geometry, right-hand side functin and boundary conditions", inputFile);
+    cmd.addReal("a", "stepA", "Backward-facing step domain: lenght behind step", a);
+    cmd.addReal("", "stepAin", "Backward-facing step domain: lenght before step", a_in);
+    cmd.addReal("b", "stepB", "Backward-facing step domain: total height", b);
+    cmd.addReal("c", "stepC", "Backward-facing step domain (3D): domain depth", c);
+    cmd.addReal("", "stepH", "Backward-facing step domain: step height", h);
+    cmd.addReal("", "cavityA", "Lid-driven cavity domain: width", aa);
+    cmd.addReal("", "cavityB", "Lid-driven cavity domain: height", bb);
+    cmd.addReal("", "cavityC", "Lid-driven cavity domain (3D): depth", cc);
 
     cmd.addInt("r", "uniformRefine", "Number of uniform h-refinement steps to perform before solving", numRefine);
     cmd.addInt("", "wallRefine", "Number of h-refinement steps near step corner, cavity walls of blade profile", wallRefine);
@@ -88,8 +110,11 @@ int main(int argc, char *argv[])
     cmd.addInt("e", "degElevate", "Number of degree elevations (performed before h-refinement)", numElevate);
 
     cmd.addReal("v", "visc", "Viscosity value", viscosity);
-    cmd.addReal("", "inVelX", "x-coordinate of inflow velocity (for profile geometry)", inVelX);
-    cmd.addReal("", "inVelY", "y-coordinate of inflow velocity (for profile geometry)", inVelY);
+    cmd.addString("", "stepUinX", "Backward-facing step: x-coordinate of inflow velocity (string expression)", UinStr);
+    cmd.addString("", "lidVelX", "Cavity: x-coordinate of lid velocity (string expression)", lidVelX);
+    cmd.addString("", "lidVelZ", "Cavity: z-coordinate of lid velocity (string expression)", lidVelZ);
+    cmd.addReal("", "profUinX", "Blade profile: x-coordinate of inflow velocity", inVelX);
+    cmd.addReal("", "profUinY", "Blade profile: y-coordinate of inflow velocity", inVelY);
 
     cmd.addInt("", "maxIt", "Max. number of Picard iterations or time steps", maxIt);
     cmd.addInt("", "picardIt", "Max. number of inner Picard iterations for unsteady problem", picardIt);
@@ -111,70 +136,83 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
-    if (!inputFile.empty())
-        geo = 0;
-
     if ( !(steady || steadyIt || unsteady || unsteadyIt) )
         gsWarn << "All computation flags set to false - nothing will be computed.\nPlease select at least one of the flags: --steady, --steadyIt, --unsteady, --unsteadyIt\n\n";
 
-    // ========================================= Define problem (geometry, BCs, rhs) ========================================= 
+    // ========================================= Define geometry ========================================= 
     
     gsMultiPatch<> patches;
-    gsBoundaryConditions<> bcInfo;
-    gsFunctionExpr<> f; // external force
-
-    std::string fn, geoStr;
+    std::string geoStr;
 
     switch(geo)
     {
-        case 0:
-            break; // inputFile is given from cmd
-        
-        default:
-            gsWarn << "Unknown geometry ID, using backward-facing step.\n";
-            geo = 1;
-
         case 1:
-            geoStr = "BFS" + util::to_string(dim) + "D";
-            fn = geoStr + "_problem.xml";
-            inputFile = fn;
-            break;
+        {
+            geoStr = util::to_string(dim) + "D backward-facing step";
 
+            switch(dim)
+            {
+                case 2:
+                default:
+                    patches = BSplineStep2D<real_t>(1, a, b, a_in, h);
+                    break;
+
+                case 3:
+                    patches = BSplineStep3D<real_t>(1, a, b, c, a_in, h);
+                    break;
+            }
+
+            break;
+        }
         case 2:
-            geoStr = "LDC" + util::to_string(dim) + "D";
-            fn = geoStr + "_problem.xml";
-            inputFile = fn;
-            break;
+        {
+            geoStr = util::to_string(dim) + "D lid-driven cavity";
 
+            switch(dim)
+            {
+                case 2:
+                default:
+                    patches = BSplineCavity2D<real_t>(1, aa, bb);
+                    break;
+
+                case 3:
+                    patches = BSplineCavity3D<real_t>(1, aa, bb, cc);
+                    break;
+            }
+
+            break;
+        }
         case 3:
+        {
+            geoStr = util::to_string(dim) + "D blade profile";
+
             if (dim == 3)
                 gsWarn << "Geometry 3 is only 2D!\n";
 
-            geoStr = "profile2D";
-            inputFile = geoStr + "_problem.xml";
+            gsReadFile<>(FLOW_DATA_DIR "geo_profile2D.xml", patches);
             break;
     }
-
-    gsInfo << "Reading problem definition from file:\n" << inputFile << "\n\n";
-
-    std::string path = gsFileManager::find(inputFile);
-    if ( path.empty() )
-    {
-        gsWarn<<"Input file not found, quitting.\n";
-        return 1;
+        default:
+            GISMO_ERROR("Unknown domain.");
     }
 
-    gsFileData<> fd(inputFile);
-    fd.getId(0, patches);   // id=0: multipatch domain
-    fd.getId(1, f);         // id=1: source function
-    fd.getId(2, bcInfo);    // id=2: boundary conditions
 
-    gsInfo << "Solving Navier-Stokes problem in " << geoStr << " domain.\n";
-    gsInfo << patches;
-    gsInfo << "viscosity = " << viscosity << "\n";
-    gsInfo << "source function = " << f << "\n";
+    // ========================================= Define problem and basis ========================================= 
 
-    // ========================================= Define basis ========================================= 
+    gsBoundaryConditions<> bcInfo;
+    gsFunctionExpr<> f; // external force
+
+    switch(dim)
+    {
+        case 2:
+        default:
+            f = gsFunctionExpr<>("0", "0", 2);
+            break;
+
+        case 3:
+            f = gsFunctionExpr<>("0", "0", "0", 3);
+            break;
+    }
 
     // Define discretization space by refining the basis of the geometry
     gsMultiBasis<> basis(patches);
@@ -182,23 +220,26 @@ int main(int argc, char *argv[])
 
     switch(geo)
     {
-        case 0:
-            for (int r = 0; r < numRefine; ++r)
-                basis.uniformRefine();
-            break;
-
         case 1:
-        default:
-            refineBasis_step(basis, numRefine, 0, wallRefine, 0, 0, dim, 8.0, 2.0, 2.0); // 8, 2, 2 are dimensions of the domain in the input xml file
+        {
+            defineBCs_step(bcInfo, dim, false, UinStr);
+            refineBasis_step(basis, numRefine, 0, wallRefine, 0, 0, dim);
             break;
-
+        }
         case 2:
+        {
+            defineBCs_cavity(bcInfo, dim, 1, lidVelX, lidVelZ);
             refineBasis_cavity(basis, numRefine, wallRefine, dim);
             break;
-
+        }
         case 3:
+        {
+            defineBCs_profile2D(bcInfo, inVelX, inVelY);
             refineBasis_profile2D(basis, numRefine, wallRefine, leadRefine);
             break;
+        }
+        default:
+            GISMO_ERROR("Unknown domain.");
     }    
 
     std::vector< gsMultiBasis<> >  discreteBases;
@@ -207,6 +248,11 @@ int main(int argc, char *argv[])
     discreteBases[0].degreeElevate(1); // elevate the velocity space (Taylor-Hood element type)
 
     // ========================================= Solve ========================================= 
+
+    gsInfo << "Solving Navier-Stokes problem in " << geoStr << " domain.\n";
+    gsInfo << patches;
+    gsInfo << "viscosity = " << viscosity << "\n";
+    gsInfo << "source function = " << f << "\n";
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     gsFlowSolverParams<real_t> params(NSpde, discreteBases);
@@ -267,8 +313,7 @@ int main(int argc, char *argv[])
 
         solveProblem(NSsolver, solveOpt, geo);
 
-        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver() );
-        reportLinIterations(linSolverPtr);
+        NSsolver.getLinSolver()->reportLinIterations();
     }
 
     if (unsteady)
@@ -297,7 +342,6 @@ int main(int argc, char *argv[])
         params.options().setInt("lin.maxIt", linIt);
         params.options().setReal("lin.tol", linTol);
         params.options().setString("lin.precType", precond);
-        // params.precOptions().setReal("gamma", 10); // parameter for AL preconditioner
 
         gsINSSolverUnsteady<real_t, ColMajor > NSsolver(params);
 
@@ -307,8 +351,7 @@ int main(int argc, char *argv[])
 
         solveProblem(NSsolver, solveOpt, geo);
         
-        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver() );
-        reportLinIterations(linSolverPtr);
+        NSsolver.getLinSolver()->reportLinIterations();
     }
 
     return 0; 
@@ -326,6 +369,7 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
     bool plot = opt.getSwitch("plot");
     std::string geoStr = "";
     std::string id = opt.getString("id");
+
     if (plot)
     {
         index_t dim = NSsolver.getParams()->getPde().domain().geoDim();
@@ -333,21 +377,23 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 
         switch(opt.getInt("geo"))
         {
-            case 0:
-                geoStr = "customGeo";
-                break;
             case 1:
-            default:
+            {
                 geoStr = "BFS" + dimStr;
                 break;
-
+            }
             case 2:
+            {
                 geoStr = "LDC" + dimStr;
                 break;
-
+            }
             case 3:
+            {
                 geoStr = "profile2D";
                 break;
+            }
+            default:
+                GISMO_ERROR("Unknown domain.");
         }
     }
 
@@ -391,5 +437,6 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
         gsWriteParaview<>(velocity, geoStr + "_" + id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
         // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
+        gsInfo << "Done.\n";
     }
 }
