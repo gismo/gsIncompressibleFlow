@@ -286,12 +286,12 @@ void gsTMModelData_SST<T>::evalTurbViscFromData(gsMatrix<T>& quNodes, index_t pa
     TurbulentViscosityVals.setZero();
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        TurbulentViscosityVals(k) = (m_a1 * m_KSolVals(0, k)) / (math::max(m_a1 * m_OSolVals(0, k), m_StrainRateMag(k) * m_F2(k)));
+        TurbulentViscosityVals(k) = (m_a1 * m_KSolVals(0, k)) / (math::max(m_a1 * math::max(m_OSolVals(0, k), m_eps), m_StrainRateMag(k) * m_F2(k)));
         TurbulentViscosityVals(k) = math::max(TurbulentViscosityVals(k), m_eps);
     }
 
     if (m_average)
-            this->computeAverage(TurbulentViscosityVals);
+        this->computeAverage(TurbulentViscosityVals);
 
     m_turbulentViscosityVals = TurbulentViscosityVals;
 }

@@ -81,6 +81,7 @@ template<class T>
 void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
 {
     index_t nQuPoints = mapData.points.cols();
+    real_t eps = m_TMModelPtr->get_eps();
     gsMatrix<T> OSolVals(1, nQuPoints);
     OSolVals = m_TMModelPtr->getOSolVals();
     real_t betaStar = m_TMModelPtr->get_betaStar();
@@ -91,14 +92,14 @@ void gsTMTerm_CoeffValVal<T>::evalCoeff(const gsMapData<T>& mapData)
     if (m_unknown == 2)         // for k equation of SST model
     {
         for (index_t k = 0; k < nQuPoints; k++)
-            m_coeff(k) = betaStar * OSolVals(0, k);
+            m_coeff(k) = betaStar * math::max(OSolVals(0, k), eps);
     }
     else                        // for omega equation of SST model
     {
         gsVector<T> F1(nQuPoints);
         F1 = m_TMModelPtr->getF1Vals();
         for (index_t k = 0; k < nQuPoints; k++)
-            m_coeff(k) = (beta1 * F1(k) + beta2 * (1 - F1(k))) * OSolVals(0, k);
+            m_coeff(k) = (beta1 * F1(k) + beta2 * (1 - F1(k))) * math::max(OSolVals(0, k), eps);
     }
 }
 
@@ -125,7 +126,7 @@ void gsTMTerm_BlendCoeff<T>::evalCoeff(const gsMapData<T>& mapData)
     {
         gsMatrix<T> u = KSolDers[k];
         gsMatrix<T> v = OSolDers[k];
-        m_coeff(k) = math::max((-1) * 2 * (1 - F1(k)) * sigmaO2 / math::pow(math::max(OSolVals(0, k), 1e-6), 2) * (u.row(0).dot(v.row(0))), 0.);
+        m_coeff(k) = math::max((-1) * math::max(2 * (1 - F1(k)) * sigmaO2, 0.) / math::max(math::pow(OSolVals(0, k), 2), math::pow(10, -15)) * (u.row(0).dot(v.row(0))), 0.);
     }
 }
 
@@ -224,6 +225,7 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
     std::vector< gsMatrix<T> > StrainRateTensor;
     std::vector< gsMatrix<T> > USolDers;
         
+    real_t eps = m_TMModelPtr->get_eps();
     real_t sigmaO1 = m_TMModelPtr->get_sigmaO1();
     real_t sigmaO2 = m_TMModelPtr->get_sigmaO2();
     real_t beta1 = m_TMModelPtr->get_beta1();
@@ -246,7 +248,7 @@ void gsTMTerm_ProductionRhs<T>::evalCoeff(const gsMapData<T>& mapData)
         for (index_t i = 0; i < dim; i++)
             for (index_t j = 0; j < dim; j++)
                 StrainRateUDers += StrainRateTensor[k](i,j) * USolDers[k](i, j);
-        m_rhsVals(0, k) = math::min(2 * turbViscosityVals(k) * StrainRateUDers, 20 * betaStar * KSolVals(0, k) * OSolVals(0, k));
+        m_rhsVals(0, k) = math::min(2 * turbViscosityVals(k) * StrainRateUDers, 20 * betaStar * math::max(KSolVals(0, k), eps) * math::max(OSolVals(0, k), eps));
 
         // k-omega SST menter 2009
         //m_rhsVals(0, k) = math::min(turbViscosityVals(k) * math::pow(StrainRateMag(k), 2), 10 * betaStar * KSolVals(0, k) * OSolVals(0, k));
