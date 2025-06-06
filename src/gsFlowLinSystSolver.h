@@ -80,8 +80,8 @@ public: // *** Member functions ***
     /// @param[in]  pdofs       number of pressure DOFs
     virtual void applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution, real_t alpha_u, real_t alpha_p, index_t usize, index_t pdofs);
 
-    /// @brief Prints the linear iteration counts per call of \a applySolver() (only for iterative solvers).
-    virtual void reportLinIterations() {GISMO_NO_IMPLEMENTATION}
+    /// @brief Prints the linear iteration counts per call of \a applySolver() (only for iterative solvers, nothing happens here).
+    virtual void reportLinIterations() { }
 
 
 public: // *** Getters ***

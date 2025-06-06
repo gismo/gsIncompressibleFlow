@@ -85,63 +85,40 @@ template<class T, int MatOrder>
 void gsRANSSolverUnsteady<T, MatOrder>::initialize()
 { 
     Base::initialize();
-
     m_TMsolverPtr->initialize();
 
-    // compute initial solution for RANS by solving steady N-S problem
-    short_t dim = m_paramsPtr->getPde().patches().domainDim();
-    gsFunctionExpr<T> f; // external force
-    switch(dim)
-    {
-        case 2:
-        default:
-            f = gsFunctionExpr<>("0", "0", 2);
-            break;
-
-        case 3:
-            f = gsFunctionExpr<>("0", "0", "0", 3);
-            break;
-    }
-
-    // std::vector<gsMultiBasis<T> > discbases;
-    // discbases.push_back(m_paramsPtr->getBases().at(0));
-    // discbases.push_back(m_paramsPtr->getBases().at(1));
-    gsNavStokesPde<T> NSSteadyPde(m_paramsPtr->getPde().patches(), m_paramsPtr->getPde().bc(), &f, 0.1);
+    T viscSteady = 0.1;
+    gsNavStokesPde<T> NSSteadyPde(m_paramsPtr->getPde().patches(), m_paramsPtr->getPde().bc(), m_paramsPtr->getPde().force(), viscSteady);
     gsFlowSolverParams<T> paramsSteady(NSSteadyPde, m_paramsPtr->getBases());
     gsINSSolverSteady<T, MatOrder> NSSteadySolver(paramsSteady);
 
-    gsInfo << "\n-------------------------------------------------------------------------------\n";
-    gsInfo << "Computing initial solution for RANS by solving steady N-S problem for viscosity \n";
+    gsInfo << "\n--------------------------\n";
+    gsInfo << "Computing initial solution for RANS by solving steady N-S problem for viscosity " << viscSteady << "\n";
 
-    gsStopwatch clock;
+    // gsStopwatch clock;
 
     gsInfo << "Initialization...\n";
     NSSteadySolver.initialize();
-
-    gsInfo << "numDofs: " << NSSteadySolver.numDofs() << "\n";
-
-    //if (m_paramsPtr->options().getSwitch("stokesInit"))
-    NSSteadySolver.solveStokes();
-    
+    NSSteadySolver.solveStokes(); // start from Stokes solution
     NSSteadySolver.solve(m_paramsPtr->options().getInt("nonlin.maxIt"), m_paramsPtr->options().getReal("nonlin.tol"), 0);    
 
-    real_t totalT = clock.stop();
+    // real_t totalT = clock.stop();
 
-    gsInfo << "\nAssembly time (steady):" << NSSteadySolver.getAssemblyTime() << "\n";
-    gsInfo << "Solve time (steady):" << NSSteadySolver.getSolveTime() << "\n";
-    gsInfo << "Solver setup time (steady):" << NSSteadySolver.getSolverSetupTime() << "\n";
-    gsInfo << "Total solveProblem time (steady):" << totalT << "\n\n";
+    // gsInfo << "\nAssembly time (steady):" << NSSteadySolver.getAssemblyTime() << "\n";
+    // gsInfo << "Solve time (steady):" << NSSteadySolver.getSolveTime() << "\n";
+    // gsInfo << "Solver setup time (steady):" << NSSteadySolver.getSolverSetupTime() << "\n";
+    // gsInfo << "Total solveProblem time (steady):" << totalT << "\n\n";
 
-    gsField<> velocity = NSSteadySolver.constructSolution(0);
-    gsField<> pressure = NSSteadySolver.constructSolution(1);
+    // gsField<> velocity = NSSteadySolver.constructSolution(0);
+    // gsField<> pressure = NSSteadySolver.constructSolution(1);
+    // int plotPts = 20000;
 
-    int plotPts = 20000;
- 
-    gsInfo << "Plotting solution of steady N-S problem in Paraview...";
-    gsWriteParaview<T>(velocity, "NS_steady_velocity", plotPts, false);
-    gsWriteParaview<T>(pressure, "NS_steady_pressure", plotPts);
-    gsInfo << " Done.\n";
-    gsInfo << "-------------------------------------------------------------------------------\n";
+    // gsInfo << "Plotting solution of steady N-S problem in Paraview...";
+    // gsWriteParaview<T>(velocity, "NS_steady_velocity", plotPts, false);
+    // gsWriteParaview<T>(pressure, "NS_steady_pressure", plotPts);
+    // gsInfo << " Done.\n";
+
+    gsInfo << "--------------------------\n\n";
 
     m_solution = NSSteadySolver.getSolution();
 }

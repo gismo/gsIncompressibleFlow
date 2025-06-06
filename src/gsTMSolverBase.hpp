@@ -28,7 +28,7 @@ typename gsTMSolverBase<T, MatOrder>::tmPtr gsTMSolverBase<T, MatOrder>::make(ty
     //{ }
     else 
     {
-        gsInfo << "Unknown identifier of a turbulent model entered! Using k-omega SST model." << std::endl;
+        gsWarn << "Unknown identifier of a turbulent model entered! Using k-omega SST model." << std::endl;
         return gsTMSolverSST<T, MatOrder>::make(paramsPtr, TMModelPtr);
     }
 }

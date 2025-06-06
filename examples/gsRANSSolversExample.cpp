@@ -259,15 +259,7 @@ int main(int argc, char *argv[])
     gsInfo << "source function = " << f << "\n";
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
-    gsFlowSolverParams<real_t> params(NSpde, discreteBases);
-    params.options().setSwitch("quiet", quiet);
-    params.options().setString("assemb.loop", matFormation);
-    params.options().setInt("TM.maxIt", maxItTM);
-    params.options().setReal("timeStep", timeStep);
-    params.options().setInt("nonlin.maxIt", picardIt);
-    params.options().setReal("nonlin.tol", picardTol);
-    params.setBndParts(bndIn, bndOut, bndWall);
-
+    
     gsOptionList solveOpt;
     solveOpt.addInt("geo", "", geo);
     solveOpt.addInt("maxIt", "", maxIt);
@@ -282,35 +274,50 @@ int main(int argc, char *argv[])
 
     if (direct)
     {
-        solveOpt.setString("id", "rans_direct");
-        params.options().setString("lin.solver", "direct");
-
-        gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
-
         gsInfo << "\n-----------------------------------------------------------\n";
-        gsInfo << "Solving the unsteady RANS problem with direct linear solver\n";
-        gsInfo << "-----------------------------------------------------------\n";
+        gsInfo << "Solving the unsteady RANS problem with direct linear solver";
+        gsInfo << "\n-----------------------------------------------------------\n\n";
 
+        solveOpt.setString("id", "rans_direct");
+
+        gsFlowSolverParams<real_t> paramsDir(NSpde, discreteBases);
+        paramsDir.options().setSwitch("quiet", quiet);
+        paramsDir.options().setString("assemb.loop", matFormation);
+        paramsDir.options().setInt("TM.maxIt", maxItTM);
+        paramsDir.options().setReal("timeStep", timeStep);
+        paramsDir.options().setInt("nonlin.maxIt", picardIt);
+        paramsDir.options().setReal("nonlin.tol", picardTol);
+        paramsDir.setBndParts(bndIn, bndOut, bndWall);
+        paramsDir.options().setString("lin.solver", "direct");
+
+        gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsDir);
         solveProblem(NSsolver, solveOpt, geo);
     }
 
     if (iter)
     {
+        gsInfo << "\n--------------------------------------------------------------\n";
+        gsInfo << "Solving the unsteady RANS problem with iterative linear solver";
+        gsInfo << "\n--------------------------------------------------------------\n\n";
+
         solveOpt.setString("id", "rans_iter");
-        params.options().setString("lin.solver", "iter");
-        params.options().setInt("lin.maxIt", linIt);
-        params.options().setReal("lin.tol", linTol);
-        params.options().setString("lin.precType", precond);
 
-        gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
+        gsFlowSolverParams<real_t> paramsIter(NSpde, discreteBases);
+        paramsIter.options().setSwitch("quiet", quiet);
+        paramsIter.options().setString("assemb.loop", matFormation);
+        paramsIter.options().setInt("TM.maxIt", maxItTM);
+        paramsIter.options().setReal("timeStep", timeStep);
+        paramsIter.options().setInt("nonlin.maxIt", picardIt);
+        paramsIter.options().setReal("nonlin.tol", picardTol);
+        paramsIter.setBndParts(bndIn, bndOut, bndWall);
+        paramsIter.options().setString("lin.solver", "iter");
+        paramsIter.options().setInt("lin.maxIt", linIt);
+        paramsIter.options().setReal("lin.tol", linTol);
+        paramsIter.options().setString("lin.precType", precond);
 
-        gsInfo << "\n-----------------------------------------------------------\n";
-        gsInfo << "Solving the unsteady RANS problem with iterative linear solver\n";
-        gsInfo << "-----------------------------------------------------------\n";
-
+        gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsIter);
         solveProblem(NSsolver, solveOpt, geo);
     }
-
 
     return 0; 
 }
@@ -379,6 +386,8 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     gsInfo << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
     gsInfo << "Total solveProblem time:" << totalT << "\n\n";
 
+    NSsolver.getLinSolver()->reportLinIterations();
+
     // ------------------------------------
     // plot
 
@@ -391,7 +400,7 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
 
         int plotPts = opt.getInt("plotPts");
  
-        gsInfo << "Plotting in Paraview...";
+        gsInfo << "Plotting in Paraview... ";
         gsWriteParaview<>(velocity, geoStr + "_" + id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
         gsWriteParaview<>(ksol, geoStr + "_" + id + "_k", plotPts);

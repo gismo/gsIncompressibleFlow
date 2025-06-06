@@ -368,11 +368,6 @@ public: // *** Getters/setters ***
     typename gsFlowPeriodicHelper<T>::Ptr getPerHelperPtr()
     { return m_periodicHelperPtr; }
 
-    // /// @brief Returns shared pointer to the helper class for radial periodic conditions for unknown \a unk.
-    // /// @param[in] unk unknown
-    // typename gsFlowPeriodicHelper<T>::Ptr getPerHelperPtr(index_t unk)
-    // { return m_periodicHelpers[unk]; }
-
     gsField<T> getVelocitySolution() { return m_USolField; }
     gsField<T> getKSolution() { return m_KSolField; }
     gsField<T> getOmegaSolution() { return m_OSolField; }

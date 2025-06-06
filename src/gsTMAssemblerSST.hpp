@@ -30,8 +30,6 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     m_kin = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
     //m_kwall = 1.5 * math::pow(uFreeStream * turbIntensity, 2);
     m_kwall = 1e-10;
-    gsInfo << "kin = " << util::to_string(m_kin) << ", ";
-    gsInfo << "kwall = " << util::to_string(m_kwall) << std::endl;
     gsFunctionExpr<T> Kin(util::to_string(m_kin), m_tarDim);
     gsFunctionExpr<T> Kwall(util::to_string(m_kwall), m_tarDim);
     std::vector<std::pair<int, boxSide> > bndIn = m_paramsPtr->getBndIn();
@@ -43,8 +41,8 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     real_t Re = uFreeStream * inletWidth / m_viscosity; 
     int numSamplePts = 50; //number of sample points for which the distance to the boundary is computed
     real_t maxYplus = 2.5; //maximum dimensionless wall distance which is accepted
-    real_t wallDistance = computeDimensionlessWallDistance<T>(m_paramsPtr, m_viscosity, Re, uFreeStream, maxYplus, numSamplePts, true, true);
-    gsInfo << "\nminimum wallDistance = " << wallDistance << "\n";
+    real_t wallDistance = computeDimensionlessWallDistance<T>(m_paramsPtr, m_viscosity, Re, uFreeStream, maxYplus, numSamplePts, false, true);
+    // gsInfo << "\nminimum wallDistance = " << wallDistance << "\n";
     if (wallDistance > 0)
     {
         real_t beta = 0.0708;
@@ -54,11 +52,14 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
         m_owall = 500; 
     //m_owall = m_kwall / (m_viscosity * viscRatio); // need to satisfy nu_T / nu approximately at the wall
     //real_t oBlade = 6 * viscosity / (beta * math::pow(wallDistance, 2)); // other way for prescribing this boundary condition
-    gsInfo << "oin = " << util::to_string(m_oin) << ", ";
-    gsInfo << "owall = " << util::to_string(m_owall) << std::endl;
     gsFunctionExpr<T> Oin(util::to_string(m_oin), m_tarDim);
     gsFunctionExpr<T> Owall(util::to_string(m_owall), m_tarDim);
     addBCs(m_bc, bndIn, bndWall, Oin, Owall, 3);
+
+    gsInfo << "kin = " << util::to_string(m_kin) << ", ";
+    gsInfo << "kwall = " << util::to_string(m_kwall) << "\n";
+    gsInfo << "oin = " << util::to_string(m_oin) << ", ";
+    gsInfo << "owall = " << util::to_string(m_owall) << std::endl;
 
     m_paramsPtr->setBCs(m_bc);
     m_paramsPtr->updateDofMappers();
@@ -255,7 +256,8 @@ void gsTMAssemblerSST<T, MatOrder>::initialize()
     // initialization of distance field
     gsField<T> distfield = computeDistanceField<T>(m_paramsPtr);
     m_paramsPtr->setDistanceField(distfield);
-    gsWriteParaview<T>(distfield, "distanceField", 10000);
+
+    // gsWriteParaview<T>(distfield, "distanceField", 10000);
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
         fillBaseSystem();
