@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 
             gsReadFile<>(FLOW_DATA_DIR "geo_profile2D.xml", patches);
             break;
-    }
+        }
         default:
             GISMO_ERROR("Unknown domain.");
     }
