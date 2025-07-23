@@ -74,24 +74,43 @@ void gsFlowLinSystSolver<T, MatOrder>::applySolver(const gsSparseMatrix<T, MatOr
 template<class T, int MatOrder>
 void gsFlowLinSystSolver_direct<T, MatOrder>::setupSolver(const gsSparseMatrix<T, MatOrder>& mat)
 {
+    gsInfo << "Direct solver: Analyzing pattern...\n";
     real_t time0 = stopwatchStart();
     m_solver.analyzePattern(mat);
     real_t time1 = stopwatchStop();
 
     m_setupT += time1 - time0;
+    gsInfo << "Direct solver: Pattern analysis complete\n";
 }
 
 
 template<class T, int MatOrder>
 void gsFlowLinSystSolver_direct<T, MatOrder>::applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution)
 {
+    gsInfo << "Direct solver: Factorizing matrix...\n";
     real_t time0 = stopwatchStart();
     m_solver.factorize(mat);
 
     real_t time1 = stopwatchStop();
     
+    // Check factorization status
+    if (m_solver.info() != 0)  // 0 = Success
+    {
+        gsInfo << "ERROR: Factorization failed! Info = " << m_solver.info() << "\n";
+        // Try to print some matrix info
+        gsInfo << "Matrix properties:\n";
+        gsInfo << "  - Is compressed: " << mat.isCompressed() << "\n";
+        gsInfo << "  - Min diagonal: " << mat.diagonal().minCoeff() << "\n";
+        gsInfo << "  - Max diagonal: " << mat.diagonal().maxCoeff() << "\n";
+    }
+    else
+    {
+        gsInfo << "Direct solver: Factorization successful, solving...\n";
+    }
+    
     solution = m_solver.solve(rhs);
     real_t time2 = stopwatchStop();
+    gsInfo << "Direct solver: Solve complete\n";
 
     m_setupT += time1 - time0;
     m_solveT += time2 - time1;

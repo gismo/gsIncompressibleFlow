@@ -191,7 +191,7 @@ public: // *** Constructor/destructor ***
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    virtual void initMembers();
+    virtual void initMembers() override;
 
     void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNameSuffix, unsigned plotPts);
 
@@ -199,7 +199,7 @@ protected: // *** Member functions ***
 public: // *** Member functions ***
 
     /// @brief Perform next iteration step.
-    virtual void nextIteration();
+    virtual void nextIteration() override;
 
     void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, const int minIterations = 1);
 
@@ -211,7 +211,7 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns a pointer to the assembler.
-    gsINSAssemblerUnsteady<T, MatOrder>* getAssembler() const
+    gsINSAssemblerUnsteady<T, MatOrder>* getAssembler() const override
     {
         return dynamic_cast<gsINSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
     }
@@ -223,7 +223,7 @@ public: // *** Getters/setters ***
     T getAvgPicardIterations() const { return m_avgPicardIter / m_iterationNumber; }
 
     /// @brief Retrurns the name of the class as a string.
-    virtual std::string getName() { return "gsINSSolverUnsteady"; }
+    virtual std::string getName() override { return "gsINSSolverUnsteady"; }
 
     /// @brief Get solution coefficients for a specific unknown
     /// @param[in] unk index of the unknown
