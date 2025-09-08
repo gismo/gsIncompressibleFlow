@@ -5,6 +5,8 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author: J. Li
 */
 
 #pragma once
@@ -52,9 +54,6 @@ protected:
     // Store original mesh
     gsMultiPatch<T> m_originalMesh;
     
-    // Store previous displacement for incremental update
-    gsMatrix<T> m_previousDisp;
-    
     // Rotation parameters (if known)
     T m_rotationPeriod;
     gsVector<T> m_rotationCenter;
@@ -94,7 +93,13 @@ public:
         {
             // Store original mesh on first activation
             m_originalMesh = m_assemblerPtr->getPatches();
-            m_previousDisp.setZero(getALEAssembler()->getUdofs() * m_originalMesh.targetDim(), 1);
+            
+            // Initialize old displacement to current mesh position (at t=0)
+            if (m_meshUpdateFunc)
+            {
+                gsMatrix<T> initialDisp = m_meshUpdateFunc(m_time);
+                getALEAssembler()->initializeOldDisplacement(initialDisp);
+            }
         }
     }
     
@@ -182,21 +187,65 @@ public:
     /// @brief Perform next iteration step with ALE
     virtual void nextIteration() override
     {
+        GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
+        
+        // CRITICAL: Follow exact same sequence as non-ALE solver
+        
+        // Step 1: Update assembler - this sets up time discretization using CURRENT solution
+        this->updateAssembler();
+        
+        // Step 2: Initialize if first iteration (must be AFTER updateAssembler)
+        if (!this->m_iterationNumber)
+            this->initIteration();
+            
+        // Step 3: Apply ALE mesh displacement ONLY if active
+        // This must happen AFTER time discretization is set up
         if (m_isALEActive && m_meshUpdateFunc)
         {
-            // Apply the displacement to the actual mesh geometry
-            // This also updates the incremental displacement in the assembler
             applyMeshDisplacement();
             
-            // Apply mesh optimization if enabled
             if (m_useMeshOptimization)
             {
                 optimizeMesh();
             }
         }
         
-        // Call base class iteration
-        Base::nextIteration();
+        // Step 4: Start solving with current solution as initial guess
+        gsMatrix<T> tmpSolution = this->m_solution;
+        
+        this->applySolver(tmpSolution);
+        this->writeSolChangeRelNorm(this->m_solution, tmpSolution);
+        
+        // Step 5: Picard iterations (exactly like non-ALE solver)
+        index_t picardIter = 0;
+        T relNorm = this->solutionChangeRelNorm(this->m_solution, tmpSolution);
+        
+        gsWriteOutputLine(this->m_outFile, "        [u, p] Picard's iterations...", this->m_fileOutput, this->m_dispOutput);
+        
+        while((relNorm > this->m_innerTol) && (picardIter < this->m_innerIter))
+        {
+            gsWriteOutput(this->m_outFile, "         ", this->m_fileOutput, this->m_dispOutput);
+            
+            gsMatrix<T> oldSol = tmpSolution;
+            
+            this->updateAssembler(tmpSolution, false);
+            this->applySolver(tmpSolution);
+            this->writeSolChangeRelNorm(oldSol, tmpSolution);
+            
+            relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);
+            picardIter++;
+        }
+        
+        // Step 6: Update solution and time (exactly like non-ALE solver)
+        this->m_solution = tmpSolution;
+        
+        // CRITICAL FIX: Explicitly update time history for next iteration
+        // This must be done AFTER m_solution is updated
+        getALEAssembler()->updateCurrentSolField(tmpSolution, true);
+        
+        this->m_time += this->m_timeStepSize;
+        this->m_avgPicardIter += picardIter;
+        this->m_iterationNumber++;
     }
     
 protected:
@@ -206,8 +255,19 @@ protected:
         if (m_originalMesh.nPatches() == 0)
             return;
             
-        // Get cumulative displacement from mesh update function
-        gsMatrix<T> cumulativeDisp = m_meshUpdateFunc(m_time + m_timeStepSize);
+        // IMPORTANT: Use m_time (current time) not m_time + m_timeStepSize
+        // The mesh should be at the position corresponding to the current time step
+        // being solved. The time will be incremented AFTER the solution is computed.
+        gsMatrix<T> cumulativeDisp = m_meshUpdateFunc(m_time);
+        
+        // CRITICAL FIX: Check if displacement is essentially zero
+        T dispNorm = cumulativeDisp.template lpNorm<gsEigen::Infinity>();
+        if (dispNorm < 1e-12) {
+            // For zero displacement, just update the ALE assembler without touching the mesh
+            // This avoids disrupting the assembler's internal state
+            getALEAssembler()->updateMesh(cumulativeDisp);
+            return;
+        }
         
         // Get current mesh from assembler
         gsMultiPatch<T>& patches = const_cast<gsMultiPatch<T>&>(m_assemblerPtr->getPatches());
@@ -238,9 +298,7 @@ protected:
         }
         
         // Update incremental displacement for ALE assembler
-        gsMatrix<T> incrementalDisp = cumulativeDisp - m_previousDisp;
-        getALEAssembler()->updateMesh(incrementalDisp);
-        m_previousDisp = cumulativeDisp;
+        getALEAssembler()->updateMesh(cumulativeDisp);
     }
     
     /// @brief Optimize mesh using gsBarrierPatch

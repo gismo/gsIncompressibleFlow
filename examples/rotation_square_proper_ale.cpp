@@ -23,20 +23,23 @@ using namespace gismo;
 int main(int argc, char* argv[])
 {
     // Problem parameters
-    real_t Re = 100;          // Reynolds number
-    real_t rho = 1000.0;      // Fluid density
-    real_t mu = 0.001;        // Dynamic viscosity
-    real_t meanVelocity = 1.0;// Mean inlet velocity
+    real_t Re = 200;          // Reynolds number
+    real_t meanVelocity = 20.0;// Mean inlet velocity
+    real_t L = 1.0;           // Characteristic length
+    
+    // Calculate kinematic viscosity from Reynolds number
+    // Re = U*L/nu => nu = U*L/Re
+    real_t nu = meanVelocity * L / Re;  // nu = 1.0 * 1.0 / 100 = 0.01
     
     // Time parameters
-    real_t timeSpan = 0.5;    // Total simulation time
-    real_t timeStep = 0.01;   // Time step size
-    real_t maxAngle = 20;     // Maximum rotation angle
+    real_t timeSpan = 3.0;    // Total simulation time
+    real_t timeStep = 0.001;   // Time step size
+    real_t maxAngle = 5;      // Maximum rotation angle in degrees
     index_t nTimeSteps = timeSpan / timeStep;
     
     // Domain and discretization
     index_t numRefine = 3;
-    index_t degree = 2;
+    index_t degree = 3;
     index_t outputInterval = 10;  // Output every N steps
     
     // Command line parsing
@@ -50,6 +53,7 @@ int main(int argc, char* argv[])
     
     gsInfo << "=== Rotating Square Proper ALE Example ===\n";
     gsInfo << "Reynolds number: " << Re << "\n";
+    gsInfo << "Kinematic viscosity: " << nu << "\n";
     gsInfo << "Time step: " << timeStep << "\n";
     gsInfo << "Time span: " << timeSpan << "\n";
     gsInfo << "Max rotation angle: " << maxAngle << "\n\n";
@@ -68,7 +72,7 @@ int main(int argc, char* argv[])
      * |______|______|______|
      */
     gsMultiPatch<> fluidDomain;
-    real_t L = 1.0; // Size of each patch
+    // real_t L = 1.0; // Size of each patch - already defined above as characteristic length
     
     // Create patches
     fluidDomain.addPatch(gsNurbsCreator<>::BSplineSquare(1)); // patch 0
@@ -110,13 +114,22 @@ int main(int argc, char* argv[])
         centralSquare.uniformRefine();
     }
     
-    // Degree elevate for Taylor-Hood elements
-    fluidDomain.degreeElevate();
-    centralSquare.degreeElevate();
+    // ================== New basis construction for Taylor-Hood elements ==================
+    // We use a simpler and more robust approach to create P2/P1 Taylor-Hood elements
     
-    // Create basis
-    gsMultiBasis<> basis(fluidDomain);
-    gsMultiBasis<> basisPressure(fluidDomain);
+    // 1. Create a copy of the domain for pressure (keeping it at degree 1)
+    //    At this point fluidDomain is still degree 1 after refinement
+    gsMultiPatch<> pressureDomain = fluidDomain;
+    
+    // 2. Elevate the main domain's degree for velocity field
+    fluidDomain.degreeElevate(1);    // fluidDomain is now degree 2
+    centralSquare.degreeElevate(1);  // Keep visualization geometry consistent
+    
+    // 3. Create basis functions from geometries of different degrees
+    gsMultiBasis<> basisVelocity(fluidDomain);     // Velocity basis: P2 (from degree 2 geometry)
+    gsMultiBasis<> basisPressure(pressureDomain);  // Pressure basis: P1 (from degree 1 geometry)
+    
+    // ==========================================================
     
     // Setup boundary conditions for flow
     gsBoundaryConditions<> bcInfo;
@@ -125,7 +138,7 @@ int main(int argc, char* argv[])
     gsConstantFunction<> zeroVel(0.0, 0.0, 2);
     gsConstantFunction<> inletVel(meanVelocity, 0.0, 2);
     
-    // Inlet (left side)
+    // Inlet (left side) - set velocity boundary condition
     bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &inletVel, 0);
     bcInfo.addCondition(1, boundary::west, condition_type::dirichlet, &inletVel, 0);
     bcInfo.addCondition(2, boundary::west, condition_type::dirichlet, &inletVel, 0);
@@ -141,18 +154,24 @@ int main(int argc, char* argv[])
         bcInfo.addCondition(7, boundary::north, condition_type::dirichlet, &zeroVel, 0, d);
     }
     
-    // Note: Inner boundaries (interfaces with rotating square) have NO explicit 
-    // velocity BCs in ALE formulation. The no-slip condition is automatically 
-    // satisfied through the relative velocity (u-w).
+    // Inner boundaries (interfaces with rotating square) - ALE automatic no-slip
+    // In ALE formulation, when mesh motion is properly defined, the no-slip condition u = w
+    // is automatically satisfied at moving boundaries. The mesh motion function defines w,
+    // and the ALE solver ensures u = w at the fluid-structure interface.
     
     // Outlet (right side) - natural boundary condition (do-nothing)
     
+    // Add pressure reference point to avoid floating pressure
+    gsConstantFunction<> zeroPressure(0.0, 2);
+    bcInfo.addCondition(5, boundary::east, condition_type::dirichlet, &zeroPressure, 1); // patch 5, east side, pressure
+    
     // Create PDE
-    gsNavStokesPde<real_t> nsPde(fluidDomain, bcInfo, &zeroVel, mu);
+    // Use the kinematic viscosity calculated from Reynolds number
+    gsNavStokesPde<real_t> nsPde(fluidDomain, bcInfo, &zeroVel, nu);
     
     // Setup solver parameters
     std::vector<gsMultiBasis<>> discreteBases;
-    discreteBases.push_back(basis);  // Velocity basis
+    discreteBases.push_back(basisVelocity);  // Velocity basis
     discreteBases.push_back(basisPressure);  // Pressure basis
     
     gsFlowSolverParams<real_t> params(nsPde, discreteBases);
@@ -207,135 +226,97 @@ int main(int argc, char* argv[])
     // Fixed outer boundaries - zero displacement
     gsConstantFunction<> zeroDisp(0.0, 0.0, 2);
     
-    // External boundaries remain fixed
-    for (index_t d = 0; d < 2; ++d)
+    // Artificial mesh motion
+    auto meshMotion = [&](real_t t) -> gsMatrix<real_t>
     {
-        // Outer boundaries
-        meshBC.addCondition(0, boundary::west, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(0, boundary::south, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(1, boundary::west, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(2, boundary::west, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(2, boundary::north, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(3, boundary::south, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(4, boundary::north, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(5, boundary::south, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(5, boundary::east, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(6, boundary::east, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(7, boundary::north, condition_type::dirichlet, &zeroDisp, 0, d);
-        meshBC.addCondition(7, boundary::east, condition_type::dirichlet, &zeroDisp, 0, d);
-    }
-    
-    // Define mesh motion function for proper ALE
-    // This function returns the CUMULATIVE displacement from the original mesh
-    // We'll use a simplified approach: directly compute displacement for ALL boundary points
-    auto meshMotion = [&](real_t t)
-    {
-        // Calculate rotation angle with sinusoidal motion
-        const real_t angle = 2.2 * maxAngle * std::sin(2 * M_PI / timeSpan * t) * M_PI / 180.0; // Convert to radians
-        const real_t cos_angle = std::cos(angle);
-        const real_t sin_angle = std::sin(angle);
-        const real_t cx = 0.5;  // rotation center x
-        const real_t cy = 0.5;  // rotation center y
+        // Calculate rotation angle with your specified motion
+        // Continuously rotate to the right (clockwise) with constant angular velocity
+        const real_t angle = -maxAngle * t / timeSpan * M_PI / 180.0; // Convert to radians, negative for clockwise
+        const real_t cos_a = std::cos(angle);
+        const real_t sin_a = std::sin(angle);
+        const real_t cx = 0.5;  // rotation center x (center of the central square)
+        const real_t cy = 0.5;  // rotation center y (center of the central square)
 
         const index_t udofs = solver.getAssembler()->getUdofs();
-        gsMatrix<> disp(2*udofs,1); 
+        gsMatrix<> disp(2 * udofs, 1); 
         disp.setZero();
 
+        // Get the velocity DOF mapper to iterate through control points
         const gsDofMapper& mapper = solver.getAssembler()->getMappers()[0];
         
-        // We'll set displacement for ALL free DOFs that are on inner boundaries
-        // The elastic solver will handle the propagation to interior points
+        // Debug counters and tracking
+        static int call_count = 0;
+        call_count++;
+        int boundary_points = 0;
+        real_t max_disp = 0.0;
         
-        // Set displacement for inner boundaries (interfaces with rotating square)
-        // These boundaries must follow the rotating square exactly
-        
-        // Inner boundaries of the 8 patches that touch the central square:
-        // Patch 0: east boundary touches square bottom
-        // Patch 1: east boundary touches square left  
-        // Patch 3: north boundary touches square bottom
-        // Patch 3: west boundary touches square right
-        // Patch 4: south boundary touches square top
-        // Patch 6: west boundary touches square right
-        // Patch 7: west boundary touches square top
-        
-        // Helper function to set displacement for a boundary
-        auto setBoundaryDisplacement = [&](index_t patch, boxSide side)
+        // Traverse all patches and all control points (DOFs)
+        for (index_t p = 0; p < fluidDomain.nPatches(); ++p)
         {
-            const gsMatrix<>& originalCoefs = originalFluidDomain.patch(patch).coefs();
-            const gsBasis<>& patchBasis = basis.basis(patch);
-            
-            // Get boundary indices
-            gsMatrix<index_t> bnd = patchBasis.boundary(side);
-            
-            for (index_t k = 0; k < bnd.size(); ++k)
+            const gsMatrix<>& originalCoefs = originalFluidDomain.patch(p).coefs();
+            for (index_t i = 0; i < originalCoefs.rows(); ++i)
             {
-                index_t i = bnd(k);
-                
-                if (!mapper.is_free(i, patch))
-                    continue; // Skip constrained DOFs
-                
-                real_t x = originalCoefs(i,0);
-                real_t y = originalCoefs(i,1);
-                
-                // Check if this point is on the inner boundary (touches the rotating square)
-                // The inner square has corners at (0, 0) and (1, 1)
-                const real_t tol = 1e-10;
-                bool isOnInnerBoundary = false;
-                
-                // Check which side of the inner square this boundary touches
-                if (patch == 1 && side == boundary::east && std::abs(x - 0.0) < tol)
-                    isOnInnerBoundary = (y >= 0.0 - tol && y <= 1.0 + tol);
-                else if (patch == 6 && side == boundary::west && std::abs(x - 1.0) < tol)
-                    isOnInnerBoundary = (y >= 0.0 - tol && y <= 1.0 + tol);
-                else if (patch == 3 && side == boundary::north && std::abs(y - 0.0) < tol)
-                    isOnInnerBoundary = (x >= 0.0 - tol && x <= 1.0 + tol);
-                else if (patch == 4 && side == boundary::south && std::abs(y - 1.0) < tol)
-                    isOnInnerBoundary = (x >= 0.0 - tol && x <= 1.0 + tol);
-                
+                // Only process free DOFs (not constrained by boundary conditions)
+                if (!mapper.is_free(i, p))
+                    continue;
+
+                const real_t x = originalCoefs(i, 0);
+                const real_t y = originalCoefs(i, 1);
+                const real_t tol = 1e-9;
+
+                // Here set the boundary condition for boundary points
+                bool isOnInnerBoundary = 
+                    ( (std::abs(x - 0.0) < tol || std::abs(x - 1.0) < tol) && (y >= 0.0 - tol && y <= 1.0 + tol) ) ||
+                    ( (std::abs(y - 0.0) < tol || std::abs(y - 1.0) < tol) && (x >= 0.0 - tol && x <= 1.0 + tol) );
+
                 if (isOnInnerBoundary)
                 {
-                    // Apply rotation transformation only to points on the inner boundary
-                    real_t xr = cos_angle * (x - cx) - sin_angle * (y - cy) + cx;
-                    real_t yr = sin_angle * (x - cx) + cos_angle * (y - cy) + cy;
+                    boundary_points++;
                     
-                    // Displacement
+                    // Apply rotation transformation around the center
+                    real_t xr = cos_a * (x - cx) - sin_a * (y - cy) + cx;
+                    real_t yr = sin_a * (x - cx) + cos_a * (y - cy) + cy;
+                    
+                    // Calculate displacement from original to rotated position
                     real_t dx = xr - x;
                     real_t dy = yr - y;
                     
-                    index_t base = mapper.index(i, patch);
-                    disp(base) = dx;
-                    disp(base + udofs) = dy;
+                    real_t disp_mag = std::sqrt(dx*dx + dy*dy);
+                    max_disp = std::max(max_disp, disp_mag);
                     
-                    // Debug: count how many points are set
-                    static int count = 0;
-                    if (++count <= 5) // Only print first 5
+                    // Map to global DOF indices and set displacement
+                    index_t base = mapper.index(i, p);
+                    if (base < udofs && base + udofs < disp.size())
                     {
-                        gsInfo << "Setting displacement for patch " << patch << " side " << side 
-                               << " at (" << x << "," << y << ") -> dx=" << dx << ", dy=" << dy << "\n";
+                        disp(base) = dx;           // x-displacement
+                        disp(base + udofs) = dy;   // y-displacement
+                        
+                        // Debug first few calls
+                        if (call_count <= 2 && boundary_points <= 3)
+                        {
+                            gsInfo << "    Point (" << x << "," << y << ") -> (" << xr << "," << yr 
+                                   << ") disp=(" << dx << "," << dy << ") mag=" << disp_mag 
+                                   << " idx=" << base << "\n";
+                        }
+                    }
+                    else
+                    {
+                        gsInfo << "WARNING: Invalid DOF index " << base << " (udofs=" << udofs 
+                               << ", disp.size=" << disp.size() << ")\n";
                     }
                 }
-                // Points not on inner boundary remain at zero displacement (already initialized)
+                // For control points not on inner boundary, displacement remains zero
+                // This allows the mesh optimization to handle the deformation smoothly
             }
-        };
-        
-        // Set displacements for all inner boundaries that touch the central square
-        // Based on the mesh layout:
-        setBoundaryDisplacement(1, boundary::east);   // patch 1 east side touches square left
-        setBoundaryDisplacement(3, boundary::north);  // patch 3 north side touches square bottom
-        setBoundaryDisplacement(4, boundary::south);  // patch 4 south side touches square top
-        setBoundaryDisplacement(6, boundary::west);   // patch 6 west side touches square right
-        
-        // Debug: also try setting for all possible boundaries
-        if (false) // Enable for debugging
-        {
-            setBoundaryDisplacement(0, boundary::east);
-            setBoundaryDisplacement(2, boundary::east);
-            setBoundaryDisplacement(5, boundary::west);
-            setBoundaryDisplacement(7, boundary::west);
         }
         
-        // Now we need to solve an elastic problem to get the interior mesh displacement
-        // The ALE module will handle this automatically using the boundary displacements
+        // Debug output for first few calls
+        if (call_count <= 3)
+        {
+            gsInfo << "meshMotion call " << call_count << ": t=" << t 
+                   << ", angle=" << angle << " rad, boundary_points=" << boundary_points 
+                   << ", max_disp=" << max_disp << "\n";
+        }
         
         return disp;
     };
@@ -355,7 +336,8 @@ int main(int argc, char* argv[])
     gsInfo << "Starting time integration with proper ALE...\n";
     
     // Prepare paraview collection for time series output
-    gsParaviewCollection collectionFlow("proper_ale_rotating_square_flow");
+    gsParaviewCollection collectionVelocity("proper_ale_velocity_animation");
+    gsParaviewCollection collectionPressure("proper_ale_pressure_animation");
     gsParaviewCollection collectionMesh("proper_ale_rotating_square_mesh");
     
     // Update recalculation of nTimeSteps after command line parsing
@@ -367,7 +349,8 @@ int main(int argc, char* argv[])
         gsInfo << "\nTime step " << step << ", t = " << time << "\n";
         
         // Update central square position for visualization
-        real_t angle = 2.2 * maxAngle * std::sin(2 * M_PI / timeSpan * time);
+        // Same angle formula for visualization (in degrees)
+        real_t angle = -maxAngle * time / timeSpan; // negative for clockwise
         centralSquareNew = centralSquare;
         gsNurbsCreator<>::rotate2D(centralSquareNew.patch(0), angle, 0.5, 0.5);
         
@@ -382,14 +365,109 @@ int main(int argc, char* argv[])
         gsMatrix<> presCoefs = solver.solutionCoefs(1);
         
         // Output some statistics
-        gsInfo << "  Max velocity: " << velCoefs.lpNorm<gsEigen::Infinity>() << "\n";
-        gsInfo << "  Max pressure: " << presCoefs.lpNorm<gsEigen::Infinity>() << "\n";
+        gsInfo << "  solver time = " << solver.getSimulationTime() << "\n";
         
         if (solver.isALEActive() && step > 0)
         {
             gsField<> meshDispField = solver.getMeshDisplacementField();
-            gsInfo << "  ‖meshDisp‖_∞: "
-                   << meshDispField.coefficientVector().template lpNorm<gsEigen::Infinity>() << "\n";
+            gsField<> meshVelField = solver.getMeshVelocityField();
+            
+            real_t meshDispNorm = meshDispField.coefficientVector().template lpNorm<gsEigen::Infinity>();
+            real_t meshVelNorm = meshVelField.coefficientVector().template lpNorm<gsEigen::Infinity>();
+            
+            gsInfo << "  ||meshDisp||_inf: " << meshDispNorm << "\n";
+            gsInfo << "  ||meshVel||_inf: " << meshVelNorm << "\n";
+            
+            // =================== VERIFICATION: u vs w independence ===================
+            if (step <= 3 || step % 50 == 0) // Verify at early steps and periodically
+            {
+                gsInfo << "\n  === VERIFYING u vs w INDEPENDENCE ===\n";
+                
+                // Get fluid velocity coefficients  
+                gsMatrix<> fluidVelCoefs = solver.solutionCoefs(0);
+                gsMatrix<> meshVelCoefs = meshVelField.coefficientVector();
+                
+                // Get DOF mappers
+                const gsDofMapper& uMapper = solver.getAssembler()->getMappers()[0];
+                const index_t udofs = solver.getAssembler()->getUdofs();
+                
+                gsInfo << "  Fluid velocity DOFs: " << fluidVelCoefs.rows() << "\n";
+                gsInfo << "  Mesh velocity DOFs: " << meshVelCoefs.rows() << "\n";
+                gsInfo << "  udofs: " << udofs << "\n";
+                
+                // Sample some points to compare u and w
+                int boundary_samples = 0;
+                int interior_samples = 0;
+                real_t boundary_diff_sum = 0.0;
+                real_t interior_diff_sum = 0.0;
+                
+                // Check a few patches in the middle region
+                std::vector<index_t> test_patches = {1, 3, 4, 6}; // patches around central square
+                
+                for (index_t p : test_patches)
+                {
+                    const gsMatrix<>& originalCoefs = originalFluidDomain.patch(p).coefs();
+                    gsInfo << "  Checking patch " << p << " with " << originalCoefs.rows() << " control points\n";
+                    
+                    for (index_t i = 0; i < std::min(originalCoefs.rows(), (index_t)10); ++i) // Check first 10 points per patch
+                    {
+                        if (!uMapper.is_free(i, p)) continue;
+                        
+                        const real_t x = originalCoefs(i, 0);
+                        const real_t y = originalCoefs(i, 1);
+                        const real_t tol = 1e-9;
+                        
+                        // Check if this point is on boundary or interior
+                        bool isOnInnerBoundary = 
+                            ( (std::abs(x - 0.0) < tol || std::abs(x - 1.0) < tol) && (y >= 0.0 - tol && y <= 1.0 + tol) ) ||
+                            ( (std::abs(y - 0.0) < tol || std::abs(y - 1.0) < tol) && (x >= 0.0 - tol && x <= 1.0 + tol) );
+                        
+                        bool isOnOuterBoundary = 
+                            (p == 0 && (std::abs(x + 1.0) < tol || std::abs(y + 1.0) < tol)) ||
+                            (p == 2 && (std::abs(x + 1.0) < tol || std::abs(y - 2.0) < tol)) ||
+                            (p == 5 && (std::abs(x - 2.0) < tol || std::abs(y + 1.0) < tol)) ||
+                            (p == 7 && (std::abs(x - 2.0) < tol || std::abs(y - 2.0) < tol));
+                        
+                        bool isBoundary = isOnInnerBoundary || isOnOuterBoundary;
+                        
+                        // Get DOF index
+                        index_t base = uMapper.index(i, p);
+                        if (base >= udofs || base + udofs >= fluidVelCoefs.rows()) continue;
+                        if (base >= meshVelCoefs.rows()/2) continue;
+                        
+                        // Get velocity components
+                        real_t u_x = fluidVelCoefs(base);
+                        real_t u_y = fluidVelCoefs(base + udofs);
+                        real_t w_x = meshVelCoefs(2*base);
+                        real_t w_y = meshVelCoefs(2*base + 1);
+                        
+                        real_t diff_mag = std::sqrt((u_x - w_x)*(u_x - w_x) + (u_y - w_y)*(u_y - w_y));
+                        
+                        if (isBoundary)
+                        {
+                            boundary_samples++;
+                            boundary_diff_sum += diff_mag;
+                            if (boundary_samples <= 5) // Show first few boundary points
+                            {
+                                gsInfo << "    BOUNDARY Point (" << x << "," << y << "): u=(" << u_x << "," << u_y 
+                                       << ") w=(" << w_x << "," << w_y << ") |u-w|=" << diff_mag << "\n";
+                            }
+                        }
+                        else
+                        {
+                            interior_samples++;
+                            interior_diff_sum += diff_mag;
+                            if (interior_samples <= 5) // Show first few interior points
+                            {
+                                gsInfo << "    INTERIOR Point (" << x << "," << y << "): u=(" << u_x << "," << u_y 
+                                       << ") w=(" << w_x << "," << w_y << ") |u-w|=" << diff_mag << "\n";
+                            }
+                        }
+                    }
+                }
+                
+            }
+            
                    
             // Get the actual deformed mesh from the solver
             // The solver should already have the updated mesh after nextIteration()
@@ -406,8 +484,8 @@ int main(int argc, char* argv[])
                 std::string dispname = "proper_ale_mesh_disp_" + std::to_string(step);
                 
                 // Write mesh with all patches
-                gsWriteParaview(currentFluidDomain, meshname, 1000, true);
-                gsWriteParaview(meshDispField, dispname, 1000, true);
+                gsWriteParaview(currentFluidDomain, meshname, 1000, false);
+                gsWriteParaview(meshDispField, dispname, 1000, false);
                 
                 // Add all patches to collection
                 for (size_t p = 0; p < currentFluidDomain.nPatches(); ++p)
@@ -424,6 +502,7 @@ int main(int argc, char* argv[])
             }
             
             // Update fluidDomain for subsequent output
+            // Note: We keep the deformed geometry for visualization
             fluidDomain = currentFluidDomain;
         }
         
@@ -435,18 +514,23 @@ int main(int argc, char* argv[])
             gsMatrix<> presCoefsFull = presCoefs;
             
             // Create multipatch for velocity (2D vector field)
-            gsMultiPatch<> velPatches(fluidDomain);
-            gsMultiPatch<> presPatches(fluidDomain);
+            // Note: velocity uses P2 basis, pressure uses P1
+            gsMultiPatch<> velPatches;
+            gsMultiPatch<> presPatches;
             
             // Update coefficients for each patch
             const gsDofMapper& uMapper = solver.getAssembler()->getMappers()[0];
             const gsDofMapper& pMapper = solver.getAssembler()->getMappers()[1];
             const index_t shift = solver.getAssembler()->getUdofs();
             
+            // Debug: print number of patches
+            if (step == 0)
+                gsInfo << "Processing " << fluidDomain.nPatches() << " patches for output\n";
+                
             for (size_t p = 0; p < fluidDomain.nPatches(); ++p)
             {
                 // Velocity field (2 components)
-                index_t nCoefs = basis.basis(p).size();
+                index_t nCoefs = basisVelocity.basis(p).size();
                 gsMatrix<> velPatchCoefs(nCoefs, 2);
                 for (index_t i = 0; i < nCoefs; ++i)
                 {
@@ -458,11 +542,39 @@ int main(int argc, char* argv[])
                     }
                     else
                     {
-                        velPatchCoefs(i, 0) = 0.0;
-                        velPatchCoefs(i, 1) = 0.0;
+                        // For constrained DOFs, we need to determine the actual boundary condition
+                        // Get the anchor point of this basis function in the parametric domain
+                        gsMatrix<> anchors = basisVelocity.basis(p).anchors();
+                        
+                        // Check if this is a boundary DOF
+                        real_t u = anchors(0, i % anchors.cols());
+                        real_t v = anchors(1, i / anchors.cols());
+                        
+                        // Check which boundary this DOF is on
+                        const real_t tol = 1e-10;
+                        bool isWest = (std::abs(u - 0.0) < tol);
+                        bool isEast = (std::abs(u - 1.0) < tol);
+                        bool isSouth = (std::abs(v - 0.0) < tol);
+                        bool isNorth = (std::abs(v - 1.0) < tol);
+                        
+                        // For patches 0, 1, 2, west boundary is inlet
+                        if (p <= 2 && isWest)
+                        {
+                            velPatchCoefs(i, 0) = meanVelocity;
+                            velPatchCoefs(i, 1) = 0.0;
+                        }
+                        else
+                        {
+                            // All other boundaries are walls (zero velocity)
+                            velPatchCoefs(i, 0) = 0.0;
+                            velPatchCoefs(i, 1) = 0.0;
+                        }
                     }
                 }
-                velPatches.patch(p).coefs() = velPatchCoefs;
+
+                // Create geometry using the basis and coefficients
+                auto velPatch = basisVelocity.basis(p).makeGeometry(give(velPatchCoefs));
+                velPatches.addPatch(give(velPatch));
                 
                 // Pressure field (scalar)
                 index_t nPCoefs = basisPressure.basis(p).size();
@@ -476,13 +588,21 @@ int main(int argc, char* argv[])
                     }
                     else
                     {
-                        presPatchCoefs(i, 0) = 0.0;
+                        presPatchCoefs(i, 0) = 0.0; // TODO: implement proper extrapolation
                     }
                 }
-                presPatches.patch(p).coefs() = presPatchCoefs;
+                
+                // Create geometry using the basis and coefficients
+                auto presPatch = basisPressure.basis(p).makeGeometry(give(presPatchCoefs));
+                presPatches.addPatch(give(presPatch));
             }
             
             // Create fields
+            if (step == 0)
+            {
+                gsInfo << "Created velocity patches: " << velPatches.nPatches() << "\n";
+                gsInfo << "Created pressure patches: " << presPatches.nPatches() << "\n";
+            }
             gsField<> velocity(fluidDomain, velPatches);
             gsField<> pressure(fluidDomain, presPatches);
             
@@ -491,19 +611,22 @@ int main(int argc, char* argv[])
             std::string vname = "proper_ale_velocity_" + std::to_string(step);
             std::string pname = "proper_ale_pressure_" + std::to_string(step);
             
-            // Write velocity and pressure fields with all patches
-            gsWriteParaview(velocity, vname, samp, true); // true = mesh flag
-            gsWriteParaview(pressure, pname, samp, true);
+            // Write velocity and pressure fields
+            // For animation, we need to write without creating individual PVD files
+            gsWriteParaview(velocity, vname, samp, false);
+            gsWriteParaview(pressure, pname, samp, false);
             
-            // Add all patches to collection
-            // Files are generated as name0.vts, name1.vts, etc (not name_0.vts)
+            // Add all patches to the time series collection
+            // Each patch is written as a separate VTS file
             for (size_t p = 0; p < fluidDomain.nPatches(); ++p)
             {
-                std::ostringstream vnameWithPatch, pnameWithPatch;
-                vnameWithPatch << vname << p << ".vts";
-                pnameWithPatch << pname << p << ".vts";
-                collectionFlow.addPart(vnameWithPatch.str(), time, "velocity", p);
-                collectionFlow.addPart(pnameWithPatch.str(), time, "pressure", p);
+                // The files are named as: name0.vts, name1.vts, etc.
+                std::string vfile = vname + std::to_string(p) + ".vts";
+                std::string pfile = pname + std::to_string(p) + ".vts";
+                
+                // Add each patch as a separate part
+                collectionVelocity.addPart(vfile, time, std::to_string(p));
+                collectionPressure.addPart(pfile, time, std::to_string(p));
             }
             
             // Output mesh and central square
@@ -521,14 +644,10 @@ int main(int argc, char* argv[])
     }
     
     // Save paraview collections
-    collectionFlow.save();
+    collectionVelocity.save();
+    collectionPressure.save();
     collectionMesh.save();
     
-    gsInfo << "\nProper ALE simulation completed!\n";
-    gsInfo << "Key differences from decay function approach:\n";
-    gsInfo << "- Inner boundaries strictly follow rotating square motion\n";
-    gsInfo << "- Mesh deformation computed by solving elastic equations\n";
-    gsInfo << "- No artificial decay functions used\n";
     
     return 0;
 }

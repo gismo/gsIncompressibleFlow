@@ -5,6 +5,8 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author: J. Li
 */
 
 #pragma once
@@ -82,10 +84,11 @@ public:
                          const std::vector< gsMatrix<T> >& trialFunData, 
                          gsMatrix<T>& localMat) override
     {
-        // 先计算网格速度，以确保 m_meshVelVals 已填充
+
+        //Calculate mesh velocity at quadrature points
         computeMeshVelocity(mapData);
 
-        // 若当前元素无积分点，直接返回
+        // If there is no evaluation point, return early
         if (mapData.points.cols()==0)
             return;
         
@@ -118,7 +121,7 @@ public:
             // Transform trial function gradients to physical space
             gsMatrix<T> physGrad = trialFunData[1].reshapeCol(k, numActive, mapData.dim.first) * invJ.transpose();
             
-            // Compute (u_rel · ∇φ_trial)
+            // Compute (u_rel · \nabla \phi_trial)
             gsMatrix<T> convection(numActive, 1);
             convection.setZero();
             
@@ -127,7 +130,7 @@ public:
                 convection += relativeVel(d, k) * physGrad.col(d);
             }
             
-            // Add contribution: weight * (φ_test * (u_rel · ∇φ_trial))
+            // Add contribution: weight * (\phi_test * (u_rel · \nabla\phi_trial))
             localMat.noalias() += quWeights[k] * mapData.measures(k) * 
                                   testFunData[0].col(k) * convection.transpose();
         }
