@@ -47,9 +47,13 @@ protected:
     
     // Flag to indicate if dynamic boundary mapping is enabled
     bool m_useDynamicBoundaryMapping;
-    
+
     // gsBarrierPatch options
     gsOptionList m_meshOptOptions;
+
+    // If true, freeze outer box boundary (xmin/xmax/ymin/ymax) during geometry update
+    bool m_fixOuterBoundary;
+    T m_fixOuterTol;
     
     // Store original mesh
     gsMultiPatch<T> m_originalMesh;
@@ -78,6 +82,10 @@ public:
         // Initialize rotation center to domain center
         m_rotationCenter.resize(2);
         m_rotationCenter << 0.5, 0.5;
+
+        // Boundary fix defaults
+        m_fixOuterBoundary = false;
+        m_fixOuterTol = static_cast<T>(1e-8);
     }
     
     /// @brief Destructor
@@ -156,6 +164,13 @@ public:
     
     /// @brief Get mesh optimization options (const version)
     const gsOptionList& getMeshOptOptions() const { return m_meshOptOptions; }
+
+    /// @brief Freeze outer (box) boundary during geometry update
+    void setFixOuterBoundary(bool enable, T tol = static_cast<T>(1e-8))
+    {
+        m_fixOuterBoundary = enable;
+        m_fixOuterTol = tol;
+    }
     
     /// @brief Set rotation parameters for dynamic boundary mapping
     /// @param[in] period rotation period in seconds
@@ -268,36 +283,76 @@ protected:
             getALEAssembler()->updateMesh(cumulativeDisp);
             return;
         }
-        
         // Get current mesh from assembler
         gsMultiPatch<T>& patches = const_cast<gsMultiPatch<T>&>(m_assemblerPtr->getPatches());
-        
-        // Reset to original mesh and apply cumulative displacement
+
+        // Build a displacement field from the provided coefficients (use current cumulativeDisp)
+        // Pad with zeros to full size (pressure part zero)
+        const index_t udofs = getALEAssembler()->getUdofs();
+        const index_t pdofs = getALEAssembler()->getPdofs();
+        const index_t dim   = m_assemblerPtr->getPatches().geoDim();
+        const index_t pshift = dim * udofs;
+        gsMatrix<T> dispFull(pshift + pdofs, 1);
+        dispFull.setZero();
+        if (cumulativeDisp.size() >= pshift)
+            dispFull.topRows(pshift) = cumulativeDisp.topRows(pshift);
+        gsField<T> dispField = getALEAssembler()->constructSolution(dispFull, 0);
+
+        // Reset to original mesh and apply displacement evaluated at geometry anchors
+        // Optionally clamp displacement to zero on the outer box boundaries
+        gsMatrix<T> bb;
+        m_originalMesh.boundingBox(bb);
+        const T xmin = bb(0,0), xmax = bb(0,1);
+        const T ymin = bb(1,0), ymax = bb(1,1);
+
         for (size_t p = 0; p < patches.nPatches(); ++p)
         {
             // Reset to original mesh
             patches.patch(p).coefs() = m_originalMesh.patch(p).coefs();
-            
-            // Apply cumulative displacement
-            const index_t nCoefs = patches.patch(p).coefsSize();
+
+            // Evaluate displacement at the (parametric) anchors of the geometry basis
             const index_t dim = patches.patch(p).targetDim();
-            
-            // Extract displacement for this patch
-            const gsDofMapper& mapper = getALEAssembler()->getMappers()[0];
-            for (index_t i = 0; i < nCoefs; ++i)
+            const gsBasis<T> & geoBasis = patches.patch(p).basis();
+            gsMatrix<T> anchors = geoBasis.anchors(); // parametric anchors (paramDim x nCoefs)
+
+            if (anchors.cols() == 0)
+                continue;
+
+            gsMatrix<T> U; // dim x nCoefs
+            U = dispField.value(anchors, static_cast<index_t>(p));
+
+            if (m_fixOuterBoundary)
             {
-                if (mapper.is_free(i, p))
+                // Evaluate physical coordinates of anchors on original mesh
+                gsMatrix<T> XY;
+                m_originalMesh.patch(static_cast<index_t>(p)).eval_into(anchors, XY); // dim x nCoefs
+
+                for (index_t i = 0; i < XY.cols(); ++i)
                 {
-                    index_t idx = mapper.index(i, p);
-                    for (index_t d = 0; d < dim; ++d)
+                    const T x = XY(0,i);
+                    const T y = XY(1,i);
+                    const bool onLeft   = std::abs(x - xmin) <= m_fixOuterTol;
+                    const bool onRight  = std::abs(x - xmax) <= m_fixOuterTol;
+                    const bool onBottom = std::abs(y - ymin) <= m_fixOuterTol;
+                    const bool onTop    = std::abs(y - ymax) <= m_fixOuterTol;
+                    if (onLeft || onRight || onBottom || onTop)
                     {
-                        patches.patch(p).coef(i, d) += cumulativeDisp(idx + d * getALEAssembler()->getUdofs());
+                        // Zero displacement on outer boundary anchors
+                        for (index_t d = 0; d < dim; ++d)
+                            U(d,i) = 0;
                     }
                 }
             }
+
+            // Add displacement to geometry control points
+            for (index_t i = 0; i < patches.patch(p).coefsSize(); ++i)
+            {
+                for (index_t d = 0; d < dim; ++d)
+                    patches.patch(p).coef(i, d) += U(d, i);
+            }
         }
-        
-        // Update incremental displacement for ALE assembler
+
+        // Update incremental displacement for ALE assembler (keeps m_meshVelCoefs consistent)
         getALEAssembler()->updateMesh(cumulativeDisp);
     }
     
@@ -338,8 +393,8 @@ protected:
                 gsInfo << "Applied standard mesh optimization\n";
             }
             
-            // Update mesh in assembler
-            getALEAssembler()->updateMeshAfterOptimization(patches);
+            // Update mesh in assembler with displacement consistent to original mesh
+            getALEAssembler()->updateMeshAfterOptimization(patches, m_originalMesh);
         }
         catch (const std::exception& e) {
             gsWarn << "Mesh optimization failed: " << e.what() << "\n";

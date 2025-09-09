@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
 
     // Physical and numerical parameters
     real_t meanVelocity = 2.0; // inlet mean speed
-    real_t Re = 100.0;         // Reynolds number
+    real_t Re = 200.0;         // Reynolds number
     real_t L = 1.0;            // length scale
     real_t nu = meanVelocity * L / Re; // kinematic viscosity
 

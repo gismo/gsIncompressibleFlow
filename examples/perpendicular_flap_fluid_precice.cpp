@@ -226,60 +226,34 @@ static void computeFluidTraction(
     bool includeViscous)
 {
     const index_t N = uv_if.cols();
-    traction.resize(patches.geoDim(), N);
+    traction.resize(2, N);
 
-    // Build expr evaluator on current (possibly deformed) geometry
-    gsExprEvaluator<real_t> ev;
-    auto G = ev.getMap(patches);
-    // Compose fields with geometry for evaluation in physical space
-    auto u = ev.getVariable(velField.fields(), G);
-    // Note: pressure will be evaluated directly from presField at boundary points
-
-    // Common parts of traction expression
-    auto n = nv(G).normalized();
-    auto grad_u = igrad(u, G);
-
-    // Define expression t = p n - mu (∇u + ∇u^T) n 
-    // Note: For FSI, we want the force FROM fluid TO solid
-    // Pressure pushes outward (positive), viscous stress opposes motion
-    auto t_viscous  = mu * (grad_u + grad_u.tr()) * n;
-
+    // Evaluate pressure values at the parametric points (patch-wise)
+    // We need to group by patch to call value(..., patchID)
+    // For simplicity, loop point-wise (N typically modest).
     for (index_t k = 0; k < N; ++k)
     {
-        const index_t pid = lociSides[k].first;
-        const boxSide  sid = lociSides[k].second;
+        const index_t p = lociSides[k].first;
+        const boxSide  s = lociSides[k].second;
         const gsVector<> uvk = uv_if.col(k);
 
-        // 1) Pressure value at boundary point (scalar)
+        // pressure at (uv) on patch p
         gsMatrix<> uvM(2,1); uvM.col(0) = uvk;
-        gsMatrix<> pField = presField.value(uvM, pid); // 1x1
-        const real_t pk = pField(0,0);
+        const gsMatrix<> pk = presField.value(uvM, p); // 1 x 1
 
-        // 2) Unit outward normal of the fluid domain at this boundary point
-        gsVector<real_t> nk = boundaryUnitNormal(patches, pid, sid, uvk);
+        // unit outer normal of fluid boundary
+        gsVector<> n = boundaryUnitNormal(patches, p, s, uvk);
 
-        // 3) Viscous part at boundary point via expression evaluator
-        gsMatrix<> t_vis = includeViscous ? ev.evalBdr(t_viscous, uvk, patchSide(pid, sid))
-                                          : gsMatrix<>(patches.geoDim(),1);
-        if (!includeViscous)
-            t_vis.setZero();
+        // pressure traction
+        gsVector<> t = -pk(0,0) * n;
 
-        // 4) Total traction: t = p n - mu(grad u + grad u^T) n
-        gsVector<real_t> tk = pk * nk - t_vis.col(0);
-
-        // write
-        traction.col(k) = tk;
-        
-        // Debug: check traction values at first few points
-        if (k < 3)
+        if (includeViscous)
         {
-            // Try evaluating pressure directly from field
-            gsInfo << "[Traction] Point " << k << " (patch=" << pid << ", side=" << sid << ")"
-                   << ": p=" << pk
-                   << ", n=[" << nk[0] << "," << nk[1] << "]"
-                   << ", t=[" << tk[0] << "," << tk[1] << "]"
-                   << ", uv=[" << uvk[0] << "," << uvk[1] << "]\n";
+            // Optional: add viscous contribution tau*n ≈ mu * (∇u + ∇u^T) n
+            // NOTE: evaluating ∇u in physical coordinates requires more setup (expr evaluator). Omitted for now.
         }
+
+        traction.col(k) = t;
     }
 }
 
@@ -291,29 +265,21 @@ int main(int argc, char* argv[])
     std::string preciceConfig;
     std::string geomPath = "auto"; // default: build perpendicular-flap fluid domain
     real_t viscosity = 1.0;   // kinematic viscosity (m^2/s)
-    real_t rho = 1.0;         // fluid density (kg/m^3)
     real_t totalTime = 5.0;
     real_t dt = 0.01;
     int numRefine = 0;
     bool plot = false;
-    bool pressureOnly = false; // write traction = -p n
-    bool logALE = false;      // extra logs for ALE/interface
-    bool meshOpt = false;     // smooth extension of boundary motion
-    int  paramMethod = 0;     // 0=PDEPatch (harmonic), 3=BarrierPatch, 4=VHPatch
+    bool pressureOnly = true; // write traction = -p n
 
     gsCmdLine cmd("Fluid participant (ALE) for perpendicular-flap FSI via preCICE");
     cmd.addString("c","config","preCICE configuration file", preciceConfig);
     cmd.addString("g","geom","Fluid geometry XML (flappingBeam_flow.xml)", geomPath);
     cmd.addReal  ("v","nu","Kinematic viscosity", viscosity);
-    cmd.addReal  ("R","rho","Fluid density", rho);
     cmd.addReal  ("t","time","Total simulation time", totalTime);
     cmd.addReal  ("s","step","Time step", dt);
     cmd.addInt   ("r","refine","Uniform h-refinements", numRefine);
     cmd.addSwitch("plot","Write Paraview outputs", plot);
     cmd.addSwitch("P","pressureOnly","Only pressure traction (no viscous)", pressureOnly);
-    cmd.addSwitch("L","logALE","Log ALE/interface diagnostics", logALE);
-    cmd.addSwitch("M","meshOpt","Enable mesh optimization for mesh motion", meshOpt);
-    cmd.addInt   ("o","paramMethod","Mesh opt method: 0=PDE,3=Barrier,4=VH", paramMethod);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // Try to locate a default preCICE config if not provided
@@ -448,10 +414,6 @@ int main(int argc, char* argv[])
         // onRight: natural outlet (do nothing)
     }
 
-    // Note: strong no-slip on the interface (Dirichlet) can be added,
-    // but requires a function type compatible with gsBoundaryConditions evaluation.
-    // We keep ALE kinematic coupling without extra Dirichlet to avoid runtime issues.
-
     // ---------------------- PDE & solver ----------------------
     gsConstantFunction<> fZero(0.0, 0.0, 2);
     gsNavStokesPde<real_t> nsPde(fluidDomain, bcInfo, &fZero, viscosity);
@@ -470,32 +432,12 @@ int main(int argc, char* argv[])
 
     gsINSSolverUnsteadyALE<> solver(memory::make_shared_not_owned(&params));
     solver.initialize();
-
-    // Prepare ALE mesh update: provide a time-dependent displacement function
-    // We will fill currentMeshDisp each coupling step from preCICE data
-    const index_t dim = fluidDomain.geoDim();
-    const index_t udofs_tmp = solver.getAssembler()->getUdofs();
-    gsMatrix<> currentMeshDisp(dim * udofs_tmp, 1); currentMeshDisp.setZero();
-    solver.setMeshUpdateFunction([&](real_t /*t*/){ return currentMeshDisp; });
-
-    // Enable ALE; keep outer box fixed (only FSI interface moves)
     solver.setALEActive(true);
-    solver.setFixOuterBoundary(true);
-    gsInfo << "[FSI-Fluid] ALE active, outer boundary fixed = true\n";
-    // Optional mesh optimization/extension; default off to avoid "ballooning"
-    if (meshOpt)
-    {
-        solver.setMeshOptimization(true);
-        solver.getMeshOptOptions().setInt("Verbose", 0);
-        solver.getMeshOptOptions().setInt("ParamMethod", paramMethod); // 0=PDE harmonic
-        solver.getMeshOptOptions().setInt("AAPreconditionType", 0);
-        gsInfo << "[FSI-Fluid] Mesh optimization ENABLED with method " << paramMethod << "\n";
-    }
-    else
-    {
-        solver.setMeshOptimization(false);
-        gsInfo << "[FSI-Fluid] Mesh optimization DISABLED (recommended to avoid ballooning)\n";
-    }
+    // Use re-parameterization to smoothly extend boundary motion
+    solver.setMeshOptimization(true);
+    solver.getMeshOptOptions().setInt("Verbose", 0);
+    solver.getMeshOptOptions().setInt("ParamMethod", 1);
+    solver.getMeshOptOptions().setInt("AAPreconditionType", 0);
 
     // ---------------------- Coupling mesh (anchors on interface sides) ----------------------
     gsMatrix<> X_if, uv_if;
@@ -514,12 +456,10 @@ int main(int argc, char* argv[])
     real_t precice_dt = participant.initialize();
     gsInfo << "[FSI-Fluid] preCICE dt_max = " << precice_dt << "\n";
 
-    // ifaceVelFunc already created above and registered in bcInfo
-
     // ---------------------- Time loop ----------------------
     const index_t udofs = solver.getAssembler()->getUdofs();
-    const index_t dim2   = fluidDomain.geoDim();
-    GISMO_ASSERT(dim2==2, "This example is 2D");
+    const index_t dim   = fluidDomain.geoDim();
+    GISMO_ASSERT(dim==2, "This example is 2D");
 
     gsMatrix<> Uchk, Pchk; // checkpoints
     real_t time = 0.0;
@@ -529,7 +469,6 @@ int main(int argc, char* argv[])
     gsParaviewCollection pvU("fsi_flap_fluid_U");
     gsParaviewCollection pvP("fsi_flap_fluid_P");
 
-    gsMatrix<> prev_disp_if; // for interface velocity
     while (participant.isCouplingOngoing())
     {
         if (participant.requiresWritingCheckpoint())
@@ -558,81 +497,28 @@ int main(int argc, char* argv[])
             meshDisp(gi + udofs, 0)  = disp_if(1, k);
         }
 
-        // 3) Set time step consistent with preCICE before computing mesh velocity
+        // 3) Update mesh for current time
+        solver.updateMesh(meshDisp);
+
+        // 4) Solve one fluid iteration (ALE)
+        // Ensure fluid dt does not exceed preCICE dt
         const real_t dt_step = std::min(dt, precice_dt);
         params.options().setReal("timeStep", dt_step);
-
-        // 4) (optional) Strong no-slip could be enforced here by updating
-        // Dirichlet data, but is currently disabled to keep interface handling stable.
-
-        // 5) Provide displacement for ALE; let solver apply it and compute mesh velocity internally
-        currentMeshDisp = meshDisp;          // used by solver.setMeshUpdateFunction(...)
-
-        // 6) Solve one fluid iteration (ALE)
         solver.nextIteration();
 
-        if (logALE)
-        {
-            // Evaluate mesh velocity on interface and approximate structure velocity
-            const index_t Nif = uv_if.cols();
-            gsMatrix<> meshVel_if(2, Nif);
-            gsField<> meshVelField = solver.getMeshVelocityField();
-            for (index_t k = 0; k < Nif; ++k)
-            {
-                const index_t pid = lociSides[k].first;
-                gsMatrix<> uvk(2,1); uvk.col(0) = uv_if.col(k);
-                gsMatrix<> v = meshVelField.value(uvk, static_cast<int>(pid)); // 2x1 (parametric eval)
-                meshVel_if.col(k) = v.col(0);
-            }
-
-            static gsMatrix<> prev_disp_if; // persists across iterations
-            if (prev_disp_if.size() == 0)
-                prev_disp_if = disp_if;
-            gsMatrix<> solidVel_if = (disp_if - prev_disp_if) / dt_step;
-
-            real_t vmesh_inf = meshVel_if.template lpNorm<gsEigen::Infinity>();
-            real_t vsol_inf  = solidVel_if.template lpNorm<gsEigen::Infinity>();
-            real_t vlag_inf  = (meshVel_if - solidVel_if).template lpNorm<gsEigen::Infinity>();
-            gsInfo << "[ALE] ‖u_mesh‖∞=" << vmesh_inf
-                   << ", ‖u_solid(if)‖∞=" << vsol_inf
-                   << ", ‖diff‖∞=" << vlag_inf
-                   << ", dt=" << dt_step << "\n";
-            prev_disp_if = disp_if;
-        }
-
-        // 7) Evaluate traction at interface points and write to preCICE
+        // 5) Evaluate traction at interface points and write to preCICE
         gsField<> velField = solver.constructSolution(0);
         gsField<> prsField = solver.constructSolution(1);
 
-        // Get the deformed geometry from the ALE solver
-        const gsMultiPatch<>& deformedDomain = solver.getAssembler()->getPatches();
-        
-        // Debug: check pressure field statistics
-        if (step % 10 == 0)
-        {
-            gsMatrix<> pCoefs = solver.solutionCoefs(1);
-            real_t pMin = pCoefs.minCoeff();
-            real_t pMax = pCoefs.maxCoeff();
-            real_t pMean = pCoefs.mean();
-            gsInfo << "[Pressure] step=" << step << ": min=" << pMin 
-                   << ", max=" << pMax << ", mean=" << pMean << "\n";
-        }
-
-        // Use dynamic viscosity mu = rho * nu for traction
         gsMatrix<> traction;
-        computeFluidTraction(velField, prsField, deformedDomain, uv_if, lociSides, traction, rho*viscosity, !pressureOnly);
+        computeFluidTraction(velField, prsField, fluidDomain, uv_if, lociSides, traction, viscosity, !pressureOnly);
 
         participant.writeData(FluidMesh, StressData, vertexIDs, traction);
-        if (logALE)
-        {
-            real_t t_inf = traction.template lpNorm<gsEigen::Infinity>();
-            gsInfo << "[Fluid] ‖traction‖∞ = " << t_inf << ", pressureOnly=" << (pressureOnly?1:0) << "\n";
-        }
 
-        // 8) Advance coupling
+        // 6) Advance coupling
         precice_dt = participant.advance(dt_step);
 
-        // 9) Handle checkpoints
+        // 7) Handle checkpoints
         if (participant.requiresReadingCheckpoint())
         {
             solver.setSolutionCoefs(Uchk, 0);

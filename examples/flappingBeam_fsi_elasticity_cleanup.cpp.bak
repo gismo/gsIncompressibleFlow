@@ -1,0 +1,1276 @@
+/** @file flappingBeam_fluid.cpp
+ 
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): J. Li
+*/
+
+
+#include <gismo.h>
+
+#include <gsIncompressibleFlow/src/gsINSSolver.h>
+#include <gsIncompressibleFlow/src/gsFlowUtils.h>
+#include <gsIncompressibleFlow/src/gsFlowBndEvaluators.h>
+#include <gsHLBFGS/gsHLBFGS.h>
+#include <gsElasticity/src/gsElasticityAssembler.h>
+#include <gsElasticity/src/gsLinearMaterial.h>
+#include <gsElasticity/src/gsMassAssembler.h>
+#include <gsElasticity/src/gsElTimeIntegrator.h>
+
+using namespace gismo;
+
+// 前向声明
+struct FluidInterface{
+    size_t patchIdx;
+    boundary::side boundarySide;
+};
+
+template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
+
+// reset the solver with a new mesh
+template<class T, int MatOrder>
+void resetSolverWithNewMesh(gsINSSolverUnsteady<T, MatOrder>*& solver,
+                            const gsMultiPatch<T>& newPatches);
+
+// transfer the solution to a new mesh
+template<class T, int MatOrder>
+void transferSolutionToNewMesh(gsINSSolverUnsteady<T, MatOrder>* solver,
+                              const gsField<T>& velocityField,
+                              const gsField<T>& pressureField);
+
+// 根据时间更新几何体边界
+template<class T>
+void updateGeometryBoundary(gsMultiPatch<T>& patches, T time,
+                           const std::vector<FluidInterface>& interfaces);
+
+// 根据固体位移更新几何体边界
+template<class T>
+void updateGeometryBoundaryFromSolid(gsMultiPatch<T>& patches, 
+                                     const gsMultiPatch<T>& solidDisplacement,
+                                     const std::vector<FluidInterface>& interfaces);
+
+// 根据固体速度更新流体边界速度
+template<class T>
+void updateFluidBoundaryVelocityFromSolid(gsMultiPatch<T>& patches,
+                                          const gsMultiPatch<T>& solidVelocity,
+                                          const std::vector<FluidInterface>& interfaces);
+
+int main(int argc, char *argv[])
+{
+    typedef gsGMRes<real_t> LinSolver;
+
+    // ========================================= Settings ========================================= 
+
+    // solvers
+    bool steady = false;
+    bool steadyIt = false;
+    bool unsteady = false;
+    bool unsteadyIt = false;
+
+    // domain definition
+    int geo = 1; // 0 - custom input file, 1 - step, 2 - cavity, 3 - blade profile 2D, 4 - flapping beam
+    int dim = 2; // relevant for step and cavity
+    std::string inputFile = "";
+    
+    // discretization settings
+    int numRefine = 3;
+    int wallRefine = 0; // relevant for step, cavity, profile2D
+    int leadRefine = 0; // relevant for profile2D
+    int numElevate = 0; // number of degree elevations (before refinement)
+
+    // problem parameters
+    real_t viscosity = 0.1;
+    real_t inVelX = 1; // inlet x-velocity for profile2D
+    real_t inVelY = 0; // inlet y-velocity for profile2D
+    
+    // 结构参数
+    real_t youngsModulus = 1.4e6;
+    real_t poissonsRatio = 0.4;
+    real_t solidDensity = 1.0e3;
+    
+    // solver settings
+    int maxIt = 5;
+    int picardIt = 5;
+    int linIt = 50;
+    real_t timeStep = 0.01;
+    real_t tol = 1e-5;
+    real_t picardTol = 1e-4;
+    real_t linTol = 1e-6;
+    std::string matFormation = "EbE";
+    std::string precond = "MSIMPLER_FdiagEqual";
+    bool stokesInit = false; // start unsteady problem from Stokes solution
+
+    // output settings
+    bool quiet = false;
+    bool plot = false;
+    bool plotMesh = false;
+    int plotPts = 10000;
+    bool animation = false;
+    int animStep = 5;
+
+    // ---------------------------------------------------------------------------------
+
+    //command line
+    gsCmdLine cmd("Solves the Navier-Stokes problem in a given domain (step, cavity, blade profile).");
+
+    cmd.addSwitch("steady", "Solve steady problem with direct linear solver", steady);
+    cmd.addSwitch("steadyIt", "Solve steady problem with preconditioned GMRES as linear solver", steadyIt);
+    cmd.addSwitch("unsteady", "Solve unsteady problem with direct linear solver", unsteady);
+    cmd.addSwitch("unsteadyIt", "Solve unsteady problem with preconditioned GMRES as linear solver", unsteadyIt);
+
+    cmd.addInt("g", "geo", "Computational domain (0 - custom file, 1 - step, 2 - cavity, 3 - profile (only 2D), 4 - flapping beam)", geo);
+    cmd.addInt("d", "dim", "Space dimension", dim);
+    cmd.addString("", "input", "Full path to the input xml file containing geometry, right-hand side functin and boundary conditions", inputFile);
+
+    cmd.addInt("r", "uniformRefine", "Number of uniform h-refinement steps to perform before solving", numRefine);
+    cmd.addInt("", "wallRefine", "Number of h-refinement steps near step corner, cavity walls of blade profile", wallRefine);
+    cmd.addInt("", "leadRefine", "Number of h-refinement steps near the beginning of the blade (for profile geometry)", leadRefine);
+    cmd.addInt("e", "degElevate", "Number of degree elevations (performed before h-refinement)", numElevate);
+
+    cmd.addReal("v", "visc", "Viscosity value", viscosity);
+    cmd.addReal("", "inVelX", "x-coordinate of inflow velocity (for profile geometry)", inVelX);
+    cmd.addReal("", "inVelY", "y-coordinate of inflow velocity (for profile geometry)", inVelY);
+
+    cmd.addInt("", "maxIt", "Max. number of Picard iterations or time steps", maxIt);
+    cmd.addInt("", "picardIt", "Max. number of inner Picard iterations for unsteady problem", picardIt);
+    cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
+    cmd.addReal("", "timeStep", "Time discretization step for unsteady problem", timeStep);
+    cmd.addReal("", "tol", "Stopping tolerance", tol);
+    cmd.addReal("", "picardTol", "Tolerance for inner Picard iteration for unsteady problem", picardTol);
+    cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
+    cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
+    cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
+    cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
+
+    cmd.addSwitch("quiet", "Supress (some) terminal output", quiet);
+    cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
+    cmd.addSwitch("plotMesh", "Plot the computational mesh", plotMesh);
+    cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
+    cmd.addSwitch("animation", "Plot animation of the unsteady problem", animation);
+    cmd.addInt("", "animStep", "Number of iterations between screenshots for animation (used when animation = true)", animStep);
+
+    try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
+
+    if (!inputFile.empty())
+        geo = 0;
+
+    if ( !(steady || steadyIt || unsteady || unsteadyIt) )
+        gsWarn << "All computation flags set to false - nothing will be computed.\nPlease select at least one of the flags: --steady, --steadyIt, --unsteady, --unsteadyIt\n\n";
+
+    // ========================================= Define problem (geometry, BCs, rhs) ========================================= 
+    
+    gsMultiPatch<> patches;
+    gsBoundaryConditions<> bcInfo;
+    gsFunctionExpr<> f; // external force
+
+    std::string fn, geoStr;
+
+    switch(geo)
+    {
+        case 0:
+            break; // inputFile is given from cmd
+        
+        default:
+            gsWarn << "Unknown geometry ID, using backward-facing step.\n";
+            geo = 1;
+
+        case 1:
+            geoStr = "BFS" + util::to_string(dim) + "D";
+            fn = geoStr + "_problem.xml";
+            inputFile = fn;
+            break;
+
+        case 2:
+            geoStr = "LDC" + util::to_string(dim) + "D";
+            fn = geoStr + "_problem.xml";
+            inputFile = fn;
+            break;
+
+        case 3:
+            if (dim == 3)
+                gsWarn << "Geometry 3 is only 2D!\n";
+
+            geoStr = "profile2D";
+            inputFile = geoStr + "_problem.xml";
+            break;
+            
+        case 4:
+            if (dim == 3)
+                gsWarn << "Flapping beam geometry is only 2D!\n";
+                
+            geoStr = "flappingBeam";
+            inputFile = geoStr + "_flow.xml";
+            break;
+    }
+
+    gsInfo << "Reading problem definition from file:\n" << inputFile << "\n\n";
+
+    std::string path = gsFileManager::find(inputFile);
+    if ( path.empty() )
+    {
+        gsWarn<<"Input file not found, quitting.\n";
+        return 1;
+    }
+
+    gsFileData<> fd(inputFile);
+    fd.getId(7, patches);   // id=0: multipatch domain
+    fd.getId(1, f);         // id=1: source function
+    fd.getId(2, bcInfo);    // id=2: boundary conditions
+
+    gsInfo << "Solving Navier-Stokes problem in " << geoStr << " domain.\n";
+    gsInfo << patches;
+    gsInfo << "viscosity = " << viscosity << "\n";
+    gsInfo << "source function = " << f << "\n";
+
+    // ========================================= Define basis ========================================= 
+
+    // Define discretization space by refining the basis of the geometry
+    gsMultiBasis<> basis(patches);
+    basis.degreeElevate(numElevate);
+
+    switch(geo)
+    {
+        case 0:
+            for (int r = 0; r < numRefine; ++r)
+                basis.uniformRefine();
+            break;
+
+        case 1:
+        default:
+            refineBasis_step(basis, numRefine, 0, wallRefine, 0, 0, dim, 8.0, 2.0, 2.0); // 8, 2, 2 are dimensions of the domain in the input xml file
+            break;
+
+        case 2:
+            refineBasis_cavity(basis, numRefine, wallRefine, dim);
+            break;
+
+        case 3:
+            refineBasis_profile2D(basis, numRefine, wallRefine, leadRefine);
+            break;
+            
+        case 4:
+            // refine the flapping beam appropriately
+            for (int r = 0; r < numRefine; ++r)
+                basis.uniformRefine();
+            break;
+    }    
+
+    std::vector< gsMultiBasis<> >  discreteBases;
+    discreteBases.push_back(basis); // basis for velocity
+    discreteBases.push_back(basis); // basis for pressure
+    discreteBases[0].degreeElevate(1); // elevate the velocity space (Taylor-Hood element type)
+
+    // ========================================= Solve ========================================= 
+
+    gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
+    gsFlowSolverParams<real_t> params(NSpde, discreteBases);
+    params.options().setSwitch("quiet", quiet);
+    params.options().setString("assemb.loop", matFormation);
+
+    gsOptionList solveOpt;
+    solveOpt.addInt("geo", "", geo);
+    solveOpt.addInt("maxIt", "", maxIt);
+    solveOpt.addInt("plotPts", "", plotPts);
+    solveOpt.addInt("animStep", "", animStep);
+    solveOpt.addInt("nonlin.maxIt", "", picardIt);
+    solveOpt.addReal("tol", "", tol);
+    solveOpt.addReal("picardTol", "", picardTol);
+    solveOpt.addSwitch("plot", "", plot);
+    solveOpt.addSwitch("animation", "", animation);
+    solveOpt.addSwitch("plotMesh", "", plotMesh);
+    solveOpt.addSwitch("stokesInit", "", stokesInit);
+    solveOpt.addString("id", "", "");
+
+    if (steady)
+    {
+        solveOpt.setString("id", "steady");
+        params.options().setString("lin.solver", "direct");
+
+        gsINSSolverSteady<real_t, ColMajor> NSsolver(params);
+
+        gsInfo << "\n----------\n";
+        gsInfo << "Solving the steady problem with direct linear solver.\n";
+
+        solveProblem(NSsolver, solveOpt, geo);
+
+        // example of flow rate computation
+        if (geo == 1)
+        {
+            std::vector<std::pair<int, boxSide> > bndOut;
+            bndOut.push_back(std::make_pair(0, boundary::east));
+            bndOut.push_back(std::make_pair(1, boundary::east));
+            gsField<> velocity = NSsolver.constructSolution(0);
+            gsFlowBndEvaluator_flowRate<real_t> flowRateEval(params, bndOut);
+            flowRateEval.setVelocityField(velocity);
+            flowRateEval.evaluate();
+            gsInfo << "bndOut flow rate = " << flowRateEval.getValue() << "\n";
+        }
+    }
+
+    if (steadyIt)
+    {
+        solveOpt.setString("id", "steadyIt");
+        params.options().setString("lin.solver", "iter");
+        params.options().setInt("lin.maxIt", linIt);
+        params.options().setReal("lin.tol", linTol);
+        params.options().setString("lin.precType", precond);
+
+        gsINSSolverSteady<real_t, ColMajor > NSsolver(params);
+
+        gsInfo << "\n----------\n";
+        gsInfo << "Solving the steady problem with preconditioned GMRES as linear solver.\n";
+        gsInfo << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
+
+        solveProblem(NSsolver, solveOpt, geo);
+
+        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver() );
+        reportLinIterations(linSolverPtr);
+    }
+
+    if (unsteady)
+    {
+        solveOpt.setString("id", "unsteady");
+        params.options().setReal("timeStep", timeStep);
+        params.options().setInt("nonlin.maxIt", picardIt);
+        params.options().setReal("nonlin.tol", picardTol);
+        params.options().setString("lin.solver", "direct");
+
+        gsINSSolverUnsteady<real_t, ColMajor> NSsolver(params);
+
+        gsInfo << "\n----------\n";
+        gsInfo << "Solving the unsteady problem with direct linear solver.\n";
+
+        solveProblem(NSsolver, solveOpt, geo);
+    }
+
+    if (unsteadyIt)
+    {
+        solveOpt.setString("id", "unsteadyIt");
+        params.options().setReal("timeStep", timeStep);
+        params.options().setInt("nonlin.maxIt", picardIt);
+        params.options().setReal("nonlin.tol", picardTol);
+        params.options().setString("lin.solver", "iter");
+        params.options().setInt("lin.maxIt", linIt);
+        params.options().setReal("lin.tol", linTol);
+        params.options().setString("lin.precType", precond);
+        // params.precOptions().setReal("gamma", 10); // parameter for AL preconditioner
+
+        gsINSSolverUnsteady<real_t, ColMajor > NSsolver(params);
+
+        gsInfo << "\n----------\n";
+        gsInfo << "Solving the unsteady problem with preconditioned GMRES as linear solver.\n";
+        gsInfo << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
+
+        solveProblem(NSsolver, solveOpt, geo);
+        
+        gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* linSolverPtr = dynamic_cast<gsFlowLinSystSolver_iter<real_t, ColMajor, gsGMRes<> >* >( NSsolver.getLinSolver() );
+        reportLinIterations(linSolverPtr);
+    }
+
+    return 0; 
+}
+
+// ... 然后是 solveProblem 的定义 ...
+template<class T, int MatOrder>
+void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
+{
+    gsStopwatch clock;
+
+    // ------------------------------------
+    // prepare strings for output filenames
+
+    bool plot = opt.getSwitch("plot");
+    std::string geoStr = "";
+    std::string id = opt.getString("id");
+    if (plot)
+    {
+        index_t dim = NSsolver.getParams()->getPde().domain().geoDim();
+        std::string dimStr = util::to_string(dim) + "D";
+
+        switch(opt.getInt("geo"))
+        {
+            case 0:
+                geoStr = "customGeo";
+                break;
+            case 1:
+                geoStr = "BFS" + dimStr;
+                break;
+            case 2:
+                geoStr = "LDC" + dimStr;
+                break;
+            case 3:
+                geoStr = "profile2D";
+                break;
+            case 4:
+                geoStr = "flapping_beam" + dimStr;
+                break;
+            default:
+                // 如果没有匹配的几何体ID，使用一个通用名称
+                geoStr = "geo" + util::to_string(opt.getInt("geo")) + "_" + dimStr;
+                break;
+        }
+    }
+
+    // ------------------------------------
+    // solve problem
+
+    gsInfo << "\ninitialization...\n";
+    NSsolver.initialize();
+
+    gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
+
+    gsINSSolverUnsteady<T, MatOrder>* pSolver = dynamic_cast<gsINSSolverUnsteady<T, MatOrder>*>(&NSsolver);
+
+    
+    if (pSolver)
+    {
+        if (opt.getSwitch("stokesInit"))
+            pSolver->solveStokes();
+        if (opt.getSwitch("animation"))
+        {
+            pSolver->solveWithAnimation(opt.getInt("maxIt"), opt.getInt("animStep"), 
+                                        geoStr + "_" + id, opt.getReal("tol"), opt.getInt("plotPts"));
+        }
+        else
+        {
+            // create ParaView files for time step collection
+            std::string fileNameU = geoStr + "_" + id + "_velocity_animation.pvd";
+            std::ofstream fileU(fileNameU.c_str());
+            GISMO_ASSERT(fileU.is_open(), "Error creating " << fileNameU);
+
+            std::string fileNameP = geoStr + "_" + id + "_pressure_animation.pvd";
+            std::ofstream fileP(fileNameP.c_str());
+            GISMO_ASSERT(fileP.is_open(), "Error creating " << fileNameP);
+
+            // use the existing functions in gsFlowUtils.h
+            gismo::startAnimationFile(fileU);
+            gismo::startAnimationFile(fileP);
+            
+            // determine the animation step
+            int animStep = 5; 
+            try {
+                animStep = opt.getInt("animStep");
+            } catch (...) {
+                gsInfo << "Using default animation step: " << animStep << "\n";
+            }
+            
+            // save the initial state
+            if (opt.getSwitch("plot"))
+            {
+                gsField<T> velocity = pSolver->constructSolution(0);
+                gsField<T> pressure = pSolver->constructSolution(1);
+                
+                std::string velocityBaseName = geoStr + "_" + id + "_velocity_step0";
+                std::string pressureBaseName = geoStr + "_" + id + "_pressure_step0";
+                
+                gsWriteParaview<>(velocity, velocityBaseName, opt.getInt("plotPts"), opt.getSwitch("plotMesh"));
+                gsWriteParaview<>(pressure, pressureBaseName, opt.getInt("plotPts"));
+                
+                // add references to the collection file
+                int numPatches = NSsolver.getParams()->getPde().patches().nPatches();
+                for (int p = 0; p < numPatches; p++)
+                {
+                    fileU << "<DataSet timestep=\"0\" part=\"" << p 
+                          << "\" file=\"" << velocityBaseName << p << ".vts\"/>\n";
+                    fileP << "<DataSet timestep=\"0\" part=\"" << p 
+                          << "\" file=\"" << pressureBaseName << p << ".vts\"/>\n";
+                }
+            }
+            
+            // create temporary variables to store the previous solution
+            gsVector<T> prevVelocityCoefs;
+            gsVector<T> prevPressureCoefs;
+            
+            // get the initial coefficients
+            if (opt.getSwitch("stokesInit")) {
+                prevVelocityCoefs = pSolver->solutionCoefs(0);
+                prevPressureCoefs = pSolver->solutionCoefs(1);
+            }
+
+            std::vector<FluidInterface> interfaces = {
+                                {3, boundary::south},
+                                {4, boundary::north},
+                                {5, boundary::west},
+                            };
+            
+            // 初始化结构求解器（只在flapping beam案例中）
+            gsElasticityAssembler<T>* elasticityAssembler = nullptr;
+            gsMassAssembler<T>* massAssembler = nullptr;
+            gsElTimeIntegrator<T>* solidSolver = nullptr;
+            gsMultiPatch<T> solidGeometry;
+            gsMultiPatch<T> solidDisplacement;
+            gsMultiBasis<T> solidBasis; // 保存基函数
+            gsFunctionExpr<T>* pressureLoadFunc = nullptr; // 用于更新的压力载荷函数
+            
+            if (opt.getInt("geo") == 4) // flapping beam case
+            {
+                // 读取梁的几何
+                std::string beamFile = gsFileManager::find("flappingBeam_beam.xml");
+                gsInfo << "Beam file: " << beamFile << "\n";
+                if (!beamFile.empty()) {
+                    gsFileData<> fd(beamFile);
+                    gsInfo << "Reading beam geometry...\n";
+                    fd.dump();  // 打印文件内容
+                    fd.getFirst<gsMultiPatch<>>(solidGeometry); // 使用getFirst而不是getId
+                    
+                    // 创建基函数
+                    solidBasis = gsMultiBasis<T>(solidGeometry);
+                    int numRefineStruct = 2; // 使用与流体相同的细化级别
+                    for (int r = 0; r < numRefineStruct; ++r)
+                        solidBasis.uniformRefine();
+                    
+                    // 边界条件：梁的左端固定
+                    gsBoundaryConditions<T> solidBC;
+                    solidBC.addCondition(0, boundary::west, condition_type::dirichlet, 0, 0);
+                    solidBC.addCondition(0, boundary::west, condition_type::dirichlet, 0, 1);
+                    
+                    // 外力（初始为0）
+                    gsConstantFunction<T> bodyForce(0., 0., 2);
+                    
+                    // 创建可更新的压力载荷函数（初始为小值）
+                    pressureLoadFunc = new gsFunctionExpr<T>("-0.01", "0", 2);  // 很小的初始力
+                    solidBC.addCondition(0, boundary::east, condition_type::neumann, pressureLoadFunc);
+                    
+                    // 创建弹性求解器
+                    elasticityAssembler = new gsElasticityAssembler<T>(solidGeometry, solidBasis, solidBC, bodyForce);
+                    elasticityAssembler->options().setReal("YoungsModulus", 1.4e6);
+                    elasticityAssembler->options().setReal("PoissonsRatio", 0.4);
+                    elasticityAssembler->options().setInt("MaterialLaw", material_law::saint_venant_kirchhoff);
+                    
+                    // 创建质量求解器
+                    massAssembler = new gsMassAssembler<T>(solidGeometry, solidBasis, solidBC, bodyForce);
+                    massAssembler->options().setReal("Density", 1.0e3);
+                    
+                    // 创建时间积分器
+                    solidSolver = new gsElTimeIntegrator<T>(*elasticityAssembler, *massAssembler);
+                    solidSolver->options().setInt("Scheme", time_integration::implicit_nonlinear);
+                    solidSolver->options().setReal("Beta", 0.25);
+                    solidSolver->options().setReal("Gamma", 0.5);
+                    
+                    gsInfo << "Initialized elasticity system with " << elasticityAssembler->numDofs() << " dofs.\n";
+                    
+                    // 初始化位移场
+                    // 初始化位移场为零
+                    solidDisplacement = solidGeometry;
+                    // 将位移设为0，但保持几何的控制点结构
+                    for (size_t p = 0; p < solidDisplacement.nPatches(); ++p) {
+                        gsMatrix<T> coefs = solidDisplacement.patch(p).coefs();
+                        coefs.setZero();
+                        solidDisplacement.patch(p).coefs() = coefs;
+                    }
+                }
+            }
+            
+            for (int i = 0; i < opt.getInt("maxIt"); ++i)
+            {
+                // 执行一个时间步
+                pSolver->nextIteration();
+                
+                // 验证求解器状态
+                GISMO_ASSERT(pSolver->getParams()->getPde().patches().nPatches() > 0, 
+                            "Solver has empty patches after nextIteration");
+                
+                // 获取当前解的系数
+                gsVector<T> currentVelocityCoefs = pSolver->solutionCoefs(0);
+                gsVector<T> currentPressureCoefs = pSolver->solutionCoefs(1);
+
+                // 移动边界 - 计算当前时间
+                T currentTime = (i + 1) * pSolver->getParams()->options().getReal("timeStep");
+                gsMultiPatch<T> currentPatches = pSolver->getParams()->getPde().patches();
+
+                // FSI耦合
+                if (solidSolver && opt.getInt("geo") == 4) 
+                {
+                    // 1. 计算流体对结构的力（简化版本：只考虑压力）
+                    gsMatrix<T> fluidForce(elasticityAssembler->numDofs(), 1);
+                    fluidForce.setZero();
+                    
+                    // 获取压力场
+                    gsField<T> pressureField = pSolver->constructSolution(1);
+                    
+                    // 简单估算：在梁的右边界施加平均压力
+                    // 实际应该通过积分计算准确的力
+                    T avgPressure = 0.0;
+                    gsMatrix<T> evalPt(2,1);
+                    evalPt << 1.0, 0.5; // 梁右端中点
+                    if (pressureField.nPieces() > 5) {
+                        gsMatrix<T> pVal = pressureField.value(evalPt, 5); // patch 5对应梁右侧
+                        avgPressure = pVal(0,0);
+                    }
+                    
+                    // 将压力转换为节点力（简化：只在x方向）
+                    // 实际应该通过有限元积分计算
+                    for (index_t j = 0; j < elasticityAssembler->numDofs()/2; ++j) {
+                        fluidForce(2*j, 0) = -avgPressure * 0.01; // 简化的力计算
+                    }
+                    
+                    // 2. 更新压力载荷并求解结构位移
+                    // 计算压力载荷的大小（使用更小的缩放因子）
+                    T forceX = -avgPressure * 0.0001; // 使用很小的缩放因子
+                    T forceY = 0.0;
+                    
+                    gsInfo << "施加的压力: " << avgPressure << ", 力: (" << forceX << ", " << forceY << ")\n";
+                    
+                    // 保存当前求解器状态
+                    gsMatrix<T> oldSolutionVector;
+                    gsMatrix<T> oldVelocityVector;
+                    if (i > 0) {  // 第一步没有旧解
+                        oldSolutionVector = solidSolver->solutionVector();
+                        oldVelocityVector = solidSolver->velocityVector();
+                    }
+                    
+                    // 更新压力载荷函数的值
+                    delete pressureLoadFunc;
+                    pressureLoadFunc = new gsFunctionExpr<T>(util::to_string(forceX), util::to_string(forceY), 2);
+                    
+                    // 重新创建边界条件
+                    gsBoundaryConditions<T> newBC;
+                    newBC.addCondition(0, boundary::west, condition_type::dirichlet, 0, 0);
+                    newBC.addCondition(0, boundary::west, condition_type::dirichlet, 0, 1);
+                    newBC.addCondition(0, boundary::east, condition_type::neumann, pressureLoadFunc);
+                    
+                    // 重新创建装配器
+                    gsConstantFunction<T> bodyForce(0., 0., 2);
+                    delete elasticityAssembler;
+                    elasticityAssembler = new gsElasticityAssembler<T>(solidGeometry, solidBasis, newBC, bodyForce);
+                    elasticityAssembler->options().setReal("YoungsModulus", 1.4e6);
+                    elasticityAssembler->options().setReal("PoissonsRatio", 0.4);
+                    elasticityAssembler->options().setInt("MaterialLaw", material_law::saint_venant_kirchhoff);
+                    
+                    // 重新创建质量装配器
+                    delete massAssembler;
+                    massAssembler = new gsMassAssembler<T>(solidGeometry, solidBasis, newBC, bodyForce);
+                    massAssembler->options().setReal("Density", 1.0e3);
+                    
+                    // 重新创建时间积分器
+                    delete solidSolver;
+                    solidSolver = new gsElTimeIntegrator<T>(*elasticityAssembler, *massAssembler);
+                    solidSolver->options().setInt("Scheme", time_integration::implicit_nonlinear);
+                    solidSolver->options().setReal("Beta", 0.25);
+                    solidSolver->options().setReal("Gamma", 0.5);
+                    
+                    // 恢复旧的状态（如果存在）
+                    if (i > 0 && oldSolutionVector.size() > 0) {
+                        // 提取位移部分（solutionVector可能包含位移和压力）
+                        index_t dispDofs = elasticityAssembler->numDofs();
+                        gsMatrix<T> oldDisplacement = oldSolutionVector.topRows(dispDofs);
+                        solidSolver->setDisplacementVector(oldDisplacement);
+                        solidSolver->setVelocityVector(oldVelocityVector);
+                    }
+                    
+                    // 求解固体问题
+                    gsInfo << "求解固体时间步...\n";
+                    solidSolver->makeTimeStep(pSolver->getParams()->options().getReal("timeStep"));
+                    
+                    // 构造位移场
+                    solidSolver->constructSolution(solidDisplacement);
+                    
+                    // 输出位移信息
+                    T maxDisp = solidDisplacement.patch(0).coefs().cwiseAbs().maxCoeff();
+                    gsInfo << "固体最大位移: " << maxDisp << "\n";
+                    
+                    // 3. 使用固体位移更新流体边界
+                    updateGeometryBoundaryFromSolid(currentPatches, solidDisplacement, interfaces);
+                    
+                    // 4. 构造速度场
+                    // 使用与构造位移相同的方法来构造速度场
+                    gsMultiPatch<T> solidVelocity = solidGeometry; // 复制几何结构
+                    
+                    // 获取速度向量
+                    gsMatrix<T> velVector = solidSolver->velocityVector();
+                    
+                    // 使用elasticityAssembler的constructSolution方法来构造速度场
+                    // 这与constructSolution(displacement)的原理相同
+                    elasticityAssembler->constructSolution(velVector, 
+                                                          elasticityAssembler->allFixedDofs(), 
+                                                          solidVelocity);
+                    
+                    // 输出速度信息
+                    T maxVel = solidVelocity.patch(0).coefs().cwiseAbs().maxCoeff();
+                    gsInfo << "固体最大速度: " << maxVel << "\n";
+                    
+                    updateFluidBoundaryVelocityFromSolid(currentPatches, solidVelocity, interfaces);
+                }
+
+                // 更新网格和求解器
+                resetSolverWithNewMesh(pSolver, currentPatches);
+                
+                // // 记录是否进行了细化
+                // bool meshRefined = false;
+                
+                
+                // Calculate solution change
+                T relChange = 0;
+                if (i > 0) // Only calculate change when mesh wasn't refined
+                {
+                    // Make sure dimensions match
+                    if (currentVelocityCoefs.size() == prevVelocityCoefs.size() && 
+                        currentPressureCoefs.size() == prevPressureCoefs.size())
+                    {
+                        // Calculate sum of squares of velocity and pressure changes
+                        gsVector<T> velocityDiff = currentVelocityCoefs - prevVelocityCoefs;
+                        gsVector<T> pressureDiff = currentPressureCoefs - prevPressureCoefs;
+                        
+                        T velocityNorm = velocityDiff.norm();
+                        T pressureNorm = pressureDiff.norm();
+                        T totalNorm = std::sqrt(velocityNorm*velocityNorm + pressureNorm*pressureNorm);
+                        
+                        T prevNorm = std::sqrt(prevVelocityCoefs.squaredNorm() + prevPressureCoefs.squaredNorm());
+                        if (prevNorm > 1e-10)
+                            relChange = totalNorm / prevNorm;
+                        else
+                            relChange = totalNorm;
+                        
+                        // gsInfo << "Time step " << i+1 << " solution change: " << relChange << "\n";
+                    }
+                    else
+                    {
+                        gsInfo << "Skip computing solution change due to dimension mismatch after mesh refinement.\n";
+                    }
+                }
+                
+                // Always update previous solution to ensure we can calculate change in next iteration
+                prevVelocityCoefs = currentVelocityCoefs;
+                prevPressureCoefs = currentPressureCoefs;
+                
+                if (opt.getSwitch("plot"))
+                {
+                    // Use the latest solution fields
+                    try {
+                        gsField<T> velocity = pSolver->constructSolution(0);
+                        gsField<T> pressure = pSolver->constructSolution(1);
+                        
+                        std::string velocityBaseName = geoStr + "_" + id + "_velocity_step" + util::to_string(i+1);
+                        std::string pressureBaseName = geoStr + "_" + id + "_pressure_step" + util::to_string(i+1);
+                        
+                        gsWriteParaview<>(velocity, velocityBaseName, opt.getInt("plotPts"), opt.getSwitch("plotMesh"));
+                        gsWriteParaview<>(pressure, pressureBaseName, opt.getInt("plotPts"));
+                        
+                        // Add references to the collection file
+                        int numPatches = pSolver->getParams()->getPde().patches().nPatches();
+                        for (int p = 0; p < numPatches; p++)
+                        {
+                            fileU << "<DataSet timestep=\"" << i+1 << "\" part=\"" << p 
+                                  << "\" file=\"" << velocityBaseName << p << ".vts\"/>\n";
+                            fileP << "<DataSet timestep=\"" << i+1 << "\" part=\"" << p 
+                                  << "\" file=\"" << pressureBaseName << p << ".vts\"/>\n";
+                        }
+                    } catch (const std::exception& e) {
+                        gsInfo << "Error " << e.what() << "\n";
+                    }
+                }
+            }
+            
+            // Close ParaView collection files
+            gismo::endAnimationFile(fileU);
+            gismo::endAnimationFile(fileP);
+            
+            gsInfo << "\nSimulation completed " << opt.getInt("maxIt") << " time steps.\n";
+            gsInfo << "ParaView animation files created: \n";
+            gsInfo << "  " << fileNameU << "\n";
+            gsInfo << "  " << fileNameP << "\n";
+        }
+    }
+    else
+    {
+        NSsolver.solve(opt.getInt("maxIt"), opt.getReal("tol"), 0);
+    }
+
+    real_t totalT = clock.stop();
+
+    gsInfo << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
+    gsInfo << "Solve time:" << NSsolver.getSolveTime() << "\n";
+    gsInfo << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
+    gsInfo << "Total solveProblem time:" << totalT << "\n\n";
+
+    // ------------------------------------
+    // plot
+
+    if (opt.getSwitch("plot")) 
+    {
+        try {
+            gsField<> velocity = NSsolver.constructSolution(0);
+            gsField<> pressure = NSsolver.constructSolution(1);
+ 
+            int plotPts = opt.getInt("plotPts");
+ 
+            gsInfo << "Plotting in Paraview...\n";
+            gsWriteParaview<>(velocity, geoStr + "_" + id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
+            gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
+            // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
+        } catch (const std::exception &e) {
+            gsInfo << "Error constructing solution for plotting: " << e.what() << "\n";
+        }
+    }
+}
+
+template<class T, int MatOrder>
+void resetSolverWithNewMesh(gsINSSolverUnsteady<T, MatOrder>*& solver,
+                           const gsMultiPatch<T>& newPatches)
+{
+    // 1. Save current solver parameters
+    gsFlowSolverParams<T>* currentParams = solver->getParams().get();
+    gsOptionList solverOptions = currentParams->options();
+    T viscosity = currentParams->getPde().viscosity();
+    const gsFunction<T>* f = currentParams->getPde().rhs();
+    gsBoundaryConditions<> bcInfo = currentParams->getPde().bc();
+
+    // 2. Save current solution (as fields)
+    gsField<T> velocityFieldOld = solver->constructSolution(0);
+    gsField<T> pressureFieldOld = solver->constructSolution(1);
+    
+    gsInfo << "Current dofs: " << solver->numDofs() << "\n";
+    
+    // Create deep copy of new patches to ensure their lifecycle - this is a key modification
+    gsMultiPatch<T>* persistentPatches = new gsMultiPatch<T>(newPatches);
+    
+    // 3. Create new basis functions based on new geometry
+    gsMultiBasis<T> basis(*persistentPatches);
+    
+    // Optional: Match the degree of original basis functions
+    const std::vector<gsMultiBasis<T>> currentBases = solver->getAssembler()->getBases();
+    if (!currentBases.empty() && currentBases[0].nBases() > 0) {
+        for (size_t p = 0; p < basis.nBases() && p < currentBases[0].nBases(); ++p) {
+            basis.basis(p).setDegree(currentBases[0].basis(p).degree(0));
+        }
+    }
+    
+    // Create basis function vector
+    std::vector<gsMultiBasis<T>> newBases;
+    newBases.push_back(basis); // Basis for velocity
+    newBases.push_back(basis); // Basis for pressure
+    
+    // Elevate degree of velocity space (Taylor-Hood element type)
+    // newBases[0].degreeElevate(1);
+    
+    // 4. Create new PDE and solver parameters
+    // Use persistent patches to create PDE
+    gsBoundaryConditions<> updatedBcInfo = bcInfo;
+
+    // 检查bcInfo中的条件总数
+    for (size_t i = 0; i < updatedBcInfo.size(); ++i)
+    {
+        // 无法直接使用conditionType或condition(i).type()方法
+        // 跳过边界条件检查，它们会自动映射到新几何体
+        // 这段注释的代码不会影响程序功能
+        /*
+        if (updatedBcInfo.conditionType(i) == condition_type::dirichlet)
+        {
+            // 保持边界条件类型，但可能需要根据新几何体调整位置
+        }
+        */
+    }
+
+    gsNavStokesPde<T>* persistentPde = new gsNavStokesPde<T>(*persistentPatches, updatedBcInfo, f, viscosity);
+    
+    // Create persistent solver parameters - these objects need to persist
+    typename gsFlowSolverParams<T>::Ptr newParamsPtr =
+        std::make_shared<gsFlowSolverParams<T>>(*persistentPde, newBases);
+    newParamsPtr->options() = solverOptions;
+    
+    // 5. Create new solver instance - fix truncation issue here
+    auto* newSolver = new gsINSSolverUnsteady<T, MatOrder>(newParamsPtr);
+    
+    // Initialize new solver
+    newSolver->initialize();
+    
+    // Print number of DOFs and verify basis/geometry consistency
+    gsInfo << "New dofs: " << newSolver->numDofs() << "\n";
+    gsInfo << "New patches: " << persistentPatches->nPatches() << "\n";
+    gsInfo << "New bases[0] pieces: " << newSolver->getAssembler()->getBases()[0].nBases() << "\n";
+    gsInfo << "New bases[1] pieces: " << newSolver->getAssembler()->getBases()[1].nBases() << "\n";
+
+    // Ensure consistency
+    GISMO_ASSERT(newSolver->getAssembler()->getBases()[0].nBases() == persistentPatches->nPatches(), 
+                 "Inconsistency between bases[0] and patches");
+    GISMO_ASSERT(newSolver->getAssembler()->getBases()[1].nBases() == persistentPatches->nPatches(), 
+                 "Inconsistency between bases[1] and patches");
+
+    // 6. Project old solution onto new mesh
+    transferSolutionToNewMesh(newSolver, velocityFieldOld, pressureFieldOld);
+    
+    // 7. Verify new solver state
+    gsInfo << "Verifying new solver state...\n";
+    gsInfo << "New solver patch count: " << newSolver->getParams()->getPde().patches().nPatches() << "\n";
+    GISMO_ASSERT(newSolver->getParams()->getPde().patches().nPatches() > 0, 
+                "New solver has empty patches");
+    
+    // 8. Replace solver, maintaining pointer ownership
+    gsINSSolverUnsteady<T, MatOrder>* oldSolver = solver;
+    solver = newSolver;
+    
+    // 9. Final verification
+    gsInfo << "Final verification, solver patch count: " << solver->getParams()->getPde().patches().nPatches() << "\n";
+    GISMO_ASSERT(solver->getParams()->getPde().patches().nPatches() > 0, 
+                "Final solver has empty patches");
+    
+    // Note: We don't delete oldSolver in case it's externally managed
+    // We also don't delete persistentPatches and persistentPde as they're managed by the solver
+}
+
+template<class T, int MatOrder>
+void transferSolutionToNewMesh(gsINSSolverUnsteady<T, MatOrder>* solver,
+                              const gsField<T>& velocityField,
+                              const gsField<T>& pressureField)
+{
+    // 获取新的基函数和补丁
+    const std::vector<gsMultiBasis<T>>& newBases = solver->getAssembler()->getBases();
+    const gsMultiPatch<T>& newPatches = solver->getParams()->getPde().patches();
+
+    // 添加调试信息，检查一致性
+    gsDebugVar(newPatches.nPatches());
+    gsDebugVar(newBases.size());
+    for (size_t i = 0; i < newBases.size(); ++i) {
+        gsDebugVar(newBases[i].nBases());
+    }
+    
+    // 获取目标维度和自由度数量
+    const index_t vDim = velocityField.function(0).targetDim();
+    const index_t fullUdofs = solver->getAssembler()->getUdofs();
+    const index_t tarDim = solver->getParams()->getPde().domain().geoDim();
+    const index_t pShift = tarDim * fullUdofs;
+    
+    // 创建与setSolutionCoefs期望的尺寸匹配的矩阵
+    gsMatrix<T> newVelocityCoefs(pShift, 1);
+    gsMatrix<T> newPressureCoefs(solver->numDofs() - pShift, 1);
+    
+    newVelocityCoefs.setZero();
+    newPressureCoefs.setZero();
+    
+    // 对速度场进行准插值
+    gsQuasiInterpolate<T> quasiInterp;
+    
+    // 获取映射器
+    const std::vector<gsDofMapper>& mappers = solver->getAssembler()->getMappers();
+    
+    // 对每个patch进行插值
+    for (size_t p = 0; p < newPatches.nPatches(); ++p)
+    {
+        if (p >= newBases[0].nBases()) {
+            gsInfo << "Invalid patch index " << p << " for velocity basis. Skipping." << "\n";
+            continue;
+        }
+        
+        if (p >= velocityField.nPatches()) {
+            gsInfo << "Skipping velocity interpolation for patch " << p << " as it does not exist in the old field.\n";
+            continue;
+        }
+
+        // 获取当前patch的基函数
+        const gsBasis<T>& vBasis = newBases[0].basis(p);
+        
+        for (size_t i = 0; i < vBasis.size(); ++i)
+        {
+            try {
+                // 对每个基函数进行插值
+                gsMatrix<T> coef = quasiInterp.localIntpl(vBasis, velocityField.function(p), i);
+                
+                // 将系数存储到全局系数矩阵中 - 使用映射器获取全局索引
+                if (mappers[0].is_free(i, p)) {
+                    index_t globalIndex = mappers[0].index(i, p);
+                    
+                    for (index_t d = 0; d < vDim; ++d) {
+                        newVelocityCoefs(globalIndex + d * fullUdofs, 0) = coef(0, d);
+                    }
+                }
+            } catch (const std::exception& e) {
+                gsInfo << "Velocity field interpolation error: " << e.what() << " on patch " << p << " basis function " << i << "\n";
+            }
+        }
+    }
+    
+    // 插值压力场
+    for (size_t p = 0; p < newPatches.nPatches(); ++p)
+    {
+        if (p >= newBases[1].nBases()) {
+            gsInfo << "Invalid patch index " << p << " for pressure basis. Skipping." << "\n";
+            continue;
+        }
+        
+        if (p >= pressureField.nPatches()) {
+            gsInfo << "Skipping pressure interpolation for patch " << p << " as it does not exist in the old field.\n";
+            continue;
+        }
+        
+        // 获取当前patch的基函数
+        const gsBasis<T>& pBasis = newBases[1].basis(p);
+        
+        for (size_t i = 0; i < pBasis.size(); ++i)
+        {
+            try {
+                // 对每个基函数进行插值
+                gsMatrix<T> coef = quasiInterp.localIntpl(pBasis, pressureField.function(p), i);
+                
+                // 将系数存储到全局系数矩阵中 - 使用映射器获取全局索引
+                if (mappers[1].is_free(i, p)) {
+                    index_t globalIndex = mappers[1].index(i, p);
+                    newPressureCoefs(globalIndex, 0) = coef(0, 0);
+                }
+            } catch (const std::exception& e) {
+                gsInfo << "Pressure field interpolation error: " << e.what() << " on patch " << p << " basis function " << i << "\n";
+            }
+        }
+    }
+    
+    // 将投影后的系数设置为新解
+    solver->setSolutionCoefs(newVelocityCoefs, 0);
+    solver->setSolutionCoefs(newPressureCoefs, 1);
+
+    gsDebugVar(newVelocityCoefs.size());
+    gsDebugVar(newPressureCoefs.size());
+    // 删除或注释掉以下行，避免在此时构建解
+    // gsField<T> velocityResult = solver->constructSolution(0);
+    // gsField<T> pressureResult = solver->constructSolution(1);
+    // gsWriteParaview<>(velocityResult, "velocityResult", 1000, false);
+    // gsWriteParaview<>(pressureResult, "pressureResult", 1000, false);
+
+    gsInfo << "Projected solution to new mesh\n";
+}
+
+template<class T>
+void updateGeometryBoundary(gsMultiPatch<T>& patches, T time,
+                           const std::vector<FluidInterface>& interfaces)
+{
+    // 梁的振动参数
+    const T amplitude = 0.01;     // 减小振幅以避免过大变形
+    const T frequency = 1.0;      // 降低频率使运动更平滑
+    const T phase = 0.0;          // 相位保持不变
+    
+    // 计算当前位移
+    T displacement = amplitude * std::sin(frequency * time + phase);
+    
+    // 在此为flapping beam几何体寻找梁边界所在的patch和side
+    // 假设patch 1的side 2和3包含梁的边界
+    for (const FluidInterface& iface : interfaces)
+    {
+        gsGeometry<T>& geom = patches.patch(iface.patchIdx);
+        
+        // 获取控制点
+        gsMatrix<T> coefs = geom.coefs();
+        
+            // 移动靠近梁尖端的控制点
+            for (index_t i = 0; i < coefs.rows(); ++i)
+            {
+                // 在y方向上添加位移，并根据x位置缩放(模拟梁的弯曲)
+                // 距离固定端越远，移动越大
+                T xNorm = coefs(i, 0) / 0.4;  // 假设梁长约为0.4
+                
+                if (xNorm > 0.2)  // 只移动梁的一部分
+                {
+                    T scaleFactor = 2*(xNorm - 0.2) / 0.8;  // 线性增加
+                    coefs(i, 1) += displacement * scaleFactor * scaleFactor;
+                }
+            }
+
+        
+        // 更新几何体的控制点
+        geom.coefs() = coefs;
+    }
+    
+    // 确保更新了接口和边界定义
+    patches.computeTopology();
+}
+
+template<class T>
+void updateFluidBoundaryVelocityFromSolid(gsMultiPatch<T>& patches,
+                                          const gsMultiPatch<T>& solidVelocity,
+                                          const std::vector<FluidInterface>& interfaces)
+{
+    // 获取固体速度场（只有一个patch - 梁）
+    const gsGeometry<T>& solidVelGeom = solidVelocity.patch(0);
+    
+    // 遍历所有流固界面
+    for (const FluidInterface& iface : interfaces)
+    {
+        gsGeometry<T>& fluidGeom = patches.patch(iface.patchIdx);
+        
+        // 获取该边界的基函数
+        const gsBasis<T>& basis = fluidGeom.basis();
+        gsMatrix<index_t> bndDofs = basis.boundary(iface.boundarySide);
+        
+        // 获取流体边界控制点
+        gsMatrix<T>& fluidCoefs = fluidGeom.coefs();
+        
+        // 创建一个存储边界速度的容器
+        gsMatrix<T> boundaryVelocities(2, bndDofs.cols()); // 2D速度场
+        
+        // 对每个边界控制点
+        for (index_t i = 0; i < bndDofs.cols(); ++i)
+        {
+            index_t idx = bndDofs(0, i);
+            
+            // 获取控制点的物理坐标
+            gsVector<T> physicalPt = fluidCoefs.row(idx).transpose();
+            
+            // 检查是否在梁的区域内（x=0.6, y在0.19到0.21之间）
+            if (std::abs(physicalPt(0) - 0.6) < 1e-6 && 
+                physicalPt(1) >= 0.19 && physicalPt(1) <= 0.21)
+            {
+                // 使用closestPointTo找到梁上最近点的参数坐标
+                gsVector<T> paramPt;
+                T dist = solidVelGeom.closestPointTo(physicalPt, paramPt, 1e-6);
+                
+                // 如果点确实在梁上（距离很小）
+                if (dist < 1e-6)
+                {
+                    // 评估该参数点处的速度
+                    gsMatrix<T> vel;
+                    solidVelGeom.eval_into(paramPt.transpose(), vel);
+                    
+                    // 存储边界速度
+                    boundaryVelocities(0, i) = vel(0, 0); // x方向速度
+                    boundaryVelocities(1, i) = vel(1, 0); // y方向速度
+                }
+                else
+                {
+                    // 如果不在梁上，设置为零速度
+                    boundaryVelocities(0, i) = 0.0;
+                    boundaryVelocities(1, i) = 0.0;
+                }
+            }
+            else
+            {
+                // 不在梁区域内，设置为零速度
+                boundaryVelocities(0, i) = 0.0;
+                boundaryVelocities(1, i) = 0.0;
+            }
+        }
+        
+        // 输出边界速度信息
+        T maxBndVel = boundaryVelocities.cwiseAbs().maxCoeff();
+        gsInfo << "界面 " << iface.patchIdx << " 最大边界速度: " << maxBndVel << "\n";
+    }
+    
+    // 注意：实际的边界条件更新需要在resetSolverWithNewMesh中处理
+    // 因为边界条件是PDE的一部分，需要重新创建求解器
+    gsInfo << "流体边界速度已计算，将在重置求解器时应用\n";
+}
+
+template<class T>
+void updateGeometryBoundaryFromSolid(gsMultiPatch<T>& patches, 
+                                     const gsMultiPatch<T>& solidDisplacement,
+                                     const std::vector<FluidInterface>& interfaces)
+{
+    // 获取固体位移场（只有一个patch - 梁）
+    const gsGeometry<T>& solidDispGeom = solidDisplacement.patch(0);
+    
+    // 遍历所有流固界面
+    for (const FluidInterface& iface : interfaces)
+    {
+        gsGeometry<T>& fluidGeom = patches.patch(iface.patchIdx);
+        
+        // 获取该边界的基函数
+        const gsBasis<T>& basis = fluidGeom.basis();
+        gsMatrix<index_t> bndDofs = basis.boundary(iface.boundarySide);
+        
+        // 获取流体边界控制点
+        gsMatrix<T>& fluidCoefs = fluidGeom.coefs();
+        
+        // 对每个边界控制点
+        for (index_t i = 0; i < bndDofs.cols(); ++i)
+        {
+            index_t idx = bndDofs(0, i);
+            
+            // 获取控制点的物理坐标
+            gsVector<T> physicalPt = fluidCoefs.row(idx).transpose();
+            
+            gsVector<T> paramPt;
+            T dist = solidDispGeom.closestPointTo(physicalPt, paramPt, 1e-6);
+                
+            // 如果点确实在梁上（距离很小）
+            if (dist < 1e-6)
+            {
+                    // 评估该参数点处的位移
+                    gsMatrix<T> disp;
+                    solidDispGeom.eval_into(paramPt.transpose(), disp);
+                    
+                    // 更新流体控制点
+                    fluidCoefs(idx, 0) += disp(0, 0); // x方向位移
+                    fluidCoefs(idx, 1) += disp(1, 0); // y方向位移
+                }
+            // }
+        }
+    }
+    
+    // 确保更新了接口和边界定义
+    patches.computeTopology();
+}
+
+template<class T>
+void updateFluidBoundaryVelocityFromSolid(gsMultiPatch<T>& patches,
+                                          const gsMultiPatch<T>& solidVelocity,
+                                          const std::vector<FluidInterface>& interfaces)
+{
+    // 获取固体速度场（只有一个patch - 梁）
+    const gsGeometry<T>& solidVelGeom = solidVelocity.patch(0);
+    
+    // 遍历所有流固界面
+    for (const FluidInterface& iface : interfaces)
+    {
+        gsGeometry<T>& fluidGeom = patches.patch(iface.patchIdx);
+        
+        // 获取该边界的基函数
+        const gsBasis<T>& basis = fluidGeom.basis();
+        gsMatrix<index_t> bndDofs = basis.boundary(iface.boundarySide);
+        
+        // 获取流体边界控制点
+        gsMatrix<T>& fluidCoefs = fluidGeom.coefs();
+        
+        // 创建一个存储边界速度的容器
+        gsMatrix<T> boundaryVelocities(2, bndDofs.cols()); // 2D速度场
+        
+        // 对每个边界控制点
+        for (index_t i = 0; i < bndDofs.cols(); ++i)
+        {
+            index_t idx = bndDofs(0, i);
+            
+            // 获取控制点的物理坐标
+            gsVector<T> physicalPt = fluidCoefs.row(idx).transpose();
+            
+            // 检查是否在梁的区域内（x=0.6, y在0.19到0.21之间）
+            if (std::abs(physicalPt(0) - 0.6) < 1e-6 && 
+                physicalPt(1) >= 0.19 && physicalPt(1) <= 0.21)
+            {
+                // 使用closestPointTo找到梁上最近点的参数坐标
+                gsVector<T> paramPt;
+                T dist = solidVelGeom.closestPointTo(physicalPt, paramPt, 1e-6);
+                
+                // 如果点确实在梁上（距离很小）
+                if (dist < 1e-6)
+                {
+                    // 评估该参数点处的速度
+                    gsMatrix<T> vel;
+                    solidVelGeom.eval_into(paramPt.transpose(), vel);
+                    
+                    // 存储边界速度
+                    boundaryVelocities(0, i) = vel(0, 0); // x方向速度
+                    boundaryVelocities(1, i) = vel(1, 0); // y方向速度
+                }
+                else
+                {
+                    // 如果不在梁上，设置为零速度
+                    boundaryVelocities(0, i) = 0.0;
+                    boundaryVelocities(1, i) = 0.0;
+                }
+            }
+            else
+            {
+                // 不在梁区域内，设置为零速度
+                boundaryVelocities(0, i) = 0.0;
+                boundaryVelocities(1, i) = 0.0;
+            }
+        }
+        
+        // 输出边界速度信息
+        T maxBndVel = boundaryVelocities.cwiseAbs().maxCoeff();
+        gsInfo << "界面 " << iface.patchIdx << " 最大边界速度: " << maxBndVel << "\n";
+    }
+    
+    // 注意：实际的边界条件更新需要在resetSolverWithNewMesh中处理
+    // 因为边界条件是PDE的一部分，需要重新创建求解器
+    gsInfo << "流体边界速度已计算，将在重置求解器时应用\n";
+}
