@@ -336,8 +336,8 @@ protected: // *** Base class members ***
     using Base::m_solveT;
     using Base::stopwatchStart;
     using Base::stopwatchStop;
-    // using Base::setupSolver;
-    // using Base::applySolver;
+    using Base::setupSolver;
+    using Base::applySolver;
 
 public: // *** Constructor/destructor ***
 

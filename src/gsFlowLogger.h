@@ -32,8 +32,8 @@ public: // *** Enums ***
 
 protected: // *** Class members ***
 
-    int m_rank;
     mode m_mode;
+    int m_rank;    
     std::unique_ptr<std::ofstream> m_file;
 
 

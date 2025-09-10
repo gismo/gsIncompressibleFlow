@@ -87,7 +87,7 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::localToGlobal(const std::vector<g
     m_paramsPtr->getMapper(m_trialUnkID).localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
 
     index_t numActTest = m_testFunActives.rows();
-    index_t numActShape = m_trialFunActives.rows();
+    // index_t numActShape = m_trialFunActives.rows();
 
     for (index_t i = 0; i < numActTest; ++i)
     {
