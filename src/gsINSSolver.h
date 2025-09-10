@@ -37,12 +37,10 @@ public:
 
 protected: // *** Base class members ***
 
+    using Base::m_paramsPtr;
     using Base::m_assemblerPtr;
     using Base::m_solution;
     using Base::m_iterationNumber;
-    using Base::m_outFile;
-    using Base::m_fileOutput;
-    using Base::m_dispOutput;
 
 
 public: // *** Constructor/destructor ***
@@ -165,9 +163,6 @@ protected: // *** Base class members ***
     using Base::m_iterationNumber;
     using Base::m_assemblerPtr;
     using Base::m_paramsPtr;
-    using Base::m_outFile;
-    using Base::m_fileOutput;
-    using Base::m_dispOutput;
 
 
 public: // *** Constructor/destructor ***

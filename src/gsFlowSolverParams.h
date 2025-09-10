@@ -16,6 +16,7 @@
 #include <gsIncompressibleFlow/src/gsNavStokesPde.h>
 #include <gsIncompressibleFlow/src/gsINSPreconditioners.h>
 #include <gsIncompressibleFlow/src/gsFlowPeriodicHelper.h>
+#include <gsIncompressibleFlow/src/gsFlowLogger.h>
 
 namespace gismo
 {
@@ -49,6 +50,7 @@ protected: // *** Class members ***
     gsAssemblerOptions              m_assembOpt;
     gsOptionList                    m_opt;
     gsOptionList                    m_precOpt;
+    typename gsFlowLogger::Ptr      m_logger;
 
     bool m_isBndSet;
     std::vector<std::pair<int, boxSide> > m_bndIn, m_bndOut, m_bndWall;
@@ -68,7 +70,7 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor of the object.
     /// @param pde an incompressible Navier-Stokes problem
     /// @param bases vector of discretization bases {velocity, pressure, (bases for turb. model, if needed)}
-    gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases)
+    gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases, gsFlowLogger* extLogger = NULL)
         : m_pdePtr(memory::make_shared_not_owned(&pde)), m_bases(bases)
     {
         m_assembOpt.dirStrategy = dirichlet::elimination;
@@ -105,11 +107,13 @@ public: // *** Constructor/destructor ***
             updateDofMappers();
             updatePeriodicHelper(); // create periodic helper for velocity basis with m_dofMappers[0]
         }
+
+        if (extLogger)
+            m_logger = memory::make_shared_not_owned(extLogger);
+        else
+            m_logger = std::make_shared<gsFlowLogger>(gsFlowLogger::mode::quiet, "", m_comm.rank());
     }
 
-    ~gsFlowSolverParams()
-    {
-    }
 
 public: // *** Static functions ***
 
@@ -139,11 +143,6 @@ public: // *** Static functions ***
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
         opt.addReal("timeStep", "Time step size", 0.1);
         opt.addReal("omega", "Angular velocity (for rotating frame of reference)", 0.0);
-
-        // output
-        opt.addSwitch("fileOutput", "Create an output file", false);
-        opt.addSwitch("quiet", "Do not display output in terminal", false);
-        opt.addString("outFile", "Name of the output file (or the full path to it)", "");
 
         // parallel 
         opt.addSwitch("parallel", "Currently running in parallel", false);
@@ -377,8 +376,10 @@ public: // *** Getters/setters ***
     void setOmegaSolution(gsField<T> sol) { m_OSolField = sol; }
 
     void setDistanceField(gsField<T>& dfield) { m_distanceField = dfield; }
-
     gsField<T>& getDistanceField() { return m_distanceField; }
+
+    gsFlowLogger& logger() { return *m_logger; }
+    void setOutputMode(typename gsFlowLogger::mode mode) { m_logger->setMode(mode); }
 
 }; // class gsFlowSolverParams
 

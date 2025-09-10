@@ -92,33 +92,33 @@ void gsRANSSolverUnsteady<T, MatOrder>::initialize()
     gsFlowSolverParams<T> paramsSteady(NSSteadyPde, m_paramsPtr->getBases());
     gsINSSolverSteady<T, MatOrder> NSSteadySolver(paramsSteady);
 
-    gsInfo << "\n--------------------------\n";
-    gsInfo << "Computing initial solution for RANS by solving steady N-S problem for viscosity " << viscSteady << "\n";
+    m_paramsPtr->logger() << "\n--------------------------\n";
+    m_paramsPtr->logger() << "Computing initial solution for RANS by solving steady N-S problem for viscosity " << viscSteady << "\n";
 
     // gsStopwatch clock;
 
-    gsInfo << "Initialization...\n";
+    m_paramsPtr->logger() << "Initialization...\n";
     NSSteadySolver.initialize();
     NSSteadySolver.solveStokes(); // start from Stokes solution
     NSSteadySolver.solve(m_paramsPtr->options().getInt("nonlin.maxIt"), m_paramsPtr->options().getReal("nonlin.tol"), 0);    
 
     // real_t totalT = clock.stop();
 
-    // gsInfo << "\nAssembly time (steady):" << NSSteadySolver.getAssemblyTime() << "\n";
-    // gsInfo << "Solve time (steady):" << NSSteadySolver.getSolveTime() << "\n";
-    // gsInfo << "Solver setup time (steady):" << NSSteadySolver.getSolverSetupTime() << "\n";
-    // gsInfo << "Total solveProblem time (steady):" << totalT << "\n\n";
+    // m_paramsPtr->logger() << "\nAssembly time (steady):" << NSSteadySolver.getAssemblyTime() << "\n";
+    // m_paramsPtr->logger() << "Solve time (steady):" << NSSteadySolver.getSolveTime() << "\n";
+    // m_paramsPtr->logger() << "Solver setup time (steady):" << NSSteadySolver.getSolverSetupTime() << "\n";
+    // m_paramsPtr->logger() << "Total solveProblem time (steady):" << totalT << "\n\n";
 
     // gsField<> velocity = NSSteadySolver.constructSolution(0);
     // gsField<> pressure = NSSteadySolver.constructSolution(1);
     // int plotPts = 20000;
 
-    // gsInfo << "Plotting solution of steady N-S problem in Paraview...";
+    // m_paramsPtr->logger() << "Plotting solution of steady N-S problem in Paraview...";
     // gsWriteParaview<T>(velocity, "NS_steady_velocity", plotPts, false);
     // gsWriteParaview<T>(pressure, "NS_steady_pressure", plotPts);
-    // gsInfo << " Done.\n";
+    // m_paramsPtr->logger() << " Done.\n";
 
-    gsInfo << "--------------------------\n\n";
+    m_paramsPtr->logger() << "--------------------------\n";
 
     m_solution = NSSteadySolver.getSolution();
 }

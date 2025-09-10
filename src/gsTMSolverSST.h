@@ -48,9 +48,6 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_solution;
     using Base::m_iterationNumber;
-    using Base::m_outFile;
-    using Base::m_fileOutput;
-    using Base::m_dispOutput;
     using Base::m_TurbulentViscosityVals;
     using Base::m_TMavgPicardIter;
 

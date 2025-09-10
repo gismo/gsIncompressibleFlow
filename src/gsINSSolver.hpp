@@ -19,7 +19,7 @@ template<class T, int MatOrder>
 void gsINSSolver<T, MatOrder>::solveStokes()
 {
     GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
-    gsWriteOutputLine(m_outFile, "Computing the steady Stokes problem...", m_fileOutput, m_dispOutput);
+    m_paramsPtr->logger() << "Computing the steady Stokes problem...\n";
 
     gsSparseMatrix<T, MatOrder> stokesMat;
     gsMatrix<T> stokesRhs;
@@ -110,11 +110,11 @@ void gsINSSolverUnsteady<T, MatOrder>::nextIteration()
     index_t picardIter = 0;
     T relNorm = this->solutionChangeRelNorm(m_solution, tmpSolution);
 
-    gsWriteOutputLine(m_outFile, "        [u, p] Picard's iterations...", m_fileOutput, m_dispOutput);
+    m_paramsPtr->logger() << "     [u, p] Picard's iterations...\n";
 
     while((relNorm > m_innerTol) && (picardIter < m_innerIter))
     {
-        gsWriteOutput(m_outFile, "         ", m_fileOutput, m_dispOutput);
+        m_paramsPtr->logger() << "         ";
 
         gsMatrix<T> oldSol = tmpSolution;
 
@@ -202,7 +202,7 @@ void gsINSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, c
 
 //     while ((iter < minIterations) || ((relNorm > epsilon) && (iter < maxIterations)))
 //     {
-//         gsInfo << "Iteration number " << iter + 1 << "...";
+//         m_paramsPtr->logger() << "Iteration number " << iter + 1 << "...";
 
 //         gsMatrix<T> rhs = stokesRhs;
 //         gsMatrix<T> newSol = m_solution;
@@ -215,7 +215,7 @@ void gsINSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, c
 //         m_solveT += m_clock.stop();
 
 //         relNorm = this->solutionChangeRelNorm(m_solution, newSol);
-//         gsInfo << " Solution change relative norm: " << relNorm << "\n";
+//         m_paramsPtr->logger() << " Solution change relative norm: " << relNorm << "\n";
 
 //         m_solution = newSol;
 //         iter++;

@@ -206,11 +206,11 @@ public: // *** Member functions ***
     /// @brief Prints the linear iteration counts per call of \a applySolver().
     virtual void reportLinIterations()
     {
-        gsInfo << "Iterations of linear solver for each call of applySolver():\n";
+        m_paramsPtr->logger() << "Iterations of linear solver for each call of applySolver():\n";
         for (size_t i = 0; i < m_linIterVector.size(); i++)
-            gsInfo << m_linIterVector[i] << ", ";
+            m_paramsPtr->logger() << m_linIterVector[i] << ", ";
 
-        gsInfo << "\nAverage number of linear solver iterations per call of applySolver(): " << getAvgLinIterations() << "\n";
+        m_paramsPtr->logger() << "\nAverage number of linear solver iterations per call of applySolver(): " << getAvgLinIterations() << "\n";
     }
 
 
@@ -253,12 +253,12 @@ protected: // *** Class members ***
     gsOptionList m_precOpt;
     const gsINSAssembler<T, MatOrder>* m_assemblerPtr;
     std::map<std::string, gsSparseMatrix<T, MatOrder> > m_matrices;
-    std::vector<index_t> m_linIterVector;
 
 
 protected: // *** Base class members ***
 
     using Base::m_precPtr;
+    using Base::m_linIterVector;
     using Base::m_paramsPtr;
     using Base::m_setupT;
     using Base::m_solveT;

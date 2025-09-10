@@ -51,9 +51,6 @@ protected: // *** Base class members ***
     using Base::m_iterationNumber;
     using Base::m_assemblerPtr;
     using Base::m_paramsPtr;
-    using Base::m_outFile;
-    using Base::m_fileOutput;
-    using Base::m_dispOutput;
     using Base::m_time;
     using Base::m_timeStepSize;
     using Base::m_innerIter;

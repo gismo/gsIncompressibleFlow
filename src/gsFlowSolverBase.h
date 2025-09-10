@@ -38,10 +38,6 @@ protected: // *** Class members ***
     gsStopwatch m_clock;
     T m_initAssembT, m_assembT, m_relNorm;
 
-    bool m_fileOutput, m_dispOutput;
-    std::ofstream m_outFile;
-    std::stringstream m_outStream;
-    
 
 public: // *** Constructor/destructor ***
 
@@ -68,9 +64,6 @@ public: // *** Constructor/destructor ***
             delete m_linSolverPtr;
             m_linSolverPtr = NULL;
         }
-
-        if (m_outFile.is_open())
-            m_outFile.close();
     }
 
 
@@ -81,9 +74,6 @@ protected: // *** Member functions ***
 
     /// @brief Update sizes of members (when DOF numbers change after constructing the solver).
     virtual void updateSizes();
-
-    /// @brief Create output file.
-    virtual void createOutputFile();
 
     /// @brief Start measuring time (decides whether to use gsStopwatch or MPI_Wtime)
     real_t stopwatchStart();
@@ -102,7 +92,7 @@ public: // *** Member functions ***
     { getLinSolver()->setupSolver(getAssembler()->matrix()); }
 
     /// @brief Prepare for the solution process.
-    /// @param[in] the linear system matrix
+    /// @param[in] mat the linear system matrix
     virtual void initIteration(const gsSparseMatrix<T, MatOrder>& mat)
     { getLinSolver()->setupSolver(mat); }
 

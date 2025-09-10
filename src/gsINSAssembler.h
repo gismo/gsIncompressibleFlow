@@ -235,7 +235,7 @@ public: // *** Getters/setters ***
 
     /// @brief Returns the number of DOFs for the i-th unknown.
     /// @param[in] i    0 - velocity, 1 - pressure
-    index_t numDofsUnk(index_t i);
+    index_t numDofsUnk(index_t i) const;
 
     /// @brief  Returns the number of velocity DOFs (one velocity component).
     index_t getUdofs() const { return m_udofs; }

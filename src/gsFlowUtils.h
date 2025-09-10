@@ -50,38 +50,6 @@ inline void endAnimationFile(std::ofstream& file)
 }
 
 
-/// @brief Writes an output into the given file and optionally also into terminal.
-/// @param[out] file            the output file
-/// @param[in]  output          the output to write
-/// @param[in]  fileOutput      write output in file (true/false)
-/// @param[in]  dispInTerminal  display output in terminal (true/false)
-inline void gsWriteOutput(std::ofstream& file, const std::string output, bool fileOutput, bool dispInTerminal)
-{
-    if (fileOutput)
-        file << output;
-
-    if (dispInTerminal)
-        gsInfo << output;
-}
-
-
-/// @brief Writes an output line into the given file and optionally also into terminal.
-/// @param[out] file            the output file
-/// @param[in]  line            the line to write
-/// @param[in]  fileOutput      write output in file (true/false)
-/// @param[in]  dispInTerminal  display output in terminal (true/false)
-inline void gsWriteOutputLine(std::ofstream& file, const std::string line, bool fileOutput, bool dispInTerminal)
-{
-    gsWriteOutput(file, line, fileOutput, dispInTerminal);
-
-    if (fileOutput)
-        file << std::endl;
-
-    if (dispInTerminal)
-            gsInfo << std::endl;
-}
-
-
 /// @brief Creates a one-column matrix (vector) of unique values from the input matrix (useful for creating a unique list of active basis functions in several quadrature points).
 /// @param[in]  mat  a const reference to the input matrix
 template <class T>

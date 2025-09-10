@@ -545,7 +545,7 @@ T gsINSAssembler<T, MatOrder>::computeFlowRate(index_t patch, boxSide side, gsMa
 
 
 template<class T, int MatOrder>
-index_t gsINSAssembler<T, MatOrder>::numDofsUnk(index_t i)
+index_t gsINSAssembler<T, MatOrder>::numDofsUnk(index_t i) const
 {
     if (i == 0)
         return m_udofs;
@@ -577,7 +577,6 @@ gsSparseMatrix<T, MatOrder> gsINSAssembler<T, MatOrder>::getBlockUU(bool linPart
 
             if(!linPartOnly)
                 blockUUcomp += m_blockUUnonlin_comp;
-    
     
             gsVector<index_t> nonZerosVector(m_pshift);
             gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);

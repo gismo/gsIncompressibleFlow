@@ -27,7 +27,7 @@ typename gsTMModelData<T>::tdPtr gsTMModelData<T>::make(typename gsFlowSolverPar
     //{ }
     else 
     {
-        gsInfo << "Unknown identifier of a turbulent model entered! Using k-omega SST model." << std::endl;
+        paramsPtr->logger() << "Unknown identifier of a turbulent model entered! Using k-omega SST model.\n";
         return gsTMModelData_SST<T>::make(paramsPtr);
     }
 }

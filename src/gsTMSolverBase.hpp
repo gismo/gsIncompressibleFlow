@@ -64,11 +64,11 @@ void gsTMSolverBase<T, MatOrder>::nextIteration()
     index_t picardIter = 0;
     T relNorm = 1.0;
 
-    gsWriteOutputLine(m_outFile, "        TM solver Picard's iterations...", m_fileOutput, m_dispOutput);
+    m_paramsPtr->logger() << "        TM solver Picard's iterations...\n";
 
     while((relNorm > m_TMinnerTol) && (picardIter < m_TMinnerIter))
     {
-        gsWriteOutput(m_outFile, "         ", m_fileOutput, m_dispOutput);
+        m_paramsPtr->logger() << "         ";
 
         gsMatrix<T> oldSol = tmpSolution;
         
