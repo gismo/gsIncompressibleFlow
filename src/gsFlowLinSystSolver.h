@@ -308,7 +308,7 @@ gsFlowLinSystSolver<T, MatOrder>* createLinSolver(typename gsFlowSolverParams<T>
     //     return new gsFlowLinSystSolver_PETSc<T, MatOrder>(paramsPtr);
     else
     {
-        gsInfo << "Invalid linear system solver type, using direct.\n";
+        paramsPtr->logger() << "Invalid linear system solver type, using direct solver.\n";
         return new gsFlowLinSystSolver_direct<T, MatOrder>(paramsPtr);
     }
 
