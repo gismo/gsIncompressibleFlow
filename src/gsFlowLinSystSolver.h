@@ -63,11 +63,23 @@ public: // *** Member functions ***
     virtual void setupSolver(const gsSparseMatrix<T, MatOrder>& mat)
     {GISMO_NO_IMPLEMENTATION}
 
+    /// @brief Setup the linear solver for a matrix given by its blocks.
+    /// @param[in] matBlocks vector of saddle-point matrix blocks
+    virtual void setupSolver(const std::vector< gsSparseMatrix<T, MatOrder> >& matBlocks)
+    {GISMO_NO_IMPLEMENTATION}
+
     /// @brief Solve the linear system.
     /// @param[in]  mat         a const reference to the system matrix
     /// @param[in]  rhs         a const reference to the system right-hand side
     /// @param[out] solution    a reference to the vector, where the computed solution will be stored
     virtual void applySolver(const gsSparseMatrix<T, MatOrder>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution)
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// @brief Solve the linear system.
+    /// @param[in]  matBlocks vector of saddle-point matrix blocks
+    /// @param[in]  rhsBlocks vector of right-hand side blocks
+    /// @param[out] solution  a reference to the vector, where the computed solution will be stored
+    virtual void applySolver(const std::vector< gsSparseMatrix<T, MatOrder> >& matBlocks, const std::vector< gsMatrix<T> >& rhsBlocks, gsMatrix<T>& solution)
     {GISMO_NO_IMPLEMENTATION}
 
     /// @brief Solve the Navier--Stokes linear system with underrelaxation.
@@ -206,11 +218,11 @@ public: // *** Member functions ***
     /// @brief Prints the linear iteration counts per call of \a applySolver().
     virtual void reportLinIterations()
     {
-        gsInfo << "Iterations of linear solver for each call of applySolver():\n";
+        m_paramsPtr->logger() << "Iterations of linear solver for each call of applySolver():\n";
         for (size_t i = 0; i < m_linIterVector.size(); i++)
-            gsInfo << m_linIterVector[i] << ", ";
+            m_paramsPtr->logger() << m_linIterVector[i] << ", ";
 
-        gsInfo << "\nAverage number of linear solver iterations per call of applySolver(): " << getAvgLinIterations() << "\n";
+        m_paramsPtr->logger() << "\nAverage number of linear solver iterations per call of applySolver(): " << getAvgLinIterations() << "\n";
     }
 
 
@@ -253,12 +265,12 @@ protected: // *** Class members ***
     gsOptionList m_precOpt;
     const gsINSAssembler<T, MatOrder>* m_assemblerPtr;
     std::map<std::string, gsSparseMatrix<T, MatOrder> > m_matrices;
-    std::vector<index_t> m_linIterVector;
 
 
 protected: // *** Base class members ***
 
     using Base::m_precPtr;
+    using Base::m_linIterVector;
     using Base::m_paramsPtr;
     using Base::m_setupT;
     using Base::m_solveT;
@@ -289,6 +301,180 @@ public: // *** Member functions ***
 }; // gsFlowLinSystSolver_iterSP
 
 // ===================================================================================================================
+
+#ifdef gsPetsc_ENABLED
+
+/// @brief PETSc solver for general linear systems with no specified block structure inside the incompressible flow solvers (classes derived from gsFlowSolverBase).
+/// Note: only MatOrder = RowMajor is supported
+/// @tparam T           coefficient type
+/// @ingroup IncompressibleFlow
+template <class T>
+class gsFlowLinSystSolver_PETSc: public gsFlowLinSystSolver<T, RowMajor>
+{
+
+public:
+    typedef gsFlowLinSystSolver<T, RowMajor> Base;
+
+
+protected: // *** Class members ***
+
+    gsOptionList m_petscOpt;
+    std::vector<index_t> m_linIterVector;
+    std::pair<index_t, index_t> m_rowLocInfo, m_colLocInfo;
+
+    Mat m_petscMat;
+    Vec m_petscRhs, m_petscSol;
+    KSP m_ksp;
+    PC m_pc;
+    real_t m_dataCopyT;
+
+
+protected: // *** Base class members ***
+
+    using Base::m_paramsPtr;
+    using Base::m_setupT;
+    using Base::m_solveT;
+    using Base::stopwatchStart;
+    using Base::stopwatchStop;
+    // using Base::setupSolver;
+    // using Base::applySolver;
+
+public: // *** Constructor/destructor ***
+
+    /// @brief Constructor.
+    gsFlowLinSystSolver_PETSc(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr), m_dataCopyT(0.0)
+    { }
+
+    ~gsFlowLinSystSolver_PETSc()
+    {
+        PetscCallVoid( MatDestroy(&m_petscMat) );
+        PetscCallVoid( VecDestroy(&m_petscRhs) );
+        PetscCallVoid( VecDestroy(&m_petscSol) );
+        PetscCallVoid( KSPDestroy(&m_ksp) );
+    }
+
+
+public: // *** Member functions ***
+
+    /// @brief Setup the linear solver for a given matrix.
+    virtual void setupSolver(const gsSparseMatrix<T, RowMajor>& mat);
+
+    /// @brief Solve the linear system.
+    /// @param[in]  mat         a const reference to the system matrix
+    /// @param[in]  rhs         a const reference to the system right-hand side
+    /// @param[out] solution    a reference to the vector, where the computed solution will be stored
+    virtual void applySolver(const gsSparseMatrix<T, RowMajor>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution);
+
+
+    /// @brief Prints the linear iteration counts per call of \a applySolver().
+    virtual void reportLinIterations()
+    {
+        m_paramsPtr->logger() << "Iterations of PETSc solver for each call of applySolver():\n";
+        for (size_t i = 0; i < m_linIterVector.size(); i++)
+            m_paramsPtr->logger() << m_linIterVector[i] << ", ";
+
+        m_paramsPtr->logger() << "\nAverage number of linear solver iterations per call of applySolver(): " << getAvgLinIterations() << "\n";
+    }
+
+
+protected: // *** Member functions ***
+
+    /// @brief  Apply options for PETSc.
+    void applyOptions(gsOptionList petscOpt);
+
+
+public: // *** Getters/setters ***
+
+    /// @brief Returns vector of iteration counts of the linear solver for each call of applySolver().
+    std::vector<index_t> getLinIterVector() const { return m_linIterVector; }
+
+    /// @brief Returns the average iteration count of the linear solver per applySolver() call.
+    T getAvgLinIterations() const
+    {
+        index_t linIterSum = 0;
+
+        for (size_t i = 0; i < m_linIterVector.size(); i++)
+            linIterSum += m_linIterVector[i];
+
+        return (T)linIterSum / m_linIterVector.size();
+    }
+
+    /// @brief Returns the total time spent on copying data to and from PETSc.
+    virtual const T getDataCopyTime() const { return m_dataCopyT; }
+
+}; // gsFlowLinSystSolver_PETSc
+
+
+/**
+ * @brief PETSc solver for saddle-point linear systems inside the incompressible flow solvers (classes derived from gsFlowSolverBase).
+ * 
+ * Assuming saddle-point linear systems from the incompressible flow problems, i.e., assuming the velocity blocks to have \a d blocks 
+ * corresponding to velocity components, where \a d is the spatial dimension.
+ * 
+ * Note: only MatOrder = RowMajor is supported
+ * 
+ * @tparam T           coefficient type
+ * @ingroup IncompressibleFlow
+ */
+template <class T>
+class gsFlowLinSystSolver_PETSc_SP: public gsFlowLinSystSolver_PETSc<T>
+{
+
+public:
+    typedef gsFlowLinSystSolver_PETSc<T> Base;
+
+
+protected: // *** Class members ***
+
+    std::pair<index_t, index_t> m_uLocInfo, m_pLocInfo;
+
+protected: // *** Base class members ***
+
+    using Base::m_paramsPtr;
+    using Base::m_setupT;
+    using Base::m_solveT;
+    using Base::m_dataCopyT;
+    using Base::m_linIterVector;
+    using Base::m_petscMat;
+    using Base::m_petscRhs;
+    using Base::m_petscSol;
+    using Base::m_ksp;
+    using Base::m_pc;
+    using Base::stopwatchStart;
+    using Base::stopwatchStop;
+    // using Base::setupSolver;
+    // using Base::applySolver;
+
+
+public: // *** Constructor/destructor ***
+
+    /// @brief Constructor.
+    gsFlowLinSystSolver_PETSc_SP(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
+    {
+        m_paramsPtr->options().setSwitch("fillGlobalSyst", false);
+    }
+
+
+public: // *** Member functions ***
+
+    /// @brief Setup the linear solver for a matrix given by its blocks.
+    /// @param[in] matBlocks vector of saddle-point matrix blocks
+    virtual void setupSolver(const std::vector< gsSparseMatrix<T, RowMajor> >& matBlocks);
+
+    /// @brief Solve the linear system.
+    /// @param[in]  matBlocks vector of saddle-point matrix blocks
+    /// @param[in]  rhsBlocks vector of right-hand side blocks
+    /// @param[out] solution  a reference to the vector, where the computed solution will be stored
+    virtual void applySolver(const std::vector< gsSparseMatrix<T, RowMajor> >& matBlocks, const std::vector< gsMatrix<T> >& rhsBlocks, gsMatrix<T>& solution);
+
+    
+}; // gsFlowLinSystSolver_PETSc_SP
+
+#endif
+
+// ===================================================================================================================
 // ===================================================================================================================
 
 template <class T, int MatOrder, class SolverType = gsGMRes<T> >
@@ -304,14 +490,23 @@ gsFlowLinSystSolver<T, MatOrder>* createLinSolver(typename gsFlowSolverParams<T>
         return new gsFlowLinSystSolver_iter<T, MatOrder, SolverType>(paramsPtr);
     else if (type == "iter" && INSassembPtr != NULL) // assembler is an INS assembler
         return new gsFlowLinSystSolver_iterSP<T, MatOrder, SolverType>(paramsPtr, INSassembPtr);
-    // else if (type == _"petsc")
-    //     return new gsFlowLinSystSolver_PETSc<T, MatOrder>(paramsPtr);
-    else
+    else if(type == "petsc")
     {
-        gsInfo << "Invalid linear system solver type, using direct.\n";
+        if constexpr (MatOrder == RowMajor)
+        {
+            if (INSassembPtr == NULL) // assembler is not an INS assembler
+                return new gsFlowLinSystSolver_PETSc<T>(paramsPtr);
+            else // assembler is an INS assembler
+                return new gsFlowLinSystSolver_PETSc_SP<T>(paramsPtr);
+        }
+        else
+            GISMO_ERROR("Trying to use PETSc with ColMajor matrix ordering - currently not supported.");
+    } 
+    else        
+    {
+        paramsPtr->logger() << "Invalid linear system solver type, using direct solver.\n";
         return new gsFlowLinSystSolver_direct<T, MatOrder>(paramsPtr);
     }
-
 }
 
 } // namespace gismo

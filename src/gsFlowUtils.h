@@ -33,6 +33,33 @@ inline void pardisoSetup(typename gsSparseSolver<T>::PardisoLU& solver)
 }
 #endif
 
+// template <class T, int MatOrder>
+// inline std::string matStructureStr(const gsSparseMatrix<T, MatOrder>& mat)
+// {
+//     std::stringstream ss;
+
+//     for (int i = 0; i < mat.rows(); ++i) {
+//         int colIndex = 0;
+//         for (typename gsSparseMatrix<T, MatOrder>::InnerIterator it(mat, i); it; ++it) {
+
+//             while (colIndex < it.col()) {
+//                 ss << ". ";
+//                 ++colIndex;
+//             }
+//             ss << "x ";
+//             ++colIndex;
+//         }
+
+//         while (colIndex < mat.cols()) {
+//             ss << ". ";
+//             ++colIndex;
+//         }
+//         ss << std::endl;
+//     }
+
+//     return ss.str();
+// }
+
 
 inline void startAnimationFile(std::ofstream& file)
 {
@@ -47,38 +74,6 @@ inline void endAnimationFile(std::ofstream& file)
     file << "</Collection>\n";
     file << "</VTKFile>\n";
     file.close();
-}
-
-
-/// @brief Writes an output into the given file and optionally also into terminal.
-/// @param[out] file            the output file
-/// @param[in]  output          the output to write
-/// @param[in]  fileOutput      write output in file (true/false)
-/// @param[in]  dispInTerminal  display output in terminal (true/false)
-inline void gsWriteOutput(std::ofstream& file, const std::string output, bool fileOutput, bool dispInTerminal)
-{
-    if (fileOutput)
-        file << output;
-
-    if (dispInTerminal)
-        gsInfo << output;
-}
-
-
-/// @brief Writes an output line into the given file and optionally also into terminal.
-/// @param[out] file            the output file
-/// @param[in]  line            the line to write
-/// @param[in]  fileOutput      write output in file (true/false)
-/// @param[in]  dispInTerminal  display output in terminal (true/false)
-inline void gsWriteOutputLine(std::ofstream& file, const std::string line, bool fileOutput, bool dispInTerminal)
-{
-    gsWriteOutput(file, line, fileOutput, dispInTerminal);
-
-    if (fileOutput)
-        file << std::endl;
-
-    if (dispInTerminal)
-            gsInfo << std::endl;
 }
 
 

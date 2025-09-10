@@ -42,7 +42,7 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     int numSamplePts = 50; //number of sample points for which the distance to the boundary is computed
     real_t maxYplus = 2.5; //maximum dimensionless wall distance which is accepted
     real_t wallDistance = computeDimensionlessWallDistance<T>(m_paramsPtr, m_viscosity, Re, uFreeStream, maxYplus, numSamplePts, false, true);
-    // gsInfo << "\nminimum wallDistance = " << wallDistance << "\n";
+    // m_paramsPtr->logger() << "\nminimum wallDistance = " << wallDistance << "\n";
     if (wallDistance > 0)
     {
         real_t beta = 0.0708;
@@ -56,10 +56,10 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     gsFunctionExpr<T> Owall(util::to_string(m_owall), m_tarDim);
     addBCs(m_bc, bndIn, bndWall, Oin, Owall, 3);
 
-    gsInfo << "kin = " << util::to_string(m_kin) << ", ";
-    gsInfo << "kwall = " << util::to_string(m_kwall) << "\n";
-    gsInfo << "oin = " << util::to_string(m_oin) << ", ";
-    gsInfo << "owall = " << util::to_string(m_owall) << std::endl;
+    m_paramsPtr->logger() << "kin = " << util::to_string(m_kin) << ", ";
+    m_paramsPtr->logger() << "kwall = " << util::to_string(m_kwall) << "\n";
+    m_paramsPtr->logger() << "oin = " << util::to_string(m_oin) << ", ";
+    m_paramsPtr->logger() << "owall = " << util::to_string(m_owall) << "\n";
 
     m_paramsPtr->setBCs(m_bc);
     m_paramsPtr->updateDofMappers();

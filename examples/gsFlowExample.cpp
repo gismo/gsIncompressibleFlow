@@ -21,11 +21,20 @@
 
 using namespace gismo;
 
-template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt);
+template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, gsFlowLogger& logger);
 
 int main(int argc, char *argv[])
 {
-    typedef gsGMRes<real_t> LinSolver;
+
+#if defined(gsPetsc_ENABLED) && defined(GISMO_WITH_MPI)
+
+    // initialize MPI
+    const gsMpi & mpi = gsMpi::init(argc, argv);
+    gsMpiComm comm = mpi.worldComm();
+
+    int rank  = comm.rank();
+
+    PetscCall( PetscInitializeNoArguments() );
 
     // ========================================= Settings ========================================= 
 
@@ -51,12 +60,12 @@ int main(int argc, char *argv[])
     real_t picardTol = 1e-4;
 
     // linear solver settings
-    std::string linSolver = "direct"; // direct / iter
+    std::string linSolver = "petsc"; // direct / iter / petsc
     int linIt = 50;
     real_t linTol = 1e-6;
 
     // output settings
-    bool quiet = false;
+    std::string outMode = "terminal"; // terminal/file/all/quiet
     bool plot = false;
     bool plotMesh = false;
     int plotPts = 10000;
@@ -88,7 +97,7 @@ int main(int argc, char *argv[])
     cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
     cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
 
-    cmd.addSwitch("quiet", "Supress (some) terminal output", quiet);
+    cmd.addString("o", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
     cmd.addSwitch("plotMesh", "Plot the computational mesh", plotMesh);
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
@@ -97,7 +106,7 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
-    if ( !(steady || unsteady) )
+    if ( (rank == 0) && !(steady || unsteady) )
         gsWarn << "All computation flags set to false - nothing will be computed.\nPlease select at least one of the flags: --steady, --unsteady\n\n";
 
     // ========================================= Define problem (geometry, BCs, rhs) ========================================= 
@@ -107,12 +116,16 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> f; // external force
     std::string fn;
 
-    gsInfo << "Reading problem definition from file:\n" << inputFile << "\n\n";
+    gsFlowLogger logger(gsFlowLogger::parseOutputMode(outMode), "gsFlowExample.log", rank);
+
+    logger << "Reading problem definition from file:\n" << inputFile << "\n\n";
 
     std::string path = gsFileManager::find(inputFile);
     if ( path.empty() )
     {
-        gsWarn<<"Input file not found, quitting.\n";
+        if (rank == 0)
+            gsWarn << "Input file not found, quitting.\n";
+
         return 1;
     }
 
@@ -121,9 +134,8 @@ int main(int argc, char *argv[])
     fd.getId(1, f);         // id=1: source function
     fd.getId(2, bcInfo);    // id=2: boundary conditions
 
-    gsInfo << patches;
-    gsInfo << "viscosity = " << viscosity << "\n";
-    gsInfo << "source function = " << f << "\n";
+    logger << "viscosity = " << viscosity << "\n";
+    logger << "source function = " << f << "\n";
 
     // prepare ID string for the given problem
     size_t lastSlash = inputFile.find_last_of("/\\");
@@ -151,8 +163,7 @@ int main(int argc, char *argv[])
     // ========================================= Solve ========================================= 
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
-    gsFlowSolverParams<real_t> params(NSpde, discreteBases);
-    params.options().setSwitch("quiet", quiet);
+    gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger, comm);
     params.options().setReal("timeStep", timeStep);
     params.options().setInt("nonlin.maxIt", picardIt);
     params.options().setReal("nonlin.tol", picardTol);
@@ -175,12 +186,12 @@ int main(int argc, char *argv[])
         solveOpt.setString("id", geoStr + "_steady");
         gsINSSolverSteady<real_t> NSsolver(params);
 
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the steady INS problem.\n";
+        logger << "\n----------\n";
+        logger << "Solving the steady INS problem.\n";
 
-        solveProblem(NSsolver, solveOpt);
+        solveProblem(NSsolver, solveOpt, logger);
 
-        if(linSolver == "iter")
+        if(linSolver != "direct")
             NSsolver.getLinSolver()->reportLinIterations();
     }
 
@@ -189,32 +200,48 @@ int main(int argc, char *argv[])
         solveOpt.setString("id", geoStr + "_unsteady");
         gsINSSolverUnsteady<real_t> NSsolver(params);
 
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the unsteady INS problem.\n";
+        logger << "\n----------\n";
+        logger << "Solving the unsteady INS problem.\n";
 
-        solveProblem(NSsolver, solveOpt);
+        solveProblem(NSsolver, solveOpt, logger);
 
-        if(linSolver == "iter")
+        if(linSolver != "direct")
             NSsolver.getLinSolver()->reportLinIterations();
     }
+
+    PetscCall( PetscFinalize() );
+
+#else
+    gsWarn << "This version of INS solver requires MPI and PETSc, but some of them is not enabled!"
+#endif
 
     return 0; 
 }
 
 
 template<class T, int MatOrder>
-void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt)
+void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, gsFlowLogger& logger)
 {
     gsStopwatch clock;
     std::string id = opt.getString("id");
 
+    int rank = NSsolver.getParams()->options().getInt("mpi.rank");
+
     // ------------------------------------
     // solve problem
 
-    gsInfo << "\ninitialization...\n";
+    logger << "\ninitialization...\n";
+
     NSsolver.initialize();
 
-    gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
+    logger << "numDofs: " << NSsolver.numDofs() << "\n";
+
+    // std::stringstream ss;
+    // ss << "\nrank " << rank << "\nglobalStartEnd =\n" << NSsolver.getAssembler()->getGlobalStartEnd() << "\n" <<
+    //     "\nblockUU:\n" << matStructureStr(NSsolver.getAssembler()->getBlockUU()) << "\n" <<
+    //     "\nblockUP:\n" << matStructureStr(NSsolver.getAssembler()->getBlockUP()) << "\n" <<
+    //     "\nblockPU:\n" << matStructureStr(NSsolver.getAssembler()->getBlockPU()) << "\n";
+    // printOrderedOutput(ss.str(), NSsolver.getParams()->getMpiComm());
 
     gsINSSolverUnsteady<T, MatOrder>* pSolver = dynamic_cast<gsINSSolverUnsteady<T, MatOrder>* >(&NSsolver);
 
@@ -228,23 +255,23 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt)
 
     real_t totalT = clock.stop();
 
-    gsInfo << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
-    gsInfo << "Solve time:" << NSsolver.getSolveTime() << "\n";
-    gsInfo << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
-    gsInfo << "Total solveProblem time:" << totalT << "\n\n";
+    logger << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
+    logger << "Solve time:" << NSsolver.getSolveTime() << "\n";
+    logger << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
+    logger << "Total solveProblem time:" << totalT << "\n\n";
 
     // ------------------------------------
     // plot
 
-    if (opt.getSwitch("plot")) 
+    if ((rank == 0) && opt.getSwitch("plot")) 
     {
-        gsInfo << "Plotting in Paraview...\n";
+        logger << "Plotting in Paraview...\n";
 
         int plotPts = opt.getInt("plotPts");
         gsField<> velocity = NSsolver.constructSolution(0);
         gsField<> pressure = NSsolver.constructSolution(1);
         gsWriteParaview<>(velocity, id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, id + "_pressure", plotPts);
-        gsInfo << "Done.\n";
+        logger << "Done.\n";
     }
 }

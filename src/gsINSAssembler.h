@@ -43,12 +43,13 @@ protected: // *** Class members ***
     index_t m_nnzPerOuterU, m_nnzPerOuterP, m_nnzPerOuterUP;
     gsINSVisitorUUlin<T, MatOrder> m_visitorUUlin;
     gsINSVisitorUUnonlin<T, MatOrder> m_visitorUUnonlin;
-    gsINSVisitorPU_withUPrhs<T, MatOrder> m_visitorUP;
+    gsINSVisitorPU<T, MatOrder> m_visitorUP;
+    gsINSVisitorUP<T, MatOrder> m_visitorPU;
     gsINSVisitorRhsU<T, MatOrder> m_visitorF;
     gsINSVisitorRhsP<T, MatOrder> m_visitorG;
-    gsSparseMatrix<T, MatOrder> m_blockUUlin_comp, m_blockUUnonlin_comp, m_blockUP;
+    gsSparseMatrix<T, MatOrder> m_blockUUlin_comp, m_blockUUnonlin_comp, m_blockUP, m_blockPU;
     gsSparseMatrix<T, MatOrder> m_blockUUlin_whole, m_blockUUnonlin_whole;
-    gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsF, m_rhsG;
+    gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsPlin, m_rhsF, m_rhsG;
     gsField<T>  m_currentVelField, m_currentPresField;
 
     bool m_isMassMatReady;
@@ -57,10 +58,6 @@ protected: // *** Class members ***
 
     // rotation members
     gsMatrix<T> m_omegaXrCoeffs;
-
-    // PCD members
-    // std::vector<index_t> m_presInIDs, m_presOutIDs, m_presWallIDs
-    // std::vector< gsSparseMatrix<T, MatOrder> > m_pcdBlocks(3); // [laplaceP, robinBCblock, convectionP]
 
 
 protected: // *** Base class members ***
@@ -72,6 +69,9 @@ protected: // *** Base class members ***
     using Base::m_solution;
     using Base::m_isBaseReady;
     using Base::m_isSystemReady;
+    using Base::m_isParallelInitialized;
+    using Base::m_ownedLocalDofs;
+    using Base::m_globalStartEnd;
 
 public: // *** Base class member functions ***
 
@@ -96,6 +96,9 @@ protected: // *** Member functions ***
 
     /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
+
+    /// @brief Initialize data needed for parallelization.
+    virtual void initParallel();
 
     /// @brief Update the current solution field stored in the assembler (used as convection coefficient).
     /// @param[in] solVector    new solution vector
@@ -175,13 +178,6 @@ protected: // *** Member functions ***
     // --- member functions for rotating frame of reference ---
 
     void computeOmegaXrCoeffs();
-    
-
-    // --- PCD member functions ---
-
-    // void findPressureBoundaryIDs();
-
-    // void findPressureBoundaryPartIDs(std::vector<std::pair<int, boxSide> > bndPart, std::vector<index_t>& idVector);
 
 
 public: // *** Member functions ***
@@ -235,7 +231,7 @@ public: // *** Getters/setters ***
 
     /// @brief Returns the number of DOFs for the i-th unknown.
     /// @param[in] i    0 - velocity, 1 - pressure
-    index_t numDofsUnk(index_t i);
+    index_t numDofsUnk(index_t i) const;
 
     /// @brief  Returns the number of velocity DOFs (one velocity component).
     index_t getUdofs() const { return m_udofs; }
@@ -251,10 +247,11 @@ public: // *** Getters/setters ***
     virtual gsSparseMatrix<T, MatOrder> getBlockUU(bool linPartOnly = false);
 
     /// @brief Returns the diagonal block of velocity-velocity block for i-th component.
-    virtual gsSparseMatrix<T, MatOrder> getBlockUUcompDiag(index_t i = 0)
+    /// @param[in] linPartOnly if true, returns only the linear part of the velocity-velocity block
+    virtual gsSparseMatrix<T, MatOrder> getBlockUUcompDiag(index_t i = 0, bool linPartOnly = false)
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
-        return getBlockUU().block(i * m_udofs, i * m_udofs, m_udofs, m_udofs); 
+        return getBlockUU(linPartOnly).block(i * m_udofs, i * m_udofs, m_udofs, m_udofs); 
     }
 
 
@@ -264,7 +261,7 @@ public: // *** Getters/setters ***
 
     /// @brief Returns the pressure-velocity block of the linear system.
     gsSparseMatrix<T, MatOrder> getBlockPU() const
-    { return (-1.0)*gsSparseMatrix<T, MatOrder>(m_blockUP.transpose()); }
+    { return m_blockPU; }
 
     /// @brief Returns the part of velocity-pressure block for i-th velocity component.
     virtual gsSparseMatrix<T, MatOrder> getBlockUPcomp(index_t i) const
@@ -277,13 +274,13 @@ public: // *** Getters/setters ***
     virtual gsSparseMatrix<T, MatOrder> getBlockPUcomp(index_t i) const
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
-        return (-1.0)*gsSparseMatrix<T, MatOrder>(getBlockUPcomp(i).transpose());
+        return getBlockPU().middleCols(i * m_udofs, m_udofs);
     }
 
     /// @brief Returns the mass matrix for unknown with index \a unk.  There is also a const version.
     /// @param[in] unkID index of the unknown (0 - velocity, 1 - pressure)
     virtual gsSparseMatrix<T, MatOrder>& getMassMatrix(index_t unkID)
-    { 
+    {
         GISMO_ASSERT(unkID == 0 || unkID == 1, "unkID must be 0 (velocity) or 1 (pressure).");
         GISMO_ASSERT(m_isMassMatReady, "Mass matrices not assembled in gsINSAssembler.");
         return m_massMatBlocks[unkID];
@@ -296,18 +293,50 @@ public: // *** Getters/setters ***
         return m_massMatBlocks[unkID];
     }
 
-    /// @brief /// @brief Returns the velocity part of the right-hand side.
-    virtual gsMatrix<T> getRhsU() const;
+    /// @brief Returns the velocity part of the right-hand side.
+    /// @param[in] linPartOnly if true, returns only the linear part of the velocity rhs
+    virtual gsMatrix<T> getRhsU(bool linPartOnly = false) const;
 
-    /// @brief /// @brief Returns part of the right-hand side for i-th velocity component.
-    virtual gsMatrix<T> getRhsUcomp(index_t i) const
+    /// @brief Returns part of the right-hand side for i-th velocity component.
+    /// @param[in] linPartOnly if true, returns only the linear part of the velocity rhs component
+    virtual gsMatrix<T> getRhsUcomp(index_t i, bool linPartOnly = false) const
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
-        return getRhsU().middleRows(i * m_udofs, m_udofs);
+        return getRhsU(linPartOnly).middleRows(i * m_udofs, m_udofs);
     }
 
     /// @brief Returns the pressure part of the right-hand side.
     gsMatrix<T> getRhsP() const;
+
+    /** 
+     * @brief Returns a vector of matrix blocks.
+     * 
+     * The global saddle-point matrix consits of 4 blocks: UU, UP, PU, PP (U = velocity, P = pressure).
+     * If only 3 blocks are returned, the last block PP is zero.
+     **/
+    virtual std::vector< gsSparseMatrix<T, MatOrder> > matBlocks()
+    {
+        std::vector< gsSparseMatrix<T, MatOrder> > result;
+        result.push_back(getBlockUU());
+        result.push_back(getBlockUP());
+        result.push_back(getBlockPU());
+        
+        return result;
+    }
+
+    /** 
+     * @brief Returns a vector of matrix right-hand sides.
+     * 
+     * The global right-hand side consits of 2 blocks (for velocity and pressure).
+     **/
+    virtual std::vector< gsMatrix<T> > rhsBlocks() const
+    {
+        std::vector< gsMatrix<T> > result;
+        result.push_back(getRhsU());
+        result.push_back(getRhsP());
+        
+        return result;
+    }
 
 }; // gsINSAssembler
 

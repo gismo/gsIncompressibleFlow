@@ -23,6 +23,7 @@ void gsFlowAssemblerBase<T, MatOrder>::initMembers()
     m_isInitialized = false;
     m_isBaseReady = false;
     m_isSystemReady = false;
+    m_isParallelInitialized = false;
 }
 
 
@@ -268,6 +269,20 @@ void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofsL2Proj(const index_t 
 
 
 template<class T, int MatOrder>
+index_t gsFlowAssemblerBase<T, MatOrder>::globalToLocalOnPatch(index_t patch, index_t unk, index_t globalID)
+{
+    std::vector< std::pair<index_t, index_t> > localIDs;
+    getMapper(unk).preImage(globalID, localIDs);
+
+    for (size_t k = 0; k < localIDs.size(); k++)
+        if (localIDs[k].first == patch)
+            return localIDs[k].second;
+
+    return -1;
+}
+
+
+template<class T, int MatOrder>
 void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
 {
     // TODO: iteration over all patches at once
@@ -277,34 +292,14 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
     {
         visitor.initOnPatch(p);
 
-        if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
-        {
-            index_t nBases = m_paramsPtr->getBasis(testBasisID).piece(p).size();
+        gsVector<index_t> ownedLocalDofs = m_ownedLocalDofs[p][testBasisID];
 
-            for(index_t i = 0; i < nBases; i++)
-            {
-                visitor.evaluate(i);
-                visitor.assemble();
-                visitor.localToGlobal(m_ddof, block, blockRhs);
-            }
+        for(index_t i = 0; i < ownedLocalDofs.size(); i++)
+        {
+            visitor.evaluate(ownedLocalDofs(i));
+            visitor.assemble();
+            visitor.localToGlobal(m_ddof, block, blockRhs);
         }
-        else
-        {
-            if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
-                gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
-
-            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).piece(p).domain()->beginAll();
-            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).piece(p).domain()->endAll();
-
-            while (domIt!=domItEnd)
-            {
-                visitor.evaluate(domIt.get());
-                visitor.assemble();
-                visitor.localToGlobal(m_ddof, block, blockRhs);
-
-                ++domIt;
-            }
-        }    
     }
 
     if (compressMat)
@@ -318,31 +313,14 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(gsFlowVisitor<T, MatOrder>& v
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
         visitor.initOnPatch(p);
+    
+        gsVector<index_t> ownedLocalDofs = m_ownedLocalDofs[p][testBasisID];
 
-        if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
+        for(index_t i = 0; i < ownedLocalDofs.size(); i++)
         {
-            index_t nBases = m_paramsPtr->getBasis(testBasisID).piece(p).size();
-
-            for(index_t i = 0; i < nBases; i++)
-            {
-                visitor.evaluate(i);
-                visitor.assemble();
-                visitor.localToGlobal(rhs);
-            }
-        }
-        else
-        {
-            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(0).piece(p).domain()->beginAll();
-            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(0).piece(p).domain()->endAll();
-
-            while (domIt!=domItEnd)
-            {
-                visitor.evaluate(domIt.get());
-                visitor.assemble();
-                visitor.localToGlobal(rhs);
-
-                ++domIt;
-            }
+            visitor.evaluate(ownedLocalDofs(i));
+            visitor.assemble();
+            visitor.localToGlobal(rhs);
         }
     }
 }

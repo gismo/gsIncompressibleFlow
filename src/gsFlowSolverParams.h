@@ -16,6 +16,7 @@
 #include <gsIncompressibleFlow/src/gsNavStokesPde.h>
 #include <gsIncompressibleFlow/src/gsINSPreconditioners.h>
 #include <gsIncompressibleFlow/src/gsFlowPeriodicHelper.h>
+#include <gsIncompressibleFlow/src/gsFlowLogger.h>
 
 namespace gismo
 {
@@ -26,7 +27,7 @@ namespace gismo
  * - discretization bases
  * - list of parameters/options for the solver
  * - list of assembler options
- * - list of preconditioner options
+ * - list of preconditioner options (used for preconditioners implemented in gsIncompressibleFlow)
  * 
  * @ingroup IncompressibleFlow
  */
@@ -49,6 +50,7 @@ protected: // *** Class members ***
     gsAssemblerOptions              m_assembOpt;
     gsOptionList                    m_opt;
     gsOptionList                    m_precOpt;
+    typename gsFlowLogger::Ptr      m_logger;
 
     bool m_isBndSet;
     std::vector<std::pair<int, boxSide> > m_bndIn, m_bndOut, m_bndWall;
@@ -61,6 +63,9 @@ protected: // *** Class members ***
     bool m_hasPeriodicBC;
     typename gsFlowPeriodicHelper<T>::Ptr m_periodicHelperPtr;
 
+    gsMpiComm m_comm;
+    
+
 public: // *** Constructor/destructor ***
 
     gsFlowSolverParams() {}
@@ -68,8 +73,8 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor of the object.
     /// @param pde an incompressible Navier-Stokes problem
     /// @param bases vector of discretization bases {velocity, pressure, (bases for turb. model, if needed)}
-    gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases)
-        : m_pdePtr(memory::make_shared_not_owned(&pde)), m_bases(bases)
+    gsFlowSolverParams(const gsNavStokesPde<T>& pde, const std::vector<gsMultiBasis<T> >& bases, gsFlowLogger* extLogger = NULL, gsMpiComm comm = MPI_COMM_WORLD)
+        : m_pdePtr(memory::make_shared_not_owned(&pde)), m_bases(bases), m_comm(comm)
     {
         m_assembOpt.dirStrategy = dirichlet::elimination;
         m_assembOpt.dirValues = dirichlet::interpolation;
@@ -77,6 +82,9 @@ public: // *** Constructor/destructor ***
 
         m_opt = gsFlowSolverParams<T>::defaultOptions();
         m_precOpt = gsINSPreconditioner<T, RowMajor>::defaultOptions();
+
+        m_opt.setInt("mpi.size", m_comm.size());
+        m_opt.setInt("mpi.rank", m_comm.rank());
 
         m_BC = m_pdePtr->bc();
         m_isBndSet = false;
@@ -105,11 +113,13 @@ public: // *** Constructor/destructor ***
             updateDofMappers();
             updatePeriodicHelper(); // create periodic helper for velocity basis with m_dofMappers[0]
         }
+
+        if (extLogger)
+            m_logger = memory::make_shared_not_owned(extLogger);
+        else
+            m_logger = std::make_shared<gsFlowLogger>(gsFlowLogger::mode::quiet, "", m_comm.rank());
     }
 
-    ~gsFlowSolverParams()
-    {
-    }
 
 public: // *** Static functions ***
 
@@ -140,13 +150,10 @@ public: // *** Static functions ***
         opt.addReal("timeStep", "Time step size", 0.1);
         opt.addReal("omega", "Angular velocity (for rotating frame of reference)", 0.0);
 
-        // output
-        opt.addSwitch("fileOutput", "Create an output file", false);
-        opt.addSwitch("quiet", "Do not display output in terminal", false);
-        opt.addString("outFile", "Name of the output file (or the full path to it)", "");
-
         // parallel 
         opt.addSwitch("parallel", "Currently running in parallel", false);
+        opt.addInt("mpi.size", "Total number of MPI processes", 1);
+        opt.addInt("mpi.rank", "Rank of this process", 0);
 
         // geometry jacobian evaluation
         opt.addInt("jac.npts", "Number of points along a patch side (in each direction) for geometry jacobian check", 100);
@@ -163,6 +170,36 @@ public: // *** Static functions ***
         opt.addReal("TM.turbIntensity", "Turbulent intensity", 0.05);
         opt.addReal("TM.viscosityRatio", "Specifies approximate ratio of turbulent viscosity to kinematic viscosity", 50.0);
         opt.addInt("TM.addRefsDF", "Number of additional uniform refinements of pressure basis for distance field computation", 2);
+
+        return opt;
+    }
+
+    /// @brief Returns a list of default options for PETSc solvers.
+    static gsOptionList defaultPETScOptions()
+    {
+        gsOptionList opt;
+
+        opt.addString("-ksp_type", "", "gmres");
+        opt.addString("-pc_type", "", "gamg");
+        //opt.addString("-sub_pc_type", "", "ilu");
+
+        return opt;
+    }
+
+    /// @brief Returns a list of default options for saddle-point PETSc solvers.
+    static gsOptionList defaultPETScOptionsSP()
+    {
+        gsOptionList opt;
+
+        opt.addString("-ksp_type", "", "fgmres"); // flexible GMRES
+        opt.addString("-pc_type", "", "fieldsplit"); // PCFIELDSPLIT preconditioner
+        opt.addString("-pc_fieldsplit_detect_saddle_point", "", ""); // automatically detect saddle-point structure
+        opt.addString("-pc_fieldsplit_type", "", "schur"); // Schur complement preconditioner
+        opt.addString("-pc_fieldsplit_schur_fact_type", "", "upper"); // upper triangular factorization
+        // opt.addString("-fieldsplit_0_ksp_type", "", "preonly"); 
+        // opt.addString("-fieldsplit_0_pc_type", "", "asm"); 
+        //opt.addString("-fieldsplit_0_sub_pc_type", "", "ilu");
+        opt.addString("-fieldsplit_1_pc_type", "", "lsc"); // LSC approximation of Schur complement
 
         return opt;
     }
@@ -231,7 +268,6 @@ public: // *** Member functions ***
         finalizeDofMappers();
         createPeriodicHelper(m_dofMappers[0]);
     }
-
 
 public: // *** Getters/setters ***
 
@@ -377,8 +413,12 @@ public: // *** Getters/setters ***
     void setOmegaSolution(gsField<T> sol) { m_OSolField = sol; }
 
     void setDistanceField(gsField<T>& dfield) { m_distanceField = dfield; }
-
     gsField<T>& getDistanceField() { return m_distanceField; }
+
+    gsMpiComm getMpiComm() { return m_comm; }
+
+    gsFlowLogger& logger() { return *m_logger; }
+    void setOutputMode(typename gsFlowLogger::mode mode) { m_logger->setMode(mode); }
 
 }; // class gsFlowSolverParams
 

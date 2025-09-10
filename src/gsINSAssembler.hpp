@@ -50,8 +50,11 @@ void gsINSAssembler<T, MatOrder>::initMembers()
     m_visitorUUnonlin.initialize();
     m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
 
-    m_visitorUP = gsINSVisitorPU_withUPrhs<T, MatOrder>(m_paramsPtr);
+    m_visitorUP = gsINSVisitorPU<T, MatOrder>(m_paramsPtr);
     m_visitorUP.initialize();
+
+    m_visitorPU = gsINSVisitorUP<T, MatOrder>(m_paramsPtr);
+    m_visitorPU.initialize();
 
     m_visitorF = gsINSVisitorRhsU<T, MatOrder>(m_paramsPtr);
     m_visitorF.initialize();
@@ -96,17 +99,72 @@ void gsINSAssembler<T, MatOrder>::updateSizes()
     m_blockUUlin_whole.resize(m_pshift, m_pshift);
     m_blockUUnonlin_whole.resize(m_pshift, m_pshift);
     m_blockUP.resize(m_pshift, m_pdofs);
+    m_blockPU.resize(m_pdofs, m_pshift);
 
     m_baseMatrix.resize(m_dofs, m_dofs);
     m_matrix.resize(m_dofs, m_dofs);
 
     m_rhsUlin.setZero(m_pshift, 1);
     m_rhsUnonlin.setZero(m_pshift, 1);
-    m_rhsBtB.setZero(m_dofs, 1);
+    m_rhsPlin.setZero(m_pdofs, 1);
     m_rhsF.setZero(m_pshift, 1);
     m_rhsG.setZero(m_pdofs, 1);
     m_baseRhs.setZero(m_dofs, 1);
     m_rhs.setZero(m_dofs, 1);
+
+    this->initParallel(); 
+}
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::initParallel()
+{
+    std::pair<index_t, index_t> locInfoU, locInfoP;
+
+    petsc_computeMatLayout(m_udofs, locInfoU, m_paramsPtr->getMpiComm());
+    petsc_computeMatLayout(m_pdofs, locInfoP, m_paramsPtr->getMpiComm());
+
+    m_globalStartEnd.resize(2, 2);
+    m_globalStartEnd(0, 0) = locInfoU.second; // first local velocity dof
+    m_globalStartEnd(0, 1) = locInfoU.second + locInfoU.first; // last local velocity dof + 1
+    m_globalStartEnd(1, 0) = locInfoP.second; // first local pressure dof
+    m_globalStartEnd(1, 1) = locInfoP.second + locInfoP.first; // last local pressure dof + 1
+
+    for (index_t unk = 0; unk <= 1; unk++)
+    {
+        for (index_t i = m_globalStartEnd(unk, 0); i < m_globalStartEnd(unk, 1); i++)
+        {
+            std::vector< std::pair<index_t, index_t> > localIDs;
+            this->getMapper(unk).preImage(i, localIDs); // returns (patch, dof)
+
+            for (size_t k = 0; k < localIDs.size(); k++)
+                this->getMapper(unk).markTagged(localIDs[k].second, localIDs[k].first); // (dof, patch)
+        }
+    }
+
+    m_ownedLocalDofs.resize(m_paramsPtr->getPde().patches().nPatches());
+    for (size_t p = 0; p < m_ownedLocalDofs.size(); p++)
+    {
+        m_ownedLocalDofs[p].resize(2);
+
+        for (index_t unk = 0; unk <= 1; unk++)
+        {
+            gsVector<index_t> ownedGlobalDofs = this->getMapper(unk).findTagged(p); // returns global indices
+            gsVector<index_t> bndDofs = this->getMapper(unk).findBoundary(p); // returns local indices
+
+            index_t numOwned = ownedGlobalDofs.size();
+            index_t numBnd = bndDofs.size();
+            m_ownedLocalDofs[p][unk].resize(numOwned + numBnd);
+
+            for (index_t i = 0; i < numOwned; i++)
+                m_ownedLocalDofs[p][unk](i) = this->globalToLocalOnPatch(p, unk, ownedGlobalDofs(i));
+
+            for (index_t i = 0; i < numBnd; i++)
+                m_ownedLocalDofs[p][unk](i + numOwned) = bndDofs(i);
+        }
+    }
+
+    m_isParallelInitialized = true;
+
 }
 
 
@@ -128,8 +186,9 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     m_blockUUlin_comp.resize(m_udofs, m_udofs);
     m_blockUUlin_whole.resize(m_pshift, m_pshift);
     m_blockUP.resize(m_pshift, m_pdofs);
+    m_blockPU.resize(m_pdofs, m_pshift);
     m_rhsUlin.setZero();
-    m_rhsBtB.setZero();
+    m_rhsPlin.setZero();
     m_rhsF.setZero();
     m_rhsG.setZero();
 
@@ -178,7 +237,9 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     }
 
     m_blockUP.reserve(gsVector<index_t>::Constant(m_blockUP.outerSize(), m_nnzPerOuterUP));
-    this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsBtB);
+    m_blockPU.reserve(gsVector<index_t>::Constant(m_blockPU.outerSize(), m_tarDim * m_nnzPerOuterU));
+    this->assembleBlock(m_visitorUP, 0, m_blockUP, m_rhsUlin);
+    this->assembleBlock(m_visitorPU, 1, m_blockPU, m_rhsPlin);
     this->assembleRhs(m_visitorF, 0, m_rhsF);
 
     if (m_paramsPtr->getPde().source()) // if the continuity eqn rhs is given
@@ -218,23 +279,6 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
 
         m_isMassMatReady = true;
     }
-
-    // linear operators needed for PCD preconditioner
-    // if ( m_paramsPtr->options().getString("lin.solver") == "iter" && m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
-    // {
-    //     // pressure Laplace operator
-
-    //     gsINSVisitorPPlaplace<T, MatOrder> visitorPPlaplace(m_paramsPtr);
-    //     visitorPPlaplace.initialize();
-
-    //     m_pcdBlocks[0].resize(m_pdofs, m_pdofs);
-    //     m_pcdBlocks[0].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerOuterP));
-
-    //     this->assembleBlock(visitorPPlaplace, 0, m_pcdBlocks[0], dummyRhsP);
-
-    //     // prepare for BCs
-    //     findPressureBoundaryIDs();
-    // }
 }
 
 
@@ -257,27 +301,6 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
         m_blockUUnonlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_whole.outerSize(), 2 * m_nnzPerOuterU));
         this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_whole, m_rhsUnonlin);
     }
-
-    // linear operators needed for PCD preconditioner
-    // if ( m_paramsPtr->options().getString("lin.solver") == "iter" &&  m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
-    // {
-    //     gsMatrix<T> dummyRhsP(m_pdofs, 1);
-
-    //     // Robin BC
-
-    //     // TODO
-
-    //     // pressure convection operator
-
-    //     gsINSVisitorPPconvection<T, MatOrder> visitorPPconv(m_paramsPtr);
-    //     visitorPPconv.initialize();
-    //     visitorPPconv.setCurrentSolution(m_currentVelField);
-
-    //     m_pcdBlocks[2].resize(m_pdofs, m_pdofs);
-    //     m_pcdBlocks[2].reserve(gsVector<index_t>::Constant(m_pdofs, m_nnzPerOuterP));
-
-    //     this->assembleBlock(visitorPPconv, 0, m_pcdBlocks[2], dummyRhsP);
-    // }
 }
 
 
@@ -360,9 +383,8 @@ void gsINSAssembler<T, MatOrder>::fillBaseSystem()
     fillGlobalMat_UP(m_baseMatrix, m_blockUP);
     fillGlobalMat_PU(m_baseMatrix, blockPU);
 
-    m_baseRhs = m_rhsBtB;
     m_baseRhs.topRows(m_pshift) += m_rhsF + m_rhsUlin;
-    m_baseRhs.bottomRows(m_pdofs) += m_rhsG;
+    m_baseRhs.bottomRows(m_pdofs) += m_rhsG + m_rhsPlin;
 
     m_isBaseReady = true;
     m_isSystemReady = false;
@@ -545,7 +567,7 @@ T gsINSAssembler<T, MatOrder>::computeFlowRate(index_t patch, boxSide side, gsMa
 
 
 template<class T, int MatOrder>
-index_t gsINSAssembler<T, MatOrder>::numDofsUnk(index_t i)
+index_t gsINSAssembler<T, MatOrder>::numDofsUnk(index_t i) const
 {
     if (i == 0)
         return m_udofs;
@@ -578,7 +600,6 @@ gsSparseMatrix<T, MatOrder> gsINSAssembler<T, MatOrder>::getBlockUU(bool linPart
             if(!linPartOnly)
                 blockUUcomp += m_blockUUnonlin_comp;
     
-    
             gsVector<index_t> nonZerosVector(m_pshift);
             gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);
     
@@ -602,14 +623,20 @@ gsSparseMatrix<T, MatOrder> gsINSAssembler<T, MatOrder>::getBlockUU(bool linPart
 
 
 template<class T, int MatOrder>
-gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU() const
+gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU(bool linPartOnly) const
 { 
-    if (m_isSystemReady)
+    if (m_isSystemReady && !linPartOnly)
         return m_rhs.topRows(m_pshift);
+    else if (m_isBaseReady && linPartOnly)
+        return m_baseRhs.topRows(m_pshift);
     else
     {
-        gsMatrix<T> rhsUpart = m_rhsF + m_rhsBtB.topRows(m_pshift);
-        return (rhsUpart + m_rhsUlin + m_rhsUnonlin);
+        gsMatrix<T> rhsU = m_rhsF + m_rhsUlin;
+
+        if(!linPartOnly)
+            rhsU += m_rhsUnonlin;
+
+        return rhsU;
     }
 }
 
@@ -620,7 +647,7 @@ gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsP() const
     if (m_isSystemReady)
         return m_rhs.bottomRows(m_pdofs);
     else
-        return m_rhsG + m_rhsBtB.bottomRows(m_pdofs);
+        return m_rhsG + m_rhsPlin;
 }
 
 
@@ -766,33 +793,6 @@ void gsINSAssembler<T, MatOrder>::computeOmegaXrCoeffs()
 
 }
 
-
-// --- PCD functions ---
-
-// template<class T, int MatOrder>
-// void gsINSAssembler<T, MatOrder>::findPressureBoundaryIDs()
-// {
-//     findPressureBoundaryPartIDs(m_paramsPtr->getBndIn(), m_presInIDs);
-//     findPressureBoundaryPartIDs(m_paramsPtr->getBndOut(), m_presOutIDs);
-//     findPressureBoundaryPartIDs(m_paramsPtr->getBndWall(), m_presWallIDs);
-// }
-
-// template<class T, int MatOrder>
-// void gsINSAssembler<T, MatOrder>::findPressureBoundaryPartIDs(std::vector<std::pair<int, boxSide> > bndPart, std::vector<index_t>& idVector)
-//     {
-//         const gsMultiBasis<T>& pBasis = getBasis(1);
-
-//         gsMatrix<index_t> bnd;
-//         idVector.clear();
-
-//         for (std::vector<std::pair<int, boxSide> >::iterator it = bndPart.begin(); it != bndPart.end(); it++)
-//         {
-//             bnd = pBasis.piece(it->first).boundary(it->second);
-
-//             for (int i = 0; i < bnd.rows(); i++)
-//                 idVector.push_back(this->getMappers()[1].index(bnd(i, 0), it->first));
-//         }
-//     }
 
 // =============================================================================
 

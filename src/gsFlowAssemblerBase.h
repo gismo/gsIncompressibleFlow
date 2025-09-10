@@ -13,6 +13,7 @@
 
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowVisitors.h>
+#include <gsPetsc/src/PETScSupport.h>
 
 namespace gismo
 {
@@ -36,6 +37,11 @@ protected: // *** Class members ***
     std::vector<gsMatrix<T> > m_ddof;
     gsMatrix<T> m_solution;
 
+    // needed for parallelization:
+    bool m_isParallelInitialized;
+    std::vector< std::vector <gsVector<index_t> > > m_ownedLocalDofs; // first dimension for patches, second for unknowns
+    gsMatrix<index_t> m_globalStartEnd; // Nx2 matrix, rows: unknowns, cols: start/end of indices local to the current process
+
 
 public: // *** Constructor/destructor ***
 
@@ -54,6 +60,10 @@ protected: // *** Member functions ***
 
     /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes()
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// @brief Initialize data needed for parallelization.
+    virtual void initParallel()
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Compute the coefficients of the basis functions at the Dirichlet boundaries.
@@ -75,6 +85,12 @@ protected: // *** Member functions ***
     /// @param[in]  mbasis      reference to the basis corresponding to \a unk
     /// @param[out] ddofVector  reference to the vector where computed coefficients will be stored
     void computeDirichletDofsL2Proj(const index_t unk, const gsDofMapper & mapper, const gsMultiBasis<T> & mbasis, gsMatrix<T>& ddofVector);
+
+    /// @brief Return the local index of \a globalID on patch \a patch.
+    /// @param[in] patch    patch index
+    /// @param[in] unk      the considered unknown (0 - velocity, 1 - pressure)
+    /// @param[in] globalID global DOF index
+    index_t globalToLocalOnPatch(index_t patch, index_t unk, index_t globalID);
 
     /// @brief Assemble a matrix block.
     /// @param[in]  visitor     visitor for the required block
@@ -237,6 +253,8 @@ public: // *** Getters/setters ***
     /// @param[in] unk index of the unknown
     virtual const gsMatrix<T>& rhs(index_t unk) const
     {GISMO_NO_IMPLEMENTATION}
+
+    gsMatrix<index_t> getGlobalStartEnd() {return m_globalStartEnd; }
 
 };
 

@@ -163,5 +163,185 @@ void gsFlowLinSystSolver_iterSP<T, MatOrder, SolverType>::setupPreconditioner(co
     m_setupT += time1 - time0;
 }
 
+// ===================================================================================================================
+
+#ifdef gsPetsc_ENABLED
+
+template<class T>
+void gsFlowLinSystSolver_PETSc<T>::setupSolver(const gsSparseMatrix<T, RowMajor>& mat)
+{
+    real_t time0 = stopwatchStart();
+
+    index_t M = mat.rows();
+    index_t N = mat.cols();
+    MPI_Comm comm = m_paramsPtr->getMpiComm();
+
+    petsc_computeMatLayout(M, m_rowLocInfo, comm);
+    petsc_computeMatLayout(N, m_colLocInfo, comm);
+    petsc_setupMatrix(m_petscMat, M, N, comm);
+    PetscCallVoid( MatCreateVecs(m_petscMat, &m_petscSol, &m_petscRhs) );
+
+    PetscCallVoid( KSPCreate(comm, &m_ksp) );
+    PetscCallVoid( KSPGetPC(m_ksp, &m_pc) );
+    this->applyOptions(gsFlowSolverParams<T>::defaultPETScOptions());
+
+    real_t time1 = stopwatchStop();
+    m_setupT += time1 - time0;
+}
+
+template<class T>
+void gsFlowLinSystSolver_PETSc<T>::applySolver(const gsSparseMatrix<T, RowMajor>& mat, const gsMatrix<T>& rhs, gsMatrix<T>& solution)
+{
+    MPI_Comm comm = m_paramsPtr->getMpiComm();
+
+    real_t time0 = stopwatchStart();
+    petsc_copySparseMat(mat, m_petscMat, m_rowLocInfo, m_colLocInfo, comm);
+    petsc_copyVec(rhs, m_petscRhs, comm);
+    real_t time1 = stopwatchStop();
+    PetscCallVoid( KSPSetOperators(m_ksp, m_petscMat, m_petscMat) );
+    PetscCallVoid( KSPSolve(m_ksp, m_petscRhs, m_petscSol) );
+    real_t time2 = stopwatchStop();
+
+    int nIter = 0;
+    PetscCallVoid( KSPGetIterationNumber(m_ksp, &nIter) );
+    m_linIterVector.push_back(nIter);
+
+    real_t time3 = stopwatchStop();
+    petsc_copyVecToGismo(m_petscSol, solution, comm);
+    real_t time4 = stopwatchStop();
+
+    // Clear petsc vector
+    PetscCallVoid( VecZeroEntries(m_petscRhs) );
+
+    m_solveT += time2 - time1;
+    m_dataCopyT += (time1 - time0) + (time4 - time3);
+}
+
+template<class T>
+void gsFlowLinSystSolver_PETSc<T>::applyOptions(gsOptionList petscOpt)
+{
+    PetscCallVoid( PetscOptionsClear(NULL) );
+
+    for ( auto & opt : petscOpt.getAllEntries() )
+        PetscCallVoid( PetscOptionsSetValue(NULL, opt.label.c_str(), opt.val.c_str()) );
+
+    PetscCallVoid( KSPSetFromOptions(m_ksp) );
+    PetscCallVoid( PCSetFromOptions(m_pc) );
+}
+
+// ===========================================================
+
+template<class T>
+void gsFlowLinSystSolver_PETSc_SP<T>::setupSolver(const std::vector< gsSparseMatrix<T, RowMajor> >& matBlocks)
+{
+    real_t time0 = stopwatchStart();
+
+    MPI_Comm comm = m_paramsPtr->getMpiComm();
+
+    short_t dim = m_paramsPtr->getPde().patches().dim();
+    index_t usize = matBlocks[1].rows();
+    index_t nu = usize / dim;
+    index_t np = matBlocks[1].cols();
+
+    petsc_computeMatLayout(nu, m_uLocInfo, comm);
+    petsc_computeMatLayout(np, m_pLocInfo, comm);
+
+    PetscCallVoid( KSPCreate(comm, &m_ksp) );
+    PetscCallVoid( KSPGetPC(m_ksp, &m_pc) );
+    this->applyOptions(gsFlowSolverParams<T>::defaultPETScOptionsSP());
+
+    real_t time1 = stopwatchStop();
+    m_setupT += time1 - time0;
+}
+
+template<class T>
+void gsFlowLinSystSolver_PETSc_SP<T>::applySolver(const std::vector< gsSparseMatrix<T, RowMajor> >& matBlocks, const std::vector< gsMatrix<T> >& rhsBlocks, gsMatrix<T>& solution)
+{
+    MPI_Comm comm = m_paramsPtr->getMpiComm();
+
+    short_t dim = m_paramsPtr->getPde().patches().dim();
+    index_t usize = matBlocks[1].rows();
+    index_t nu = usize / dim;
+    index_t np = matBlocks[1].cols();
+    
+    Mat pMatBlocks[4];
+    Vec pRhsBlocks[2];
+
+    real_t time0 = stopwatchStop();
+
+    // velocity-velocity block
+    petsc_setupMatrix(pMatBlocks[0], usize, usize, comm, dim, dim);
+    petsc_copySparseMat(matBlocks[0], pMatBlocks[0], m_uLocInfo, m_uLocInfo, comm, dim, dim);
+
+    // velocity-pressure block
+    petsc_setupMatrix(pMatBlocks[1], usize, np, comm, dim, 1);
+    petsc_copySparseMat(matBlocks[1], pMatBlocks[1], m_uLocInfo, m_pLocInfo, comm, dim, 1);
+
+    // pressure-velocity block
+    petsc_setupMatrix(pMatBlocks[2], np, usize, comm, 1, dim);
+    petsc_copySparseMat(matBlocks[2], pMatBlocks[2], m_pLocInfo, m_uLocInfo, comm, 1, dim);
+
+    // pressure-pressure block
+    if (matBlocks.size() == 4)
+    {
+        petsc_setupMatrix(pMatBlocks[3], np, np, comm);
+        petsc_copySparseMat(matBlocks[3], pMatBlocks[3], m_pLocInfo, m_pLocInfo, comm);
+    }
+    else
+        pMatBlocks[3] = NULL;
+
+    // rhs
+    PetscCallVoid( MatCreateVecs(pMatBlocks[0], NULL, &pRhsBlocks[0]) ); // velocity rhs
+    PetscCallVoid( MatCreateVecs(pMatBlocks[2], NULL, &pRhsBlocks[1]) ); // pressure rhs
+
+    gsMatrix<T> locRhsU, locRhsP;
+    locRhsU.resize(m_uLocInfo.first, dim);
+    locRhsP = rhsBlocks[1].middleRows(m_pLocInfo.second, m_pLocInfo.first);
+
+    for (index_t d = 0; d < dim; d++)
+        locRhsU.col(d) = rhsBlocks[0].middleRows(m_uLocInfo.second + d*nu, m_uLocInfo.first);
+
+    petsc_copyVec(locRhsU, pRhsBlocks[0], comm);
+    petsc_copyVec(locRhsP, pRhsBlocks[1], comm);
+
+    real_t time1 = stopwatchStop();
+
+    PetscCallVoid( MatCreateNest(comm, 2, NULL, 2, NULL, pMatBlocks, &m_petscMat) );
+    PetscCallVoid( MatNestSetVecType(m_petscMat, VECNEST) );
+    PetscCallVoid( VecCreateNest(comm, 2, NULL, pRhsBlocks, &m_petscRhs) );
+    PetscCallVoid( MatCreateVecs(m_petscMat, &m_petscSol, NULL) );  
+    PetscCallVoid( KSPSetOperators(m_ksp, m_petscMat, m_petscMat) );
+
+    real_t time2 = stopwatchStop();
+    PetscCallVoid( KSPSolve(m_ksp, m_petscRhs, m_petscSol) );
+    real_t time3 = stopwatchStop();
+
+    int nIter = 0;
+    PetscCallVoid( KSPGetIterationNumber(m_ksp, &nIter) );
+    m_linIterVector.push_back(nIter);
+
+    Vec pSolU, pSolP;
+    PetscCallVoid( VecNestGetSubVec(m_petscSol, 0, &pSolU) );
+    PetscCallVoid( VecNestGetSubVec(m_petscSol, 1, &pSolP) );
+
+    real_t time4 = stopwatchStop();
+
+    gsMatrix<T> solU, solP;
+    petsc_copyVecToGismo(pSolU, solU, comm, dim);
+    petsc_copyVecToGismo(pSolP, solP, comm, 1);
+
+    solution.topRows(usize) = solU;
+    solution.bottomRows(np) = solP;
+    
+    real_t time5 = stopwatchStop();
+
+    // Clear petsc vector
+    PetscCallVoid( VecZeroEntries(m_petscRhs) );
+
+    m_solveT += time3 - time2;
+    m_dataCopyT += (time1 - time0) + (time5 - time4);
+}
+
+#endif
 
 }

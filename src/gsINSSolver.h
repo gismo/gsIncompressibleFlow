@@ -37,12 +37,10 @@ public:
 
 protected: // *** Base class members ***
 
+    using Base::m_paramsPtr;
     using Base::m_assemblerPtr;
     using Base::m_solution;
     using Base::m_iterationNumber;
-    using Base::m_outFile;
-    using Base::m_fileOutput;
-    using Base::m_dispOutput;
 
 
 public: // *** Constructor/destructor ***
@@ -64,6 +62,25 @@ public: // *** Member functions ***
 
     /// @brief Compute the Stokes problem and save the solution into m_solution.
     virtual void solveStokes();
+
+    /// @brief Prepare for the solution process.
+    virtual void initIteration()
+    { 
+        if (m_paramsPtr->options().getString("lin.solver") == "petsc")
+            this->getLinSolver()->setupSolver(getAssembler()->matBlocks());
+        else
+            Base::initIteration();
+    }
+
+    /// @brief Solve the linear system.
+    /// @param[out] solution a reference to the vector, where the computed solution will be stored
+    virtual void applySolver(gsMatrix<T>& solution)
+    {
+        if (m_paramsPtr->options().getString("lin.solver") == "petsc")
+            this->getLinSolver()->applySolver(getAssembler()->matBlocks(), getAssembler()->rhsBlocks(), solution);
+        else
+           Base::applySolver(solution);
+    }
 
 
 public: // *** Getters/setters ***
@@ -165,9 +182,6 @@ protected: // *** Base class members ***
     using Base::m_iterationNumber;
     using Base::m_assemblerPtr;
     using Base::m_paramsPtr;
-    using Base::m_outFile;
-    using Base::m_fileOutput;
-    using Base::m_dispOutput;
 
 
 public: // *** Constructor/destructor ***

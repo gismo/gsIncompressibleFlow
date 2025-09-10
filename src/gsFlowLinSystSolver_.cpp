@@ -9,6 +9,8 @@ namespace gismo
     CLASS_TEMPLATE_INST gsFlowLinSystSolver_direct<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsFlowLinSystSolver_iter<real_t, RowMajor, gsGMRes<real_t> >;
     CLASS_TEMPLATE_INST gsFlowLinSystSolver_iterSP<real_t, RowMajor, gsGMRes<real_t> >;
+    CLASS_TEMPLATE_INST gsFlowLinSystSolver_PETSc<real_t>;
+    CLASS_TEMPLATE_INST gsFlowLinSystSolver_PETSc_SP<real_t>;
 
     CLASS_TEMPLATE_INST gsFlowLinSystSolver<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsFlowLinSystSolver_direct<real_t, ColMajor>;
