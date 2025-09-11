@@ -1,4 +1,4 @@
-/** @file francisTurbineExample.cpp
+/** @file francisTurbineExample_RANS.cpp
  
     This file is part of the G+Smo library.
 
@@ -16,7 +16,7 @@
 
 using namespace gismo;
 
-template<class T, int MatOrder> void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt);
+template<class T, int MatOrder> void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt, gsFlowLogger& logger);
 
 int main(int argc, char *argv[])
 {
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     bool stokesInit = false; // start unsteady problem from Stokes solution
     
     // output settings
-    bool quiet = false;
+    std::string outMode = "terminal"; // terminal/file/all/quiet
     bool plot = false;
     index_t plotPts = 50000;
     bool plotMesh = false;
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
 
-    cmd.addSwitch("quiet", "Supress (some) terminal output", quiet);
+    cmd.addString("", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
     cmd.addSwitch("plotMesh", "Plot the computational mesh", plotMesh);
@@ -91,7 +91,9 @@ int main(int argc, char *argv[])
 
     // ========================= Define problem (geometry, BCs, rhs, basis) =========================
 
-    gsInfo << "Reading geometry from file:\n" << inFile << "\n\n";
+    gsFlowLogger logger(gsFlowLogger::parseOutputMode(outMode), "francisTurbineExample_RANS.log");
+    logger << "Reading problem definition from file:\n" << inFile << "\n\n";
+
     gsMultiPatch<> mp;
     gsReadFile<> mpFile(inFile, mp);
 
@@ -155,12 +157,12 @@ int main(int argc, char *argv[])
     bndWall.push_back(std::make_pair(2, boundary::front));
     bndWall.push_back(std::make_pair(2, boundary::back));    
 
-    gsInfo << "Solving RANS problem in the Francis turbine runner wheel.\n";
-    gsInfo << mp;
-    gsInfo << "viscosity = " << viscosity << "\n";
-    gsInfo << "omega = " << omega << "\n";
-    gsInfo << "source function = " << f << "\n";
-    gsInfo << "blade velocity: " << Ublade << "\n";
+    logger << "Solving RANS problem in the Francis turbine runner wheel.\n";
+    logger << "domain: " << mp;
+    logger << "viscosity = " << viscosity << "\n";
+    logger << "omega = " << omega << "\n";
+    logger << "source function = " << f << "\n";
+    logger << "blade velocity: " << Ublade << "\n";
 
     // ========================================= Define basis ========================================= 
 
@@ -188,8 +190,7 @@ int main(int argc, char *argv[])
     // ========================================= Solve ========================================= 
 
     gsNavStokesPde<real_t> NSpde(mp, bcInfo, &f, viscosity);
-    gsFlowSolverParams<real_t> params(NSpde, discreteBases);
-    params.options().setSwitch("quiet", quiet);
+    gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger);
     params.options().setString("lin.solver", "iter");
     params.options().setInt("lin.maxIt", linIt);
     params.options().setReal("lin.tol", linTol);
@@ -206,18 +207,18 @@ int main(int argc, char *argv[])
     solveOpt.addSwitch("plotMesh", "", plotMesh);
     solveOpt.addSwitch("stokesInit", "", stokesInit);
 
-    gsInfo << "\n-----------------------------------------------------------\n";
-    gsInfo << "Solving the unsteady RANS problem with direct linear solver\n";
-    gsInfo << "-----------------------------------------------------------\n";
+    logger << "\n-----------------------------------------------------------\n";
+    logger << "Solving the unsteady RANS problem with direct linear solver\n";
+    logger << "-----------------------------------------------------------\n";
 
     gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(params);
-    solveProblem(NSsolver, solveOpt);
+    solveProblem(NSsolver, solveOpt, logger);
 
     return 0;
 }
 
 template<class T, int MatOrder>
-void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt)
+void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt, gsFlowLogger& logger)
 {
     gsStopwatch clock;
 
@@ -229,11 +230,11 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt)
     // ------------------------------------
     // solve problem
 
-    gsInfo << "\ninitialization...\n";
+    logger << "\ninitialization...\n";
     NSsolver.initialize();
 
-    gsInfo << "RANS numDofs: " << NSsolver.numDofs() << "\n";
-    gsInfo << "TM numDofs: " << NSsolver.numDofsTM() << "\n\n";
+    logger << "RANS numDofs: " << NSsolver.numDofs() << "\n";
+    logger << "TM numDofs: " << NSsolver.numDofsTM() << "\n\n";
 
     if (opt.getSwitch("stokesInit"))
         NSsolver.solveStokes();
@@ -242,10 +243,10 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt)
 
     real_t totalT = clock.stop();
 
-    gsInfo << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
-    gsInfo << "Solve time:" << NSsolver.getSolveTime() << "\n";
-    gsInfo << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
-    gsInfo << "Total solveProblem time:" << totalT << "\n\n";
+    logger << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
+    logger << "Solve time:" << NSsolver.getSolveTime() << "\n";
+    logger << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
+    logger << "Total solveProblem time:" << totalT << "\n\n";
 
     // ------------------------------------
     // plot
@@ -260,7 +261,7 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt)
         gsField<> ksol = NSsolver.constructSolution(2);
         gsField<> omegasol = NSsolver.constructSolution(3);
 
-        gsInfo << "Plotting in Paraview...\n";
+        logger << "Plotting in Paraview...\n";
         gsWriteParaview<>(velocity, idStr + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, idStr + "_pressure", plotPts);
         gsWriteParaview<>(ksol,idStr + "_k", plotPts);

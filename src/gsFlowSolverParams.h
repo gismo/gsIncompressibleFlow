@@ -111,7 +111,7 @@ public: // *** Constructor/destructor ***
         if (extLogger)
             m_logger = memory::make_shared_not_owned(extLogger);
         else
-            m_logger = std::make_shared<gsFlowLogger>(gsFlowLogger::mode::quiet, "", m_comm.rank());
+            m_logger = std::make_shared<gsFlowLogger>(gsFlowLogger::mode::quiet, "");
     }
 
 

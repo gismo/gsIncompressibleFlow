@@ -23,7 +23,7 @@
 
 using namespace gismo;
 
-template<class T, int MatOrder> void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
+template<class T, int MatOrder> void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt, int geo, gsFlowLogger& logger);
 
 int main(int argc, char *argv[])
 {
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     bool stokesInit = false; // start unsteady problem from Stokes solution
 
     // output settings
-    bool quiet = false;
+    std::string outMode = "terminal"; // terminal/file/all/quiet
     bool plot = false;
     bool plotMesh = false;
     index_t plotPts = 10000;
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
 
-    cmd.addSwitch("quiet", "Supress (some) terminal output", quiet);
+    cmd.addString("o", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
     cmd.addSwitch("plotMesh", "Plot the computational mesh", plotMesh);
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
@@ -253,10 +253,11 @@ int main(int argc, char *argv[])
 
     // ========================================= Solve ========================================= 
 
-    gsInfo << "Solving RANS problem with k-omega SST model in " << geoStr << " domain.\n";
-    gsInfo << patches;
-    gsInfo << "viscosity = " << viscosity << "\n";
-    gsInfo << "source function = " << f << "\n";
+    gsFlowLogger logger(gsFlowLogger::parseOutputMode(outMode), "gsRANSSolversExample.log");
+    logger << "Solving RANS problem with k-omega SST model in " << geoStr << " domain.\n";
+    logger << "domain: " << patches;
+    logger << "viscosity = " << viscosity << "\n";
+    logger << "source function = " << f << "\n";
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     
@@ -274,14 +275,13 @@ int main(int argc, char *argv[])
 
     if (direct)
     {
-        gsInfo << "\n-----------------------------------------------------------\n";
-        gsInfo << "Solving the unsteady RANS problem with direct linear solver";
-        gsInfo << "\n-----------------------------------------------------------\n\n";
+        logger << "\n-----------------------------------------------------------\n";
+        logger << "Solving the unsteady RANS problem with direct linear solver";
+        logger << "\n-----------------------------------------------------------\n\n";
 
         solveOpt.setString("id", "rans_direct");
 
-        gsFlowSolverParams<real_t> paramsDir(NSpde, discreteBases);
-        paramsDir.options().setSwitch("quiet", quiet);
+        gsFlowSolverParams<real_t> paramsDir(NSpde, discreteBases, &logger);
         paramsDir.options().setString("assemb.loop", matFormation);
         paramsDir.options().setInt("TM.maxIt", maxItTM);
         paramsDir.options().setReal("timeStep", timeStep);
@@ -291,19 +291,18 @@ int main(int argc, char *argv[])
         paramsDir.options().setString("lin.solver", "direct");
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsDir);
-        solveProblem(NSsolver, solveOpt, geo);
+        solveProblem(NSsolver, solveOpt, geo, logger);
     }
 
     if (iter)
     {
-        gsInfo << "\n--------------------------------------------------------------\n";
-        gsInfo << "Solving the unsteady RANS problem with iterative linear solver";
-        gsInfo << "\n--------------------------------------------------------------\n\n";
+        logger << "\n--------------------------------------------------------------\n";
+        logger << "Solving the unsteady RANS problem with iterative linear solver";
+        logger << "\n--------------------------------------------------------------\n\n";
 
         solveOpt.setString("id", "rans_iter");
 
-        gsFlowSolverParams<real_t> paramsIter(NSpde, discreteBases);
-        paramsIter.options().setSwitch("quiet", quiet);
+        gsFlowSolverParams<real_t> paramsIter(NSpde, discreteBases, &logger);
         paramsIter.options().setString("assemb.loop", matFormation);
         paramsIter.options().setInt("TM.maxIt", maxItTM);
         paramsIter.options().setReal("timeStep", timeStep);
@@ -316,7 +315,7 @@ int main(int argc, char *argv[])
         paramsIter.options().setString("lin.precType", precond);
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsIter);
-        solveProblem(NSsolver, solveOpt, geo);
+        solveProblem(NSsolver, solveOpt, geo, logger);
     }
 
     return 0; 
@@ -324,7 +323,7 @@ int main(int argc, char *argv[])
 
 
 template<class T, int MatOrder>
-void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
+void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt, int geo, gsFlowLogger& logger)
 {
     gsStopwatch clock;
 
@@ -365,11 +364,11 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     // ------------------------------------
     // solve problem
 
-    gsInfo << "\nInitialization...\n";
+    logger << "\nInitialization...\n";
     NSsolver.initialize();
 
-    gsInfo << "RANS numDofs: " << NSsolver.numDofs() << "\n";
-    gsInfo << "TM numDofs: " << NSsolver.numDofsTM() << "\n\n";
+    logger << "RANS numDofs: " << NSsolver.numDofs() << "\n";
+    logger << "TM numDofs: " << NSsolver.numDofsTM() << "\n\n";
 
     if (opt.getSwitch("stokesInit"))
         NSsolver.solveStokes();
@@ -381,10 +380,10 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
 
     real_t totalT = clock.stop();
 
-    gsInfo << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
-    gsInfo << "Solve time:" << NSsolver.getSolveTime() << "\n";
-    gsInfo << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
-    gsInfo << "Total solveProblem time:" << totalT << "\n\n";
+    logger << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
+    logger << "Solve time:" << NSsolver.getSolveTime() << "\n";
+    logger << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
+    logger << "Total solveProblem time:" << totalT << "\n\n";
 
     NSsolver.getLinSolver()->reportLinIterations();
 
@@ -400,11 +399,11 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
 
         int plotPts = opt.getInt("plotPts");
  
-        gsInfo << "Plotting in Paraview... ";
+        logger << "Plotting in Paraview... ";
         gsWriteParaview<>(velocity, geoStr + "_" + id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
         gsWriteParaview<>(ksol, geoStr + "_" + id + "_k", plotPts);
         gsWriteParaview<>(omegasol, geoStr + "_" + id + "_omega", plotPts);
-        gsInfo << "Done.\n";
+        logger << "Done.\n";
     }
 }
