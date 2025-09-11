@@ -48,15 +48,32 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     gsINSSolver(gsFlowSolverParams<T>& params):
     Base(params)
-    { }
+    {
+        printOptions();
+    }
 
     gsINSSolver(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr)
-    { }
+    {
+        printOptions();
+    }
 
     virtual ~gsINSSolver()
     { }
 
+
+protected: // *** Member functions ***
+
+    /// @brief Print the options used by the solver to the logger.
+    void printOptions()
+    {
+        std::stringstream sstr;
+        sstr << "\n-----------------------------------\n";
+        sstr << "Incompressible flow solver options:\n";
+        sstr << m_paramsPtr->options() << "-----------------------------------\n";
+        m_paramsPtr->logger().log(sstr.str(), true); // true = log to file only
+    }
+    
 
 public: // *** Member functions ***
 

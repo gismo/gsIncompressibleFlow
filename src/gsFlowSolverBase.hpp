@@ -23,10 +23,6 @@ void gsFlowSolverBase<T, MatOrder>::initMembers()
     m_iterationNumber = 0;
     m_relNorm = std::numeric_limits<T>::infinity();
 
-    std::stringstream sstr;
-    sstr << "\nCreating incompressible flow solver with " << m_paramsPtr->options() << "\n";
-    m_paramsPtr->logger().log(sstr.str(), true); // true = log to file only
-
     m_initAssembT = 0;
     m_assembT = 0;
 }

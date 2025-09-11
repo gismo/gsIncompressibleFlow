@@ -134,6 +134,7 @@ int main(int argc, char *argv[])
     fd.getId(1, f);         // id=1: source function
     fd.getId(2, bcInfo);    // id=2: boundary conditions
 
+    logger << "domain: " << patches << "\n";
     logger << "viscosity = " << viscosity << "\n";
     logger << "source function = " << f << "\n";
 

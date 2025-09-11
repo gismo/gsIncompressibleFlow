@@ -23,7 +23,7 @@
 
 using namespace gismo;
 
-template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo);
+template<class T, int MatOrder> void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo, gsFlowLogger& logger);
 
 int main(int argc, char *argv[])
 {
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     bool stokesInit = false; // start unsteady problem from Stokes solution
 
     // output settings
-    bool quiet = false;
+    std::string outMode = "terminal"; // terminal/file/all/quiet
     bool plot = false;
     bool plotMesh = false;
     int plotPts = 10000;
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
 
-    cmd.addSwitch("quiet", "Supress (some) terminal output", quiet);
+    cmd.addString("o", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
     cmd.addSwitch("plotMesh", "Plot the computational mesh", plotMesh);
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
@@ -249,14 +249,14 @@ int main(int argc, char *argv[])
 
     // ========================================= Solve ========================================= 
 
-    gsInfo << "Solving Navier-Stokes problem in " << geoStr << " domain.\n";
-    gsInfo << patches;
-    gsInfo << "viscosity = " << viscosity << "\n";
-    gsInfo << "source function = " << f << "\n";
+    gsFlowLogger logger(gsFlowLogger::parseOutputMode(outMode), "gsINSSolversExample.log");
+    logger << "Solving Navier-Stokes problem in " << geoStr << " domain.\n";
+    logger << "domain: " << patches;
+    logger << "viscosity = " << viscosity << "\n";
+    logger << "source function = " << f << "\n";
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
-    gsFlowSolverParams<real_t> params(NSpde, discreteBases);
-    params.options().setSwitch("quiet", quiet);
+    gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger);
     params.options().setString("assemb.loop", matFormation);
 
     gsOptionList solveOpt;
@@ -278,10 +278,10 @@ int main(int argc, char *argv[])
 
         gsINSSolverSteady<real_t, ColMajor> NSsolver(params);
 
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the steady problem with direct linear solver.\n";
+        logger << "\n----------\n";
+        logger << "Solving the steady problem with direct linear solver.\n";
 
-        solveProblem(NSsolver, solveOpt, geo);
+        solveProblem(NSsolver, solveOpt, geo, logger);
 
         // example of flow rate computation
         if (geo == 1)
@@ -293,7 +293,7 @@ int main(int argc, char *argv[])
             gsFlowBndEvaluator_flowRate<real_t> flowRateEval(params, bndOut);
             flowRateEval.setVelocityField(velocity);
             flowRateEval.evaluate();
-            gsInfo << "bndOut flow rate = " << flowRateEval.getValue() << "\n";
+            logger << "bndOut flow rate = " << flowRateEval.getValue() << "\n";
         }
     }
 
@@ -307,11 +307,11 @@ int main(int argc, char *argv[])
 
         gsINSSolverSteady<real_t, ColMajor > NSsolver(params);
 
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the steady problem with preconditioned GMRES as linear solver.\n";
-        gsInfo << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
+        logger << "\n----------\n";
+        logger << "Solving the steady problem with preconditioned GMRES as linear solver.\n";
+        logger << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
 
-        solveProblem(NSsolver, solveOpt, geo);
+        solveProblem(NSsolver, solveOpt, geo, logger);
 
         NSsolver.getLinSolver()->reportLinIterations();
     }
@@ -326,10 +326,10 @@ int main(int argc, char *argv[])
 
         gsINSSolverUnsteady<real_t, ColMajor> NSsolver(params);
 
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the unsteady problem with direct linear solver.\n";
+        logger << "\n----------\n";
+        logger << "Solving the unsteady problem with direct linear solver.\n";
 
-        solveProblem(NSsolver, solveOpt, geo);
+        solveProblem(NSsolver, solveOpt, geo, logger);
     }
 
     if (unsteadyIt)
@@ -345,11 +345,11 @@ int main(int argc, char *argv[])
 
         gsINSSolverUnsteady<real_t, ColMajor > NSsolver(params);
 
-        gsInfo << "\n----------\n";
-        gsInfo << "Solving the unsteady problem with preconditioned GMRES as linear solver.\n";
-        gsInfo << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
+        logger << "\n----------\n";
+        logger << "Solving the unsteady problem with preconditioned GMRES as linear solver.\n";
+        logger << "Used preconditioner: " << params.options().getString("lin.precType") << "\n";
 
-        solveProblem(NSsolver, solveOpt, geo);
+        solveProblem(NSsolver, solveOpt, geo, logger);
         
         NSsolver.getLinSolver()->reportLinIterations();
     }
@@ -359,7 +359,7 @@ int main(int argc, char *argv[])
 
 
 template<class T, int MatOrder>
-void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
+void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo, gsFlowLogger& logger)
 {
     gsStopwatch clock;
 
@@ -400,10 +400,10 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
     // ------------------------------------
     // solve problem
 
-    gsInfo << "\ninitialization...\n";
+    logger << "\ninitialization...\n";
     NSsolver.initialize();
 
-    gsInfo << "numDofs: " << NSsolver.numDofs() << "\n";
+    logger << "numDofs: " << NSsolver.numDofs() << "\n";
 
     gsINSSolverUnsteady<T, MatOrder>* pSolver = dynamic_cast<gsINSSolverUnsteady<T, MatOrder>* >(&NSsolver);
 
@@ -418,10 +418,10 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 
     real_t totalT = clock.stop();
 
-    gsInfo << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
-    gsInfo << "Solve time:" << NSsolver.getSolveTime() << "\n";
-    gsInfo << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
-    gsInfo << "Total solveProblem time:" << totalT << "\n\n";
+    logger << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
+    logger << "Solve time:" << NSsolver.getSolveTime() << "\n";
+    logger << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
+    logger << "Total solveProblem time:" << totalT << "\n\n";
 
     // ------------------------------------
     // plot
@@ -433,10 +433,10 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
 
         int plotPts = opt.getInt("plotPts");
  
-        gsInfo << "Plotting in Paraview...\n";
+        logger << "Plotting in Paraview...\n";
         gsWriteParaview<>(velocity, geoStr + "_" + id + "_velocity", plotPts, opt.getSwitch("plotMesh"));
         gsWriteParaview<>(pressure, geoStr + "_" + id + "_pressure", plotPts);
         // plotQuantityFromSolution("divergence", velocity, geoStr + "_" + id + "_velocityDivergence", plotPts);
-        gsInfo << "Done.\n";
+        logger << "Done.\n";
     }
 }
