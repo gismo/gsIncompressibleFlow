@@ -275,7 +275,7 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
         
         m_massMatBlocks[1].resize(m_pdofs, m_pdofs);
         m_massMatBlocks[1].reserve(gsVector<index_t>::Constant(m_pdofs, nnzP));
-        this->assembleBlock(visitorPPmass, 0, m_massMatBlocks[1], m_massMatRhs[1]);
+        this->assembleBlock(visitorPPmass, 1, m_massMatBlocks[1], m_massMatRhs[1]);
 
         m_isMassMatReady = true;
     }
