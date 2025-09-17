@@ -27,6 +27,19 @@ template<class T, int MatOrder> void solveProblem(gsRANSSolverUnsteady<T, MatOrd
 
 int main(int argc, char *argv[])
 {
+
+#if defined(gsPetsc_ENABLED) && defined(GISMO_WITH_MPI)
+
+    // initialize MPI
+    const gsMpi & mpi = gsMpi::init(argc, argv);
+    gsMpiComm comm = mpi.worldComm();
+
+    int rank  = comm.rank();
+
+    PetscCall( PetscInitializeNoArguments() );
+
+#endif
+
     typedef gsGMRes<real_t> LinSolver;
 
     // ========================================= Settings ========================================= 
@@ -70,6 +83,7 @@ int main(int argc, char *argv[])
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
     real_t linTol = 1e-6;
+    std::string itSolver = "iter"; // iter (= gismo solver) / petsc
     std::string matFormation = "EbE";
     std::string precond = "MSIMPLER_FdiagEqual";
     bool stokesInit = false; // start unsteady problem from Stokes solution
@@ -121,6 +135,7 @@ int main(int argc, char *argv[])
     cmd.addReal("", "tol", "Stopping tolerance", tol);
     cmd.addReal("", "picardTol", "Tolerance for inner Picard iteration for unsteady problem", picardTol);
     cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
+    cmd.addString("", "itSolver", "Linear system solver (iter / petsc)", itSolver);
     cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
@@ -309,14 +324,19 @@ int main(int argc, char *argv[])
         paramsIter.options().setInt("nonlin.maxIt", picardIt);
         paramsIter.options().setReal("nonlin.tol", picardTol);
         paramsIter.setBndParts(bndIn, bndOut, bndWall);
-        paramsIter.options().setString("lin.solver", "iter");
+        paramsIter.options().setString("lin.solver", itSolver);
         paramsIter.options().setInt("lin.maxIt", linIt);
         paramsIter.options().setReal("lin.tol", linTol);
         paramsIter.options().setString("lin.precType", precond);
 
+
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsIter);
         solveProblem(NSsolver, solveOpt, geo, logger);
     }
+
+#if defined(gsPetsc_ENABLED) && defined(GISMO_WITH_MPI)
+    PetscCall( PetscFinalize() );
+#endif
 
     return 0; 
 }

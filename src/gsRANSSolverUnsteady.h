@@ -68,7 +68,7 @@ public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
     gsRANSSolverUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr):
-    Base(paramsPtr)
+    Base(paramsPtr, false)
     { 
         // create turbulence model
         m_TMModelPtr = gsTMModelData<T>::make(paramsPtr);
