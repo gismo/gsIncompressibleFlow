@@ -185,17 +185,20 @@ protected: // *** Base class members ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsINSSolverUnsteady(gsFlowSolverParams<T>& params):
-    gsINSSolverUnsteady(memory::make_shared_not_owned(&params))
+    gsINSSolverUnsteady(gsFlowSolverParams<T>& params, bool createAssembler = true):
+    gsINSSolverUnsteady(memory::make_shared_not_owned(&params), createAssembler)
     { }
 
     /// @brief Constructor.
-    gsINSSolverUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    gsINSSolverUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr, bool createAssembler = true):
     Base(paramsPtr)
     { 
-        m_assemblerPtr = new gsINSAssemblerUnsteady<T, MatOrder>(m_paramsPtr);
+        if (createAssembler)
+        {
+            m_assemblerPtr = new gsINSAssemblerUnsteady<T, MatOrder>(m_paramsPtr);
+            initMembers();
+        }
 
-        initMembers();
         m_paramsPtr->options().setSwitch("unsteady", true);
     }
 
