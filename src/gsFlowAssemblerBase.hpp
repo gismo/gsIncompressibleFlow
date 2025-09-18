@@ -292,7 +292,7 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
     {
         visitor.initOnPatch(p);
 
-        gsVector<index_t> ownedLocalDofs = m_ownedLocalDofs[p][testBasisID];
+        gsVector<index_t> ownedLocalDofs = m_ownedLocalDofs[p][testBasisID%2]; // map testBasisID to 0/1 also for TM variables
 
         for(index_t i = 0; i < ownedLocalDofs.size(); i++)
         {

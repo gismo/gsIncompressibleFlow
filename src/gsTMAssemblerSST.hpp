@@ -119,6 +119,65 @@ void gsTMAssemblerSST<T, MatOrder>::updateSizes()
     m_oldTimeFieldK = m_currentFieldK;
     m_oldTimeFieldO = m_currentFieldO;
     
+    this->initParallel();
+}
+
+
+template<class T, int MatOrder>
+void gsTMAssemblerSST<T, MatOrder>::initParallel()
+{
+    std::pair<index_t, index_t> locInfoK, locInfoO;
+
+    petsc_computeMatLayout(m_kdofs[0], locInfoK, m_paramsPtr->getMpiComm());
+    petsc_computeMatLayout(m_kdofs[1], locInfoO, m_paramsPtr->getMpiComm());
+
+    m_globalStartEnd.resize(2, 2);
+    m_globalStartEnd(0, 0) = locInfoK.second; // first local k dof
+    m_globalStartEnd(0, 1) = locInfoK.second + locInfoK.first; // last local k dof + 1
+    m_globalStartEnd(1, 0) = locInfoO.second; // first local omega dof
+    m_globalStartEnd(1, 1) = locInfoO.second + locInfoO.first; // last local omega dof + 1
+
+    for (index_t unk = 2; unk <= 3; unk++) // basis indices: k - 2, omega - 3
+    {
+        index_t unkTM = unk % 2; // map to TM basis indices k - 0, omega - 1
+
+        for (index_t i = m_globalStartEnd(unkTM, 0); i < m_globalStartEnd(unkTM, 1); i++)
+        {
+            std::vector< std::pair<index_t, index_t> > localIDs;
+            this->getMapper(unk).preImage(i, localIDs); // returns (patch, dof)
+
+            for (size_t k = 0; k < localIDs.size(); k++)
+                this->getMapper(unk).markTagged(localIDs[k].second, localIDs[k].first); // (dof, patch)
+        }
+    }
+
+    m_ownedLocalDofs.resize(m_paramsPtr->getPde().patches().nPatches());
+    for (size_t p = 0; p < m_ownedLocalDofs.size(); p++)
+    {
+        m_ownedLocalDofs[p].resize(2);
+
+        for (index_t unk = 2; unk <= 3; unk++)
+        {
+            index_t unkTM = unk % 2;
+            gsVector<index_t> ownedGlobalDofs = this->getMapper(unk).findTagged(p); // returns global indices
+            gsVector<index_t> bndDofs = this->getMapper(unk).findBoundary(p); // returns local indices
+
+            index_t numOwned = ownedGlobalDofs.size();
+            index_t numBnd = bndDofs.size();
+            m_ownedLocalDofs[p][unkTM].resize(numOwned + numBnd);
+
+            for (index_t i = 0; i < numOwned; i++)
+                m_ownedLocalDofs[p][unkTM](i) = this->globalToLocalOnPatch(p, unk, ownedGlobalDofs(i));
+
+            for (index_t i = 0; i < numBnd; i++)
+                m_ownedLocalDofs[p][unkTM](i + numOwned) = bndDofs(i);
+        }
+    }
+
+    m_isParallelInitialized = true;
+
+    gsInfo << "rank " << m_paramsPtr->options().getInt("mpi.rank") << ": m_globalStartEnd =\n" << m_globalStartEnd << "\n";
+
 }
 
 

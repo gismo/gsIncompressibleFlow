@@ -73,6 +73,10 @@ protected: // *** Base class members ***
     using Base::m_kdofs;
     using Base::m_isInitialized;
 
+    using Base::m_globalStartEnd;
+    using Base::m_ownedLocalDofs;
+    using Base::m_isParallelInitialized;
+
 public: // *** Base class member functions ***
 
     using Base::getBasis;
@@ -101,6 +105,9 @@ protected: // *** Member functions ***
 
     /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
+
+    /// @brief Initialize data needed for parallelization.
+    virtual void initParallel();
 
     /// @brief Update the current solution field stored in the assembler.
     /// @param[in] solVector    new solution vector
