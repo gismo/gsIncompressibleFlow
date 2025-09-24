@@ -28,18 +28,18 @@ void gsRANSTerm_SymmetricGradient<T>::assemble(const gsMapData<T>& mapData, cons
     const index_t nQuPoints = quWeights.rows();
     gsMatrix<T> testFunPhysGrad, shapeFunPhysGrad;
 
-    // add one matrix to localMat for matrix A_nuT
-    gsMatrix<T> lMat(nQuPoints, nQuPoints); 
-    lMat.setZero();
-    localMat.push_back(lMat);
-    // add one matrix to localMat for matrix E12 (for dim=2), or three matrices for E12, E13, E23 (for dim=3)
-    localMat.push_back(lMat);
-    if (dim == 3)
+    // localMat is of size = dim (matrices E11, E22, (E33))
+
+    gsMatrix<T> lMat; 
+    lMat.setZero(localMat[0].rows(), localMat[0].cols());
+    localMat.push_back(lMat); // add matrix for E12
+    if (dim == 3) // add matrices for E13, E23 if dim = 3
     {
         localMat.push_back(lMat);
         localMat.push_back(lMat);
     }
-
+    localMat.push_back(lMat); // add one matrix to localMat for matrix A_nuT
+    
     for (index_t k = 0; k < nQuPoints; k++)
     {
         const T weight = quWeights(k) * coeffMeasure(k);
