@@ -49,6 +49,10 @@ public: // *** Constructor/destructor ***
     m_paramsPtr(paramsPtr)
     {
         m_assemblerPtr = NULL;
+
+        #ifdef _OPENMP
+        omp_set_num_threads(m_paramsPtr->options().getInt("numThreads"));
+        #endif
     }
 
     virtual ~gsFlowSolverBase()

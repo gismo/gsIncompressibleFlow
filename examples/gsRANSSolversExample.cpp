@@ -82,6 +82,9 @@ int main(int argc, char *argv[])
     bool animation = false;
     index_t animStep = 5;
 
+    // OpenMP parallelization
+    int numThreads = 1;
+
     // ---------------------------------------------------------------------------------
 
     //command line
@@ -131,6 +134,8 @@ int main(int argc, char *argv[])
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
     cmd.addSwitch("animation", "Plot animation of the unsteady problem", animation);
     cmd.addInt("", "animStep", "Number of iterations between screenshots for animation (used when animation = true)", animStep);
+
+    cmd.addInt("t", "nthreads", "Number of threads", numThreads);
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
     
@@ -289,6 +294,7 @@ int main(int argc, char *argv[])
         paramsDir.options().setReal("nonlin.tol", picardTol);
         paramsDir.setBndParts(bndIn, bndOut, bndWall);
         paramsDir.options().setString("lin.solver", "direct");
+        paramsDir.options().setInt("numThreads", numThreads);
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsDir);
         solveProblem(NSsolver, solveOpt, geo, logger);
@@ -313,6 +319,7 @@ int main(int argc, char *argv[])
         paramsIter.options().setInt("lin.maxIt", linIt);
         paramsIter.options().setReal("lin.tol", linTol);
         paramsIter.options().setString("lin.precType", precond);
+        paramsIter.options().setInt("numThreads", numThreads);
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsIter);
         solveProblem(NSsolver, solveOpt, geo, logger);

@@ -143,10 +143,7 @@ public: // *** Static functions ***
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
         opt.addReal("timeStep", "Time step size", 0.1);
         opt.addReal("omega", "Angular velocity (for rotating frame of reference)", 0.0);
-
-        // parallel 
-        opt.addSwitch("parallel", "Currently running in parallel", false);
-
+        
         // geometry jacobian evaluation
         opt.addInt("jac.npts", "Number of points along a patch side (in each direction) for geometry jacobian check", 100);
         opt.addReal("jac.dist", "Distance from boundary (in the parametric space) for geometry jacobian check", 1e-2);
@@ -162,6 +159,15 @@ public: // *** Static functions ***
         opt.addReal("TM.turbIntensity", "Turbulent intensity", 0.05);
         opt.addReal("TM.viscosityRatio", "Specifies approximate ratio of turbulent viscosity to kinematic viscosity", 50.0);
         opt.addInt("TM.addRefsDF", "Number of additional uniform refinements of pressure basis for distance field computation", 2);
+
+        // parallel
+        int maxThreads = 
+        #ifdef _OPENMP
+        omp_get_max_threads();
+        #else
+        2;
+        #endif
+        opt.addInt("numThreads", "Number of threads for OpenMP", maxThreads/2);
 
         return opt;
     }

@@ -46,6 +46,8 @@ public: // *** Constructor/destructor ***
         this->m_trialFunFlags = NEED_DERIV;
     }
 
+    GISMO_CLONE_FUNCTION(gsTMTerm_VecCoeffGradVal)
+
 
 public: // *** Member functions ***
 
@@ -86,11 +88,12 @@ public: // *** Constructor/destructor ***
         this->m_trialFunFlags = NEED_DERIV;
     }
 
+    GISMO_CLONE_FUNCTION(gsTMTerm_CoeffGradGrad)
+
 
 public: // *** Member functions ***
 
     virtual void evalCoeff(const gsMapData<T>& mapData);
-
 
 };
 
@@ -125,6 +128,8 @@ public: // *** Constructor/destructor ***
         this->m_testFunFlags = NEED_VALUE;
         this->m_trialFunFlags = NEED_VALUE;
     }
+
+    GISMO_CLONE_FUNCTION(gsTMTerm_CoeffValVal)
 
 
 public: // *** Member functions ***
@@ -166,6 +171,8 @@ public: // *** Constructor/destructor ***
         this->m_trialFunFlags = NEED_DERIV;
     }
 
+    GISMO_CLONE_FUNCTION(gsTMTerm_BlendCoeff)
+
 
 public: // *** Member functions ***
 
@@ -206,6 +213,8 @@ public: // *** Constructor/destructor ***
         this->m_testFunFlags = NEED_VALUE;
     }
 
+    GISMO_CLONE_FUNCTION(gsTMTerm_BlendCoeffRhs)
+
 
 public: // *** Member functions ***
 
@@ -245,6 +254,8 @@ public: // *** Constructor/destructor ***
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
     }
+
+    GISMO_CLONE_FUNCTION(gsTMTerm_ProductionRhs)
 
 
 public: // *** Member functions ***

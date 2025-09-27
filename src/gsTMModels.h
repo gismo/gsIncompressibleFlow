@@ -67,6 +67,8 @@ public: // *** Constructor/destructor ***
     
     ~gsTMModelData() {}
 
+    GISMO_UPTR_FUNCTION_PURE(gsTMModelData, clone)
+
 
 public: // *** Static functions ***
 
@@ -197,6 +199,8 @@ public: // *** Constructor/destructor ***
     }
     
     ~gsTMModelData_SST() {}
+
+    GISMO_CLONE_FUNCTION(gsTMModelData_SST)
 
 
 public: // *** Static functions ***

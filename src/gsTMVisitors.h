@@ -113,12 +113,25 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     { }
 
+    /// @brief Copy constructor.
+    gsTMVisitorTimeIterationSST(gsTMVisitorTimeIterationSST<T, MatOrder> const & other) :
+    gsTMVisitorTimeIterationSST()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of TM model
+        if (other.m_TMModelPtr)
+            m_TMModelPtr = typename gsTMModelData<T>::tdPtr(other.m_TMModelPtr->clone().release());
+
+        // create new terms
+        // terms cannot be cloned here, because they store m_TMModelPtr
+        m_terms.clear();
+        defineTerms();
+    }
+
 
 protected: // *** Member functions ***
-
-    void evaluate(index_t testFunID);
-    
-    void evaluate(const gsDomainIterator<T>* domIt);
 
     virtual void defineTerms()
     {
@@ -134,6 +147,10 @@ protected: // *** Member functions ***
     }
 
 public: // *** Member functions *** 
+
+    void evaluate(index_t testFunID);
+    
+    void evaluate(const gsDomainIterator<T>* domIt);
 
     virtual void assemble();
 
@@ -184,15 +201,26 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorNonlinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
     Base(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
-    { 
-                
+    { }
+
+    /// @brief Copy constructor.
+    gsTMVisitorNonlinearSST(gsTMVisitorNonlinearSST<T, MatOrder> const & other) :
+    gsTMVisitorNonlinearSST()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of TM model
+        if (other.m_TMModelPtr)
+            m_TMModelPtr = typename gsTMModelData<T>::tdPtr(other.m_TMModelPtr->clone().release());
+
+        // create new terms
+        // terms cannot be cloned here, because they store m_TMModelPtr
+        m_terms.clear();
+        defineTerms();
     }
 
 protected: // *** Member functions ***
-
-    void evaluate(index_t testFunID);
-
-    void evaluate(const gsDomainIterator<T>* domIt);
 
     virtual void defineTerms()
     {
@@ -225,6 +253,10 @@ public: // *** Member functions ***
 
     /// @brief Initialize the visitor.
     void initialize();
+
+    void evaluate(index_t testFunID);
+
+    void evaluate(const gsDomainIterator<T>* domIt);
 
     virtual void assemble();
 

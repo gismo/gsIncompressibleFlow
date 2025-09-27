@@ -67,11 +67,6 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     void initMembers();
 
-    /// @brief Evaluates turbulent viscosity.
-    void evaluate(index_t testFunID);
-
-    /// @brief Evaluates turbulent viscosity.
-    void evaluate(const gsDomainIterator<T>* domIt);
 
     virtual void defineTerms()
     {
@@ -88,6 +83,12 @@ public: // *** Member functions ***
 
     /// @brief Initialize the visitor.
     void initialize();
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(index_t testFunID);
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(const gsDomainIterator<T>* domIt);
 
 
 protected: // *** Member functions *** 

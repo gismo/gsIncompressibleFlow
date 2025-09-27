@@ -83,6 +83,9 @@ int main(int argc, char *argv[])
     bool animation = false;
     int animStep = 5;
 
+    // OpenMP parallelization
+    int numThreads = 1;
+
     // ---------------------------------------------------------------------------------
 
     //command line
@@ -133,6 +136,8 @@ int main(int argc, char *argv[])
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
     cmd.addSwitch("animation", "Plot animation of the unsteady problem", animation);
     cmd.addInt("", "animStep", "Number of iterations between screenshots for animation (used when animation = true)", animStep);
+
+    cmd.addInt("t", "nthreads", "Number of threads", numThreads);
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
@@ -258,6 +263,7 @@ int main(int argc, char *argv[])
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger);
     params.options().setString("assemb.loop", matFormation);
+    params.options().setInt("numThreads", numThreads);
 
     gsOptionList solveOpt;
     solveOpt.addInt("geo", "", geo);
