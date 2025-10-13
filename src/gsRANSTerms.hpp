@@ -21,24 +21,15 @@ void gsRANSTerm_SymmetricGradient<T>::assemble(const gsMapData<T>& mapData, cons
 { 
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
     index_t dim = mapData.dim.second;
+
+    // localMat = [A, E11, E22, (E33), E12, (E13), (E23)]
+    GISMO_ASSERT(localMat.size() == dim * (dim + 1) / 2 + 1, "gsRANSTerm_SymmetricGradient<T>::assemble(): Wrong size of localMat vector.");
     
     const gsMatrix<T>& testFunGrads = testFunData[1];
     const gsMatrix<T>& shapeFunGrads = shapeFunData[1];
 
     const index_t nQuPoints = quWeights.rows();
     gsMatrix<T> testFunPhysGrad, shapeFunPhysGrad;
-
-    // add one matrix to localMat for matrix A_nuT
-    gsMatrix<T> lMat(nQuPoints, nQuPoints); 
-    lMat.setZero();
-    localMat.push_back(lMat);
-    // add one matrix to localMat for matrix E12 (for dim=2), or three matrices for E12, E13, E23 (for dim=3)
-    localMat.push_back(lMat);
-    if (dim == 3)
-    {
-        localMat.push_back(lMat);
-        localMat.push_back(lMat);
-    }
 
     for (index_t k = 0; k < nQuPoints; k++)
     {
@@ -47,7 +38,7 @@ void gsRANSTerm_SymmetricGradient<T>::assemble(const gsMapData<T>& mapData, cons
         transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
         transformGradients(mapData, k, shapeFunGrads, shapeFunPhysGrad);
 
-        // Block A with turbulent viscosity, stored in localMat[0]
+        // block A with turbulent viscosity, stored in localMat[0]
         localMat[0].noalias() += weight * (m_turbViscosityVals(k)) * (testFunPhysGrad.transpose() * shapeFunPhysGrad);
 
         // Local blocks for symmetric gradient and corresponding diagonal blocks Eii, where Eii is stored in localMat[i], i=1,...,dim 
@@ -61,6 +52,46 @@ void gsRANSTerm_SymmetricGradient<T>::assemble(const gsMapData<T>& mapData, cons
         {
             localMat[dim+2].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad.row(0));
             localMat[dim+3].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(2).transpose() * shapeFunPhysGrad.row(1));
+        }
+    }
+}    
+
+
+template<class T>
+void gsRANSTerm_SymmetricGradient_full<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
+{ 
+    gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
+    index_t dim = mapData.dim.second;
+
+    // localMat = [A, E11, E12, (E13), E21. E22, (E23), (E31), (E32), (E33)]
+    GISMO_ASSERT(localMat.size() == dim * dim + 1, "gsRANSTerm_SymmetricGradient_full<T>::assemble(): Wrong size of localMat vector.");
+    
+    const gsMatrix<T>& testFunGrads = testFunData[1];
+    const gsMatrix<T>& shapeFunGrads = shapeFunData[1];
+
+    const index_t nQuPoints = quWeights.rows();
+    gsMatrix<T> testFunPhysGrad, shapeFunPhysGrad;
+
+    for (index_t k = 0; k < nQuPoints; k++)
+    {
+        const T weight = quWeights(k) * coeffMeasure(k);
+
+        transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
+        transformGradients(mapData, k, shapeFunGrads, shapeFunPhysGrad);
+
+        // block A with turbulent viscosity, stored in localMat[0]
+        localMat[0].noalias() += weight * (m_turbViscosityVals(k)) * (testFunPhysGrad.transpose() * shapeFunPhysGrad);
+
+        index_t b = 1; // index of the current block in localMat
+
+        // blocks Eij
+        for (index_t i = 0; i != dim; ++i)
+        {
+            for (index_t j = 0; j != dim; ++j)
+            {
+                localMat[b].noalias() += weight * (m_turbViscosityVals(k) + m_viscosity) * (testFunPhysGrad.row(j).transpose() * shapeFunPhysGrad.row(i));
+                ++b;
+            }
         }
     }
 }    

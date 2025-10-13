@@ -216,7 +216,7 @@ void gsFlowVisitor<T, MatOrder>::localToGlobal(gsMatrix<T>& globalRhs)
 template <class T, int MatOrder>
 void gsFlowVisitorVectorValued<T, MatOrder>::assemble()
 {
-    m_locMatVec.resize(m_paramsPtr->getPde().dim());
+    resizeMatVec();
 
     for (size_t i = 0; i < m_locMatVec.size(); i++)
         m_locMatVec[i].setZero(m_testFunActives.rows(), m_trialFunActives.rows());

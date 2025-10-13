@@ -5,11 +5,13 @@
 
 namespace gismo
 {
-    CLASS_TEMPLATE_INST gsRANSVisitorUUSymmetricGradient<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsRANSVisitorUU<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsRANSVisitorUU_full<real_t, RowMajor>;
     //CLASS_TEMPLATE_INST gsRANSVisitorUUSymmetricGradientDiag<real_t, RowMajor>;
     //CLASS_TEMPLATE_INST gsRANSVisitorUUSymmetricGradientOffdiag<real_t, RowMajor>;
 
-    CLASS_TEMPLATE_INST gsRANSVisitorUUSymmetricGradient<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsRANSVisitorUU<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsRANSVisitorUU_full<real_t, ColMajor>;
     //CLASS_TEMPLATE_INST gsRANSVisitorUUSymmetricGradientDiag<real_t, ColMajor>;
     //CLASS_TEMPLATE_INST gsRANSVisitorUUSymmetricGradientOffdiag<real_t, ColMajor>;
     
