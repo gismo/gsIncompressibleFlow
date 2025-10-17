@@ -1228,6 +1228,94 @@ T computeDimensionlessWallDistance(typename gsFlowSolverParams<T>::Ptr paramsPtr
 } 
 
 
+template<class T>
+gsMultiPatch<T> linearizeGeometry(gsMultiPatch<T> mp, int uRefine = 0)
+{
+    gsTensorBSpline<2, T>* check1 = dynamic_cast<gsTensorBSpline<2, T>*>(&(mp.patch(0)));
+    gsTensorBSpline<3, T>* check2 = dynamic_cast<gsTensorBSpline<3, T>*>(&(mp.patch(0)));
+
+    if (check1 == NULL && check2 == NULL)
+        GISMO_ERROR("linearizeGeometry() can only be applied to tensor B-spline multi-patches.");
+
+    gsMultiPatch<T> mp_new;
+    int dim = mp.dim();
+    gsMatrix<int> degs(mp.nPatches(), dim);
+
+    for (index_t i = 0; i < mp.nPatches(); i++)
+        for (int j = 0; j < dim; j++) 
+            degs(i, j) = mp[i].degree(j);
+
+    for (index_t i = 0; i < mp.nPatches(); i++)
+    {
+        if (dim == 2)
+        {
+            gsTensorBSpline<2, T>* tbspline = dynamic_cast<gsTensorBSpline<2, T>*>(&(mp.patch(i)));
+
+            for (int j = 0; j < uRefine; j++)
+                tbspline->uniformRefine();
+
+            std::vector<T> knots1 = (tbspline->knots(0)).breaks();
+            std::vector<T> knots2 = (tbspline->knots(1)).breaks();
+            gsMatrix<T> parpoints(2, (knots1.size()) * (knots2.size()));
+            gsMatrix<T> points(2, (knots1.size()) * (knots2.size()));
+
+            for (index_t b = 0; b < knots2.size(); b++)
+                for (index_t a = 0; a < knots1.size(); a++)
+                {
+                    parpoints(0, b * (knots1.size()) + a) = knots1[a];
+                    parpoints(1, b * (knots1.size()) + a) = knots2[b];
+                }
+
+            tbspline->eval_into(parpoints, points);
+
+            gsKnotVector<T> kv1((tbspline->knots(0)).unique(), 1, 0);
+            gsKnotVector<T> kv2((tbspline->knots(1)).unique(), 1, 0);
+
+            gsTensorBSpline<2, T> tbspline_new(kv1, kv2, points.transpose());
+            mp_new.addPatch(tbspline_new);
+        }
+        else 
+        {
+            gsTensorBSpline<3, T>* tbspline = dynamic_cast<gsTensorBSpline<3, T>*>(&(mp.patch(i)));
+
+            for (int j = 0; j < uRefine; j++)
+                tbspline->uniformRefine();
+
+            std::vector<T> knots1 = (tbspline->knots(0)).breaks();
+            std::vector<T> knots2 = (tbspline->knots(1)).breaks();
+            std::vector<T> knots3 = (tbspline->knots(2)).breaks();
+            gsMatrix<T> parpoints(3, (knots1.size()) * (knots2.size()) * (knots3.size()));
+            gsMatrix<T> points(3, (knots1.size()) * (knots2.size()) * (knots3.size()));
+
+            for (index_t c = 0; c < knots3.size(); c++)
+                for (index_t b = 0; b < knots2.size(); b++)
+                    for (index_t a = 0; a < knots1.size(); a++)
+                    {
+                        parpoints(0, c * (knots1.size()) * (knots2.size()) + b * (knots1.size()) + a) = knots1[a];
+                        parpoints(1, c * (knots1.size()) * (knots2.size()) + b * (knots1.size()) + a) = knots2[b];
+                        parpoints(2, c * (knots1.size()) * (knots2.size()) + b * (knots1.size()) + a) = knots3[c];
+                    }
+
+            tbspline->eval_into(parpoints, points);
+
+            gsKnotVector<T> kv1((tbspline->knots(0)).unique(), 1, 0);
+            gsKnotVector<T> kv2((tbspline->knots(1)).unique(), 1, 0);
+            gsKnotVector<T> kv3((tbspline->knots(2)).unique(), 1, 0);
+
+            gsTensorBSpline<3, T> tbspline_new(kv1, kv2, kv3, points.transpose());
+            mp_new.addPatch(tbspline_new);
+        }
+    }
+
+    for (index_t i = 0; i < mp.nInterfaces(); i++)
+        mp_new.addInterface(mp.bInterface(i));
+
+    mp_new.addAutoBoundaries();
+
+    return mp_new;
+}
+
+
 // -----------------------------------------------
 
 
