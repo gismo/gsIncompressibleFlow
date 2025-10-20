@@ -79,7 +79,7 @@ public:
         else
         {
             // Standard optimization without dynamic handling
-            gsBarrierPatch<d, T> opt(mp, false); // false = global optimization
+            gsBarrierPatch<d, T> opt(mp, true); // false = global optimization
             opt.options() = options;
             opt.compute();
             return opt.result();

@@ -78,60 +78,95 @@ public:
     }
     
     /// @brief Assemble the ALE convection term
-    virtual void assemble(const gsMapData<T>& mapData, 
-                         const gsVector<T>& quWeights, 
-                         const std::vector< gsMatrix<T> >& testFunData, 
-                         const std::vector< gsMatrix<T> >& trialFunData, 
+    virtual void assemble(const gsMapData<T>& mapData,
+                         const gsVector<T>& quWeights,
+                         const std::vector< gsMatrix<T> >& testFunData,
+                         const std::vector< gsMatrix<T> >& trialFunData,
                          gsMatrix<T>& localMat) override
     {
+        // If there is no evaluation point, return early
+        if (mapData.points.cols()==0)
+            return;
+
+        // 若派生数据为空，直接返回
+        if (trialFunData.size() < 2 || trialFunData[1].size()==0)
+            return;
+
+        const index_t numTestActive = testFunData[0].rows();
+        const index_t numActive = trialFunData[0].rows();
+
+        // Initialize local matrix
+        localMat.setZero(numTestActive, numActive);
 
         //Calculate mesh velocity at quadrature points
         computeMeshVelocity(mapData);
 
-        // If there is no evaluation point, return early
-        if (mapData.points.cols()==0)
-            return;
-        
         // Compute solution velocity values
         this->computeCoeffSolU(mapData);
-        
+
+        // Safety check: ensure dimensions match
+        if (m_solUVals.rows() != m_meshVelVals.rows() ||
+            m_solUVals.cols() != m_meshVelVals.cols())
+        {
+            gsWarn << "ALE convection: dimension mismatch between solution velocity ("
+                   << m_solUVals.rows() << "x" << m_solUVals.cols()
+                   << ") and mesh velocity ("
+                   << m_meshVelVals.rows() << "x" << m_meshVelVals.cols()
+                   << "). Skipping assembly.\n";
+            return;
+        }
+
         // Get relative velocity (u - u_mesh)
         gsMatrix<T> relativeVel = m_solUVals - m_meshVelVals;
-        
-        const index_t numTestActive = testFunData[0].rows();
-        const index_t numActive = trialFunData[0].rows();
 
-        // 若派生数据为空，直接返回
-        if (trialFunData[1].size()==0)
+        // Robust path: use helper to transform gradients and assemble; then return
+        {
+            const index_t numTestActive = testFunData[0].rows();
+            const index_t numActive = trialFunData[0].rows();
+            if (trialFunData[1].size() == 0)
+                return;
+            localMat.setZero(numTestActive, numActive);
+
+            gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
+            gsMatrix<T> trialFunPhysGrad;
+            const index_t nQuPoints = quWeights.rows();
+            for (index_t k = 0; k < nQuPoints; ++k)
+            {
+                const T weight = quWeights(k) * coeffMeasure(k);
+                transformGradients(mapData, k, trialFunData[1], trialFunPhysGrad);
+                gsMatrix<T> convection = trialFunPhysGrad * relativeVel.col(k);
+                localMat.noalias() += weight * (testFunData[0].col(k) * convection.transpose());
+            }
             return;
-        
-        // Initialize local matrix
-        localMat.setZero(numTestActive, numActive);
-        
+        }
+
         // Get physical gradients from mapData
         // mapData.values[0] contains the inverse Jacobian matrices
         const gsMatrix<T>& invJac = mapData.values[0];
-        
+
+        // Safety check: ensure we have enough dimensions
+        const index_t effectiveDim = math::min(m_tarDim, relativeVel.rows());
+
         // Transform gradients and compute convection term
         for (index_t k = 0; k < quWeights.rows(); ++k)
         {
             // Get Jacobian for this quadrature point
             gsMatrix<T> invJ = invJac.reshapeCol(k, mapData.dim.first, mapData.dim.second);
-            
+
             // Transform trial function gradients to physical space
             gsMatrix<T> physGrad = trialFunData[1].reshapeCol(k, numActive, mapData.dim.first) * invJ.transpose();
-            
+
             // Compute (u_rel · \nabla \phi_trial)
             gsMatrix<T> convection(numActive, 1);
             convection.setZero();
-            
-            for (index_t d = 0; d < m_tarDim; ++d)
+
+            for (index_t d = 0; d < effectiveDim; ++d)
             {
                 convection += relativeVel(d, k) * physGrad.col(d);
             }
-            
+
             // Add contribution: weight * (\phi_test * (u_rel · \nabla\phi_trial))
-            localMat.noalias() += quWeights[k] * mapData.measures(k) * 
+            localMat.noalias() += quWeights[k] * mapData.measures(k) *
                                   testFunData[0].col(k) * convection.transpose();
         }
     }

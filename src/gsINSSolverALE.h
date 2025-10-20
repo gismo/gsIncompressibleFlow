@@ -16,9 +16,78 @@
 #include <gsHLBFGS/gsHLBFGS.h>
 #include <gsIncompressibleFlow/src/gsBarrierPatchDynamic.h>
 #include <gsModeling/gsBarrierPatch.h>
+#include <gsElasticity/src/gsALE.h>
 
 namespace gismo
 {
+
+/// @brief Boundary mesh velocity function for FSI interface
+/// Computes mesh velocity as w = (X_cur - X_prev) / dt
+/// IMPORTANT: Input is PHYSICAL coordinates (not parametric)
+/// This is required for proper Dirichlet BC evaluation on moving boundaries
+template <class T = real_t>
+class gsFSIMeshVelocityFunction : public gsFunction<T>
+{
+protected:
+    const gsGeometry<T>* m_cur;   ///< Current geometry
+    const gsGeometry<T>* m_prev;  ///< Previous geometry
+    T m_dt;                        ///< Time step
+
+public:
+    /// @brief Constructor
+    gsFSIMeshVelocityFunction(const gsGeometry<T>* cur, const gsGeometry<T>* prev, T dt)
+    : m_cur(cur), m_prev(prev), m_dt(dt) {}
+
+    /// @brief Set current geometry
+    void setCurrent(const gsGeometry<T>* cur) { m_cur = cur; }
+
+    /// @brief Set previous geometry
+    void setPrevious(const gsGeometry<T>* prev) { m_prev = prev; }
+
+    /// @brief Set time step
+    void setDt(T dt) { m_dt = dt; }
+
+    /// @brief Domain dimension (physical space)
+    short_t domainDim() const { return 2; }
+
+    /// @brief Target dimension (velocity vector)
+    short_t targetDim() const { return 2; }
+
+    /// @brief Evaluate mesh velocity at PHYSICAL points
+    /// @param x Physical coordinates (2 x N)
+    /// @param result Mesh velocity at these points (2 x N)
+    void eval_into(const gsMatrix<T>& x, gsMatrix<T>& result) const
+    {
+        const index_t N = x.cols();
+        result.resize(2, N);
+
+        for (index_t i = 0; i < N; ++i)
+        {
+            // Input is physical coordinate, need to invert to parametric space
+            gsMatrix<T> phys(2, 1);
+            phys.col(0) = x.col(i);
+
+            // Invert current geometry to find parametric coordinates
+            gsMatrix<T> uv;
+            m_cur->invertPoints(phys, uv);
+
+            // Evaluate previous position at same parametric location
+            gsMatrix<T> xPrev = m_prev->eval(uv);
+
+            // Compute mesh velocity: w = (x_current - x_previous) / dt
+            if (m_dt > 1e-14)
+                result.col(i) = (phys.col(0) - xPrev.col(0)) / m_dt;
+            else
+                result.col(i).setZero();
+        }
+    }
+
+    /// @brief Clone this function
+    typename gsFunction<T>::uPtr clone() const
+    {
+        return memory::make_unique(new gsFSIMeshVelocityFunction<T>(*this));
+    }
+};
 
 /// @brief ALE solver for unsteady incompressible Navier-Stokes equations
 /// @tparam T coefficient type
@@ -44,12 +113,21 @@ protected:
     
     // Flag to indicate if mesh optimization is enabled
     bool m_useMeshOptimization;
-    
+
     // Flag to indicate if dynamic boundary mapping is enabled
     bool m_useDynamicBoundaryMapping;
 
+    // Flag to indicate if gsALE mesh deformation is enabled
+    bool m_useGsALE;
+
+    // gsALE method selection
+    ale_method::method m_aleMethod;
+
     // gsBarrierPatch options
     gsOptionList m_meshOptOptions;
+
+    // gsALE options
+    gsOptionList m_gsALEOptions;
 
     // If true, freeze outer box boundary (xmin/xmax/ymin/ymax) during geometry update
     bool m_fixOuterBoundary;
@@ -61,57 +139,67 @@ protected:
     // Rotation parameters (if known)
     T m_rotationPeriod;
     gsVector<T> m_rotationCenter;
-    
+
+    // FSI interface sides that should remain free during mesh optimization
+    std::vector<patchSide> m_fsiInterfaceSides;
+
+    // Boundary displacement field for gsALE (stores interface displacements)
+    gsMultiPatch<T> m_boundaryDisplacement;
+
+    // Boundary interface for gsALE (maps FSI interface sides)
+    gsBoundaryInterface m_aleInterface;
+
+    // Storage for boundary mesh velocity functions (for automatic no-slip on FSI interface)
+    std::vector<std::shared_ptr<gsFunction<T>>> m_fsiBoundaryVelFuncs;
+
+    // Pointer to boundary conditions (to allow automatic setup)
+    gsBoundaryConditions<T>* m_bcInfoPtr;
+
+    // Previous geometry for computing mesh velocity
+    gsMultiPatch<T> m_prevGeometry;
+
 public:
     /// @brief Constructor
     gsINSSolverUnsteadyALE(typename gsFlowSolverParams<T>::Ptr paramsPtr)
     : Base(paramsPtr), m_isALEActive(false), m_useMeshOptimization(false),
-      m_useDynamicBoundaryMapping(false), m_rotationPeriod(10.0) // Default 10s period
+      m_useDynamicBoundaryMapping(false), m_useGsALE(false),
+      m_aleMethod(ale_method::TINE), m_rotationPeriod(10.0), m_bcInfoPtr(nullptr),
+      m_fixOuterBoundary(false), m_fixOuterTol(static_cast<T>(1e-8))
     {
-        // Replace assembler with ALE version
         delete m_assemblerPtr;
         m_assemblerPtr = new gsINSAssemblerUnsteadyALE<T, MatOrder>(m_paramsPtr);
-        
         Base::initMembers();
-        
-        // Initialize mesh optimization options
-        m_meshOptOptions.addInt("Verbose", "Verbosity level for mesh optimization", 0);
+
+        // Mesh optimization options
+        m_meshOptOptions.addInt("Verbose", "Verbosity level", 0);
         m_meshOptOptions.addInt("ParamMethod", "Parametrization method", 1);
         m_meshOptOptions.addInt("AAPreconditionType", "AA precondition type", 0);
-        
-        // Initialize rotation center to domain center
+
+        // gsALE options
+        m_gsALEOptions.addReal("PoissonsRatio", "Poisson's ratio", 0.3);
+        m_gsALEOptions.addReal("LocalStiff", "Local stiffening degree", 2.3);
+        m_gsALEOptions.addSwitch("Check", "Check mesh bijectivity", true);
+
         m_rotationCenter.resize(2);
         m_rotationCenter << 0.5, 0.5;
-
-        // Boundary fix defaults
-        m_fixOuterBoundary = false;
-        m_fixOuterTol = static_cast<T>(1e-8);
     }
     
     /// @brief Destructor
     virtual ~gsINSSolverUnsteadyALE() { }
     
     /// @brief Activate/deactivate ALE formulation
-    void setALEActive(bool active) 
-    { 
+    void setALEActive(bool active) {
         m_isALEActive = active;
         getALEAssembler()->setALEActive(active);
-        
-        if (active && m_originalMesh.nPatches() == 0)
-        {
-            // Store original mesh on first activation
+        if (active && m_originalMesh.nPatches() == 0) {
             m_originalMesh = m_assemblerPtr->getPatches();
-            
-            // Initialize old displacement to current mesh position (at t=0)
-            if (m_meshUpdateFunc)
-            {
+            if (m_meshUpdateFunc) {
                 gsMatrix<T> initialDisp = m_meshUpdateFunc(m_time);
                 getALEAssembler()->initializeOldDisplacement(initialDisp);
             }
         }
     }
-    
-    /// @brief Check if ALE is active
+
     bool isALEActive() const { return m_isALEActive; }
     
     /// @brief Set mesh update function
@@ -133,6 +221,38 @@ public:
     void updateMesh(const gsMatrix<T>& meshDisp)
     {
         getALEAssembler()->updateMesh(meshDisp);
+
+        // If using gsALE, also update boundary displacement field
+        if (m_useGsALE && m_boundaryDisplacement.nPatches() > 0)
+        {
+            updateBoundaryDisplacement(meshDisp);
+        }
+    }
+
+    /// @brief Update boundary displacement field for gsALE from interface displacement
+    /// @param[in] interfaceDisp interface displacement vector
+    /// @param[in] dofLocations mapping from interface points to DOF locations (patch, coefIdx)
+    void updateBoundaryDisplacementFromInterface(
+        const gsMatrix<T>& interfaceDisp,
+        const std::vector<std::pair<index_t,index_t>>& dofLocations)
+    {
+        if (!m_useGsALE || m_boundaryDisplacement.nPatches() == 0)
+            return;
+
+        const index_t N = interfaceDisp.cols();
+        GISMO_ASSERT(N == static_cast<index_t>(dofLocations.size()),
+                     "Mismatch between interface points and DOF locations");
+
+        // Set boundary displacement coefficients directly
+        for (index_t k = 0; k < N; ++k)
+        {
+            const index_t p = dofLocations[k].first;
+            const index_t coefIdx = dofLocations[k].second;
+
+            gsMatrix<T>& coefs = m_boundaryDisplacement.patch(p).coefs();
+            coefs(coefIdx, 0) = interfaceDisp(0, k);  // x displacement
+            coefs(coefIdx, 1) = interfaceDisp(1, k);  // y displacement
+        }
     }
     
     /// @brief Get mesh velocity field
@@ -149,21 +269,49 @@ public:
     
     /// @brief Enable/disable mesh optimization using gsBarrierPatch
     void setMeshOptimization(bool enable) { m_useMeshOptimization = enable; }
-    
+
     /// @brief Check if mesh optimization is enabled
     bool isMeshOptimizationEnabled() const { return m_useMeshOptimization; }
-    
+
+    /// @brief Enable/disable gsALE mesh deformation
+    /// @param[in] enable enable/disable gsALE
+    /// @param[in] method ALE method to use (default: TINE)
+    void setGsALE(bool enable, ale_method::method method = ale_method::TINE)
+    {
+        m_useGsALE = enable;
+        m_aleMethod = method;
+        if (enable)
+        {
+            gsInfo << "[gsINSSolverALE] gsALE mesh deformation enabled with method " << method << "\n";
+            // When using gsALE, typically disable gsBarrierPatch optimization
+            if (m_useMeshOptimization)
+            {
+                gsWarn << "[gsINSSolverALE] gsBarrierPatch optimization is also enabled. "
+                       << "Consider disabling one method for consistency.\n";
+            }
+        }
+    }
+
+    /// @brief Check if gsALE mesh deformation is enabled
+    bool isGsALEEnabled() const { return m_useGsALE; }
+
     /// @brief Enable/disable dynamic boundary mapping for rotating domains
     void setDynamicBoundaryMapping(bool enable) { m_useDynamicBoundaryMapping = enable; }
-    
+
     /// @brief Check if dynamic boundary mapping is enabled
     bool isDynamicBoundaryMappingEnabled() const { return m_useDynamicBoundaryMapping; }
-    
+
     /// @brief Get mesh optimization options
     gsOptionList& getMeshOptOptions() { return m_meshOptOptions; }
-    
+
     /// @brief Get mesh optimization options (const version)
     const gsOptionList& getMeshOptOptions() const { return m_meshOptOptions; }
+
+    /// @brief Get gsALE options
+    gsOptionList& getGsALEOptions() { return m_gsALEOptions; }
+
+    /// @brief Get gsALE options (const version)
+    const gsOptionList& getGsALEOptions() const { return m_gsALEOptions; }
 
     /// @brief Freeze outer (box) boundary during geometry update
     void setFixOuterBoundary(bool enable, T tol = static_cast<T>(1e-8))
@@ -179,6 +327,123 @@ public:
     {
         m_rotationPeriod = period;
         m_rotationCenter = center;
+    }
+
+    /// @brief Set FSI interface sides that should remain free during mesh optimization
+    /// @param[in] interfaceSides vector of patchSide objects representing FSI interface
+    void setFSIInterfaceSides(const std::vector<patchSide>& interfaceSides)
+    {
+        m_fsiInterfaceSides = interfaceSides;
+        gsInfo << "[gsINSSolverALE] Set " << m_fsiInterfaceSides.size() << " FSI interface sides\n";
+
+        // Also setup gsALE interface if using gsALE
+        if (m_useGsALE)
+        {
+            setupGsALEInterface();
+        }
+    }
+
+    /// @brief Automatically setup no-slip boundary conditions on FSI interface
+    /// This method creates boundary mesh velocity functions and adds Dirichlet BC u=w
+    /// on the FSI interface sides. Must be called AFTER geometry is set up.
+    /// @param[in] bcInfo reference to boundary conditions object (will be modified)
+    /// @param[in] dt time step size (for mesh velocity computation)
+    void setupFSINoSlipBC(gsBoundaryConditions<T>& bcInfo, T dt)
+    {
+        if (m_fsiInterfaceSides.empty())
+        {
+            gsWarn << "[gsINSSolverALE] No FSI interface sides specified. "
+                   << "Call setFSIInterfaceSides() first.\n";
+            return;
+        }
+
+        // Store pointer to boundary conditions for later updates
+        m_bcInfoPtr = &bcInfo;
+
+        // Get current geometry patches and store as previous (initially same)
+        const gsMultiPatch<T>& patches = m_assemblerPtr->getPatches();
+        m_prevGeometry = patches;  // Store initial geometry
+
+        // Create boundary mesh velocity functions for each FSI interface side
+        m_fsiBoundaryVelFuncs.clear();
+        m_fsiBoundaryVelFuncs.reserve(m_fsiInterfaceSides.size());
+
+        for (const auto& ps : m_fsiInterfaceSides)
+        {
+            // Create a custom function that computes mesh velocity from geometry change
+            // This function will be updated each time step in nextIteration()
+            auto meshVelFunc = std::make_shared<gsFSIMeshVelocityFunction<T>>(
+                &patches.patch(ps.patch), &m_prevGeometry.patch(ps.patch), dt);
+
+            m_fsiBoundaryVelFuncs.push_back(meshVelFunc);
+
+            // Add Dirichlet BC: u = w (no-slip on moving boundary)
+            bcInfo.addCondition(ps.patch, ps.side(), condition_type::dirichlet,
+                               meshVelFunc.get(), 0);
+        }
+
+        gsInfo << "[gsINSSolverALE] Automatically applied Dirichlet BC u=w (no-slip) on "
+               << m_fsiInterfaceSides.size() << " FSI interface sides\n";
+    }
+
+    /// @brief Update FSI boundary mesh velocity functions
+    /// This should be called each time step before solving to update the mesh velocity
+    /// @param[in] dt time step size
+    void updateFSIBoundaryVelocity(T dt)
+    {
+        if (m_fsiBoundaryVelFuncs.empty() || m_fsiInterfaceSides.empty())
+            return;
+
+        const gsMultiPatch<T>& curGeo = m_assemblerPtr->getPatches();
+
+        // Update each boundary velocity function with current and previous geometry
+        for (size_t i = 0; i < m_fsiBoundaryVelFuncs.size(); ++i)
+        {
+            const index_t p = m_fsiInterfaceSides[i].patch;
+
+            // Cast to the specific function type to access update methods
+            auto* velFunc = dynamic_cast<gsFSIMeshVelocityFunction<T>*>(
+                m_fsiBoundaryVelFuncs[i].get());
+
+            if (velFunc)
+            {
+                velFunc->setCurrent(&curGeo.patch(p));
+                velFunc->setPrevious(&m_prevGeometry.patch(p));
+                velFunc->setDt(dt);
+            }
+        }
+    }
+
+    /// @brief Store current geometry as previous (for next time step)
+    /// This should be called after each successful time step
+    void updatePreviousGeometry()
+    {
+        if (m_prevGeometry.nPatches() > 0)
+        {
+            m_prevGeometry = m_assemblerPtr->getPatches();
+        }
+    }
+
+    /// @brief Initialize gsALE boundary displacement field
+    /// This should be called after the mesh is set up and before starting time integration
+    void initializeGsALE()
+    {
+        if (!m_useGsALE) return;
+
+        const gsMultiPatch<T>& patches = m_assemblerPtr->getPatches();
+
+        // Create boundary displacement field (initially zero, same structure as geometry)
+        m_boundaryDisplacement.clear();
+        for (index_t p = 0; p < patches.nPatches(); ++p)
+        {
+            typename gsGeometry<T>::uPtr patch = patches.patch(p).clone();
+            patch->coefs().setZero();
+            m_boundaryDisplacement.addPatch(std::move(patch));
+        }
+        m_boundaryDisplacement.computeTopology();
+
+        gsInfo << "[gsINSSolverALE] Initialized gsALE with " << m_boundaryDisplacement.nPatches()
+               << " patches\n";
     }
     
     /// @brief Get current rotation angle based on time
@@ -204,26 +469,40 @@ public:
     {
         GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
         
-        // CRITICAL: Follow exact same sequence as non-ALE solver
-        
-        // Step 1: Update assembler - this sets up time discretization using CURRENT solution
-        this->updateAssembler();
-        
-        // Step 2: Initialize if first iteration (must be AFTER updateAssembler)
-        if (!this->m_iterationNumber)
-            this->initIteration();
-            
-        // Step 3: Apply ALE mesh displacement ONLY if active
-        // This must happen AFTER time discretization is set up
+        // CRITICAL: Follow exact same sequence as non-ALE solver, with FSI BC refresh before assembly
+
+        // Ensure FSI boundary velocity functions reflect current and previous geometry
+        // This must happen BEFORE updating the assembler so that Dirichlet u=w is assembled
+        updateFSIBoundaryVelocity(this->m_timeStepSize);
+
+        // Step 1: Apply ALE mesh displacement for the CURRENT time first
+        // This ensures the system is assembled on the updated geometry
         if (m_isALEActive && m_meshUpdateFunc)
         {
             applyMeshDisplacement();
-            
-            if (m_useMeshOptimization)
+            // If geometry changed here, refresh FSI boundary velocity again
+            updateFSIBoundaryVelocity(this->m_timeStepSize);
+
+            // Choose mesh deformation method
+            if (m_useGsALE)
+            {
+                // Use gsALE mesh deformation
+                applyGsALEDeformation();
+            }
+            else if (m_useMeshOptimization)
             {
                 optimizeMesh();
             }
+            gsWriteOutputLine(this->m_outFile, "[ALE] Mesh update done.", this->m_fileOutput, this->m_dispOutput);
         }
+
+        gsWriteOutputLine(this->m_outFile, "[ALE] Updating assembler...", this->m_fileOutput, this->m_dispOutput);
+        // Step 2: Update assembler on the updated geometry
+        this->updateAssembler();
+        
+        // Step 3: Initialize if first iteration (must be AFTER updateAssembler)
+        if (!this->m_iterationNumber)
+            this->initIteration();
         
         // Step 4: Start solving with current solution as initial guess
         gsMatrix<T> tmpSolution = this->m_solution;
@@ -253,17 +532,117 @@ public:
         
         // Step 6: Update solution and time (exactly like non-ALE solver)
         this->m_solution = tmpSolution;
-        
+
         // CRITICAL FIX: Explicitly update time history for next iteration
         // This must be done AFTER m_solution is updated
         getALEAssembler()->updateCurrentSolField(tmpSolution, true);
-        
+
         this->m_time += this->m_timeStepSize;
         this->m_avgPicardIter += picardIter;
         this->m_iterationNumber++;
+
+        // Note: Previous geometry is NOT updated here automatically
+        // User must call updatePreviousGeometry() after checkpoint is accepted
     }
     
 protected:
+    /// @brief Update boundary displacement field from full mesh displacement vector
+    /// @param[in] meshDisp full mesh displacement vector (dim * udofs, 1)
+    void updateBoundaryDisplacement(const gsMatrix<T>& meshDisp)
+    {
+        if (m_boundaryDisplacement.nPatches() == 0)
+            return;
+
+        const index_t dim = m_assemblerPtr->getPatches().geoDim();
+        const index_t udofs = getALEAssembler()->getUdofs();
+        const gsDofMapper& uMap = getALEAssembler()->getMappers()[0];
+
+        // Convert mesh displacement vector to boundary displacement field
+        for (index_t p = 0; p < m_boundaryDisplacement.nPatches(); ++p)
+        {
+            gsMatrix<T>& coefs = m_boundaryDisplacement.patch(p).coefs();
+            const index_t nCoefs = coefs.rows();
+
+            for (index_t i = 0; i < nCoefs; ++i)
+            {
+                if (!uMap.is_free(i, p)) continue;
+                const index_t gi = uMap.index(i, p);
+
+                if (gi < udofs)
+                {
+                    coefs(i, 0) = meshDisp(gi, 0);         // x displacement
+                    coefs(i, 1) = meshDisp(gi + udofs, 0); // y displacement
+                }
+            }
+        }
+    }
+
+    /// @brief Setup gsALE boundary interface from FSI interface sides
+    void setupGsALEInterface()
+    {
+        m_aleInterface = gsBoundaryInterface();
+        for (const auto& ps : m_fsiInterfaceSides)
+        {
+            // Map each FSI interface side to itself for gsALE
+            m_aleInterface.addInterfaceSide(ps.patch, ps.side(), ps.patch, ps.side());
+        }
+        gsInfo << "[gsINSSolverALE] Setup gsALE interface with " << m_fsiInterfaceSides.size()
+               << " sides\n";
+    }
+
+    /// @brief Apply gsALE mesh deformation
+    void applyGsALEDeformation()
+    {
+        if (m_originalMesh.nPatches() == 0 || m_boundaryDisplacement.nPatches() == 0)
+        {
+            gsWarn << "[gsINSSolverALE] gsALE not properly initialized. Call initializeGsALE() first.\n";
+            return;
+        }
+
+        try
+        {
+            // Get current mesh from assembler (this is the deformed mesh from applyMeshDisplacement)
+            gsMultiPatch<T>& patches = const_cast<gsMultiPatch<T>&>(m_assemblerPtr->getPatches());
+
+            // Create gsALE object with current boundary displacement and interface
+            gsALE<T> meshDeformer(patches, m_boundaryDisplacement, m_aleInterface, m_aleMethod);
+
+            // Set gsALE options
+            meshDeformer.options().setReal("PoissonsRatio",
+                m_gsALEOptions.getReal("PoissonsRatio"));
+            meshDeformer.options().setReal("LocalStiff",
+                m_gsALEOptions.getReal("LocalStiff"));
+            meshDeformer.options().setSwitch("Check",
+                m_gsALEOptions.getSwitch("Check"));
+
+            // Update mesh using gsALE
+            index_t badPatch = meshDeformer.updateMesh();
+
+            if (badPatch != -1)
+            {
+                gsWarn << "[gsINSSolverALE] gsALE mesh deformation failed! Bad patch: "
+                       << badPatch << "\n";
+                gsWarn << "Continuing with current mesh state.\n";
+                return;
+            }
+
+            // Extract ALE displacement field from gsALE
+            gsMultiPatch<T> aleDisplacement;
+            meshDeformer.constructSolution(aleDisplacement);
+
+            // Update the mesh in assembler's patches (already updated by gsALE::updateMesh)
+            // The geometry control points in 'patches' are now modified
+
+            gsInfo << "[gsINSSolverALE] Applied gsALE mesh deformation with method "
+                   << m_aleMethod << "\n";
+        }
+        catch (const std::exception& e)
+        {
+            gsWarn << "[gsINSSolverALE] gsALE deformation failed: " << e.what() << "\n";
+            gsWarn << "Continuing with current mesh.\n";
+        }
+    }
+
     /// @brief Apply mesh displacement to the actual geometry
     void applyMeshDisplacement()
     {
@@ -384,13 +763,15 @@ protected:
             }
             else
             {
-                // Use standard gsBarrierPatch
-                gsBarrierPatch<2, T> opt(patches, false);
+                // Use global mode: all patches optimized together with free interfaces
+                // patchWise=true: each patch independently with HLBFGS, interfaces fixed
+                // patchWise=false: global optimization with HLBFGS, all patches together, interfaces free
+                gsBarrierPatch<2, T> opt(patches, true);  // false = global mode (interfaces free)
                 opt.options() = m_meshOptOptions;
                 opt.compute();
                 patches = opt.result();
-                
-                gsInfo << "Applied standard mesh optimization\n";
+
+                gsInfo << "Applied global mesh optimization with HLBFGS (interfaces free)\n";
             }
             
             // Update mesh in assembler with displacement consistent to original mesh

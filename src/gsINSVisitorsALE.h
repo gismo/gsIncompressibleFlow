@@ -46,17 +46,15 @@ public:
                            const std::vector<gsDofMapper>& dofMappers,
                            index_t targetDim = 2,
                            const gsField<T>* meshVelField = nullptr)
-    : Base(paramsPtr), 
+    : Base(paramsPtr),
       m_tarDim(targetDim),
       m_meshVelField(meshVelField)
-    { 
-        m_dofMappers = dofMappers;
-        
-        // Create ALE convection term
-        m_aleConvectionTerm = new gsINSTerm_ALEConvection<T>(meshVelField, targetDim);
-        
-        // Add the term to the visitor
-        m_terms.push_back(m_aleConvectionTerm);
+    {
+        // DON'T set m_dofMappers here, it will be set in initialize()
+        // Then will be updated via updateDofMappers() after initialize()
+        // m_dofMappers = dofMappers;
+        // Term will be created in initialize() via defineTerms()
+        m_aleConvectionTerm = nullptr;
     }
     
     /// @brief Constructor without paramsPtr (deprecated, for backward compatibility)
@@ -68,12 +66,8 @@ public:
       m_meshVelField(meshVelField)
     { 
         m_dofMappers = dofMappers;
-        
-        // Create ALE convection term
-        m_aleConvectionTerm = new gsINSTerm_ALEConvection<T>(meshVelField, targetDim);
-        
-        // Add the term to the visitor
-        m_terms.push_back(m_aleConvectionTerm);
+        // Term will be created in initialize() via defineTerms()
+        m_aleConvectionTerm = nullptr;
     }
     
     /// @brief Destructor
@@ -82,6 +76,16 @@ public:
         // Terms are deleted by base class
     }
     
+protected:
+    /// @brief Define ALE non-linear terms ((u-w)·∇φ_trial) φ_test
+    virtual void defineTerms() override
+    {
+        // Ensure a fresh term instance each initialization
+        m_aleConvectionTerm = new gsINSTerm_ALEConvection<T>(m_meshVelField, m_tarDim);
+        this->m_terms.push_back(m_aleConvectionTerm);
+    }
+    
+public:
     /// @brief Set mesh velocity field
     void setMeshVelocityField(const gsField<T>* meshVelField)
     {

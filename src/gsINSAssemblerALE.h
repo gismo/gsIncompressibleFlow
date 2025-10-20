@@ -87,8 +87,11 @@ public:
         // Create ALE visitor with proper paramsPtr (mesh velocity field will be set later)  
         m_visitorUUnonlinALE = new gsINSVisitorUUnonlinALE<T, MatOrder>(
             m_paramsPtr, m_dofMappers, m_tarDim, nullptr);
-        
-        // No need to manually initialize - assembleBlock will handle it
+        // Initialize visitor so it's ready for assembly
+        m_visitorUUnonlinALE->initialize();
+        // Propagate current solution if available
+        if (this->m_currentVelField.nPieces() > 0)
+            m_visitorUUnonlinALE->setCurrentSolution(this->m_currentVelField);
     }
     
     /// @brief Update sizes when boundary conditions change (override)
@@ -106,6 +109,14 @@ public:
         m_meshDispCoefs.conservativeResize(fullDofs, 1);
         // m_meshDispOld stores only velocity DOFs
         m_meshDispOld.conservativeResize(pshift, 1);
+    }
+
+    /// @brief Update the DOF mappers in all visitors (including ALE visitor)
+    virtual void updateDofMappers() override
+    {
+        Base::updateDofMappers();
+        if (m_visitorUUnonlinALE)
+            m_visitorUUnonlinALE->updateDofMappers(this->m_dofMappers);
     }
     
     /// @brief Activate/deactivate ALE formulation
@@ -146,6 +157,23 @@ public:
             m_meshDispOld.resize(meshDispNew.size(), 1);
         }
         m_meshDispOld = meshDispNew;
+    }
+
+    /// @brief Set mesh velocity coefficients directly (top rows correspond to velocity DOFs)
+    /// @param[in] meshVel mesh velocity coefficients for velocity DOFs
+    void setMeshVelocity(const gsMatrix<T>& meshVel)
+    {
+        const index_t udofs = this->m_dofMappers[0].freeSize();
+        const index_t pdofs = this->m_dofMappers[1].freeSize();
+        const index_t pshift = m_tarDim * udofs;
+        const index_t fullDofs = pshift + pdofs;
+
+        m_meshVelCoefs.resize(fullDofs, 1);
+        m_meshVelCoefs.setZero();
+        if (meshVel.size() >= pshift)
+            m_meshVelCoefs.topRows(pshift) = meshVel.topRows(pshift);
+        else if (meshVel.size() > 0)
+            m_meshVelCoefs.topRows(meshVel.rows()) = meshVel;
     }
     
     /// @brief Get mesh velocity field
@@ -248,37 +276,112 @@ public:
         Base::updateCurrentSolField(solVector, updateSol);
     }
     
-    /// @brief Override update - use standard update, ALE is handled in assembly
+    /// @brief Override update: refresh Dirichlet data BEFORE assembly so u=w holds on moving walls
     virtual void update(const gsMatrix<T>& sol, bool updateSol = true) override
     {
-        // Always call standard update - keep current fields as actual fluid velocities
-        Base::update(sol, updateSol);
-        
-        // Set up ALE visitor if needed (for compatibility)
+        // If ALE is active, prepare mesh-velocity field for boundary updates and ALE terms
         if (m_isALEActive && m_visitorUUnonlinALE)
         {
-            // Recreate mesh velocity field with current mesh velocity coefficients
             delete m_tempMeshVelField;
             m_tempMeshVelField = new gsField<T>(this->constructSolution(m_meshVelCoefs, 0));
-            
-            // Update mesh velocity in ALE visitor
             m_visitorUUnonlinALE->setMeshVelocityField(m_tempMeshVelField);
-            
-            // Update current solution in ALE visitor
-            if (updateSol && this->m_currentVelField.nPieces() > 0)
+
+            // Refresh velocity Dirichlet values for Dirichlet sides
+            // 1) Recompute ddof via standard path (interpolation/L2 proj/homogeneous)
+            // 2) For homogeneous Dirichlet (function==nullptr), override with mesh velocity: u = w
+            if (this->getAssemblerOptions().dirStrategy == dirichlet::elimination)
             {
-                m_visitorUUnonlinALE->setCurrentSolution(this->m_currentVelField);
+                // (1) recompute baseline Dirichlet values
+                this->computeDirichletDofs(0, 0, this->m_ddof[0]);
+
+                // (2) override homogeneous Dirichlet by mesh velocity (automatic no-slip on moving walls)
+                const gsBoundaryConditions<T>& bcs = this->getBCs();
+                const gsMultiBasis<T>& mbasis = this->getBases().at(0);
+                const gsDofMapper& mapper = this->m_dofMappers[0];
+
+                for (typename gsBoundaryConditions<T>::const_iterator it = bcs.dirichletBegin(); it != bcs.dirichletEnd(); ++it)
+                {
+                    if (it->unknown() != 0) continue; // only velocity
+                    if (!it->isHomogeneous()) continue; // only homogeneous entries are auto-set to w
+
+                    const index_t patchID = it->patch();
+                    const gsBasis<T>& basis = mbasis.piece(patchID);
+
+                    // Boundary DOF indices on this side (in patch coefficient numbering)
+                    gsMatrix<index_t> boundary = basis.boundary(it->side());
+
+                    // Evaluate mesh velocity directly at the boundary basis anchors
+                    typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
+                    gsMatrix<T> anch = h->anchors();
+                    gsMatrix<T> wVals = m_tempMeshVelField->value(anch, patchID);
+
+                    // Interpolate onto boundary basis anchors to get boundary coefficients
+                    typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(wVals);
+                    const gsMatrix<T>& dVals = geo->coefs();
+
+                    // Write into eliminated Dirichlet vector with size safety
+                    const index_t nrows = static_cast<index_t>(dVals.rows());
+                    const index_t nbnd  = static_cast<index_t>(boundary.size());
+                    if (nrows != nbnd)
+                        gsWarn << "[ALE/Asm] Boundary coefficients count mismatch: dVals.rows()="
+                               << nrows << ", boundary.size()=" << nbnd << ". Clamping.\n";
+                    const index_t ncopy = std::min(nrows, nbnd);
+                    for (index_t i = 0; i < ncopy; ++i)
+                    {
+                        const index_t ii = mapper.bindex(boundary.at(i), patchID);
+                        if (ii >= 0 && ii < this->m_ddof[0].rows())
+                            this->m_ddof[0].row(ii) = dVals.row(i);
+                    }
+                }
             }
         }
+
+        // Update current solution field used e.g. for convection linearization
+        Base::updateCurrentSolField(sol, updateSol);
+
+        // Reassemble both linear and nonlinear parts to incorporate updated Dirichlet data
+        this->assembleLinearPart();
+        this->assembleNonlinearPart();
+        this->fillSystem();
+
+        // Update visitor with current solution field (optional, for compatibility)
+        if (m_isALEActive && m_visitorUUnonlinALE && this->m_currentVelField.nPieces() > 0)
+            m_visitorUUnonlinALE->setCurrentSolution(this->m_currentVelField);
     }
     
     
-    /// @brief Assemble the nonlinear part with ALE formulation
+    /// @brief Assemble the nonlinear part; if ALE active and mesh is moving, use ALE visitor ((u-w)·∇u)
     virtual void assembleNonlinearPart() override
     {
-        // Always use standard formulation for now
-        // ALE effects are handled through the ALE visitor when needed
-        Base::assembleNonlinearPart();
+        // matrix and rhs cleaning
+        this->m_blockUUnonlin_comp.resize(this->m_udofs, this->m_udofs);
+        this->m_blockUUnonlin_whole.resize(this->m_pshift, this->m_pshift);
+        this->m_rhsUnonlin.setZero();
+
+        // If ALE is active but mesh velocity is essentially zero, fall back to standard formulation
+        bool useALE = m_isALEActive && m_visitorUUnonlinALE;
+        if (useALE)
+        {
+            // Check infinity norm of mesh velocity coefficients (only velocity part)
+            const index_t udofs = this->m_dofMappers[0].freeSize();
+            const index_t pshift = m_tarDim * udofs;
+            T velInf = (m_meshVelCoefs.size() >= pshift) ? m_meshVelCoefs.topRows(pshift).template lpNorm<gsEigen::Infinity>() : T(0);
+            if (velInf < static_cast<T>(1e-14))
+                useALE = false;
+        }
+
+        if (useALE)
+        {
+            // Assemble ALE convection into component block (udofs x udofs)
+            // and let fillGlobalMat_UU replicate across components (robust path)
+            this->m_blockUUnonlin_comp.reserve(gsVector<index_t>::Constant(this->m_blockUUnonlin_comp.outerSize(), this->m_nnzPerOuterU));
+            this->assembleBlock(*m_visitorUUnonlinALE, 0, this->m_blockUUnonlin_comp, this->m_rhsUnonlin);
+        }
+        else
+        {
+            // Fallback to standard formulation
+            Base::assembleNonlinearPart();
+        }
     }
 };
 
