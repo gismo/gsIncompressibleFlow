@@ -21,7 +21,8 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers()
     Base::initMembers();
     updateSizes();
 
-    m_visitorRANSsymgrad = gsRANSVisitorUUSymmetricGradient<T, MatOrder>(m_paramsPtr);
+    m_visitorRANSsymgrad = gsRANSVisitorUU<T, MatOrder>(m_paramsPtr);
+    //m_visitorRANSsymgrad = gsRANSVisitorUU_full<T, MatOrder>(m_paramsPtr); // TODO: choose automatically for RbR loop
     m_visitorRANSsymgrad.initialize();
 
 }

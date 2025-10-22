@@ -271,6 +271,13 @@ public: // *** Member functions ***
 
     virtual void assemble();
 
+protected: // *** Member functions ***
+
+    virtual void resizeMatVec()
+    {
+        m_locMatVec.resize(m_paramsPtr->getPde().dim());
+    }
+
 };
 
 // ===================================================================================================================

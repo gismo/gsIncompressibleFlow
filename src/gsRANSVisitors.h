@@ -24,13 +24,14 @@ namespace gismo
 {
 
 template <class T, int MatOrder>
-class gsRANSVisitorUUSymmetricGradient : public gsFlowVisitorVectorValued<T, MatOrder>
+class gsRANSVisitorUU : public gsFlowVisitorVectorValued<T, MatOrder>
 {
 
 public:
     typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
-public:
+protected:  // *** Class members ***
+
     gsMatrix<T> m_solution;
     real_t m_viscosity;
     typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
@@ -53,20 +54,28 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsRANSVisitorUUSymmetricGradient() {}
+    gsRANSVisitorUU() {}
 
-    gsRANSVisitorUUSymmetricGradient(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    gsRANSVisitorUU(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
     Base(paramsPtr)
     { 
         initMembers();
     }
 
 
+public: // *** Member functions *** 
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(index_t testFunID);
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(const gsDomainIterator<T>* domIt);
+
+
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
     void initMembers();
-
 
     virtual void defineTerms()
     {
@@ -79,22 +88,17 @@ protected: // *** Member functions ***
         m_trialUnkID = 0;   // velocity
     }
 
-public: // *** Member functions *** 
-
-    /// @brief Initialize the visitor.
-    void initialize();
-
-    /// @brief Evaluates turbulent viscosity.
-    void evaluate(index_t testFunID);
-
-    /// @brief Evaluates turbulent viscosity.
-    void evaluate(const gsDomainIterator<T>* domIt);
-
-
-protected: // *** Member functions *** 
-
     virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
     virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+    virtual void resizeMatVec()
+    {
+        short_t dim = m_paramsPtr->getPde().dim();
+        index_t nblocksE = dim * (dim + 1) / 2; // #diag + #upper-off-diag blocks
+        m_locMatVec.resize(nblocksE + 1); // +1 for matrix A which is equal for all components
+
+        // m_locMatVec = [A, E11, E22, (E33), E12, (E13), (E23)]
+    }
 
 
 public: // *** Getters/setters ***
@@ -102,6 +106,63 @@ public: // *** Getters/setters ***
     void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
 
     void setRANSsolution(gsMatrix<T> sol) { m_solution = sol;}
+
+}; // gsRANSVisitorUU
+
+
+template <class T, int MatOrder>
+class gsRANSVisitorUU_full : public gsRANSVisitorUU<T, MatOrder>
+{
+
+public:
+    typedef gsRANSVisitorUU<T, MatOrder> Base;
+
+
+protected: // *** Base class members ***
+
+    using Base::m_solution;
+    using Base::m_viscosity;
+    using Base::m_TMsolverPtr;
+    using Base::m_TurbulentViscosityVals;
+    using Base::m_locMatVec;
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_testFunActives;
+    using Base::m_trialFunActives;
+    using Base::m_terms;
+    using Base::m_quNodes;
+    using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
+    
+
+public: // *** Constructor/destructor ***
+
+    gsRANSVisitorUU_full() {}
+
+    gsRANSVisitorUU_full(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { }
+
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsRANSTerm_SymmetricGradient_full<T>() );
+    }
+
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+    virtual void resizeMatVec()
+    {
+        short_t dim = m_paramsPtr->getPde().dim();
+        m_locMatVec.resize(dim * dim + 1); // +1 for matrix A which is equal for all components
+
+        // m_locMatVec = [A, E11, E12, (E13), E21. E22, (E23), (E31), (E32), (E33)]
+    }
 
 };
 

@@ -34,7 +34,8 @@ public:
 
 protected: // *** Class members ***
 
-    gsRANSVisitorUUSymmetricGradient<T, MatOrder> m_visitorRANSsymgrad;
+    gsRANSVisitorUU<T, MatOrder> m_visitorRANSsymgrad;
+    //gsRANSVisitorUU_full<T, MatOrder> m_visitorRANSsymgrad; // TODO: choose automatically for RbR loop
     gsSparseMatrix<T, MatOrder> m_matRANSsymgrad;
     gsMatrix<T> m_rhsRANS;
     typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
