@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     cmd.addReal("", "tol", "Stopping tolerance", tol);
     cmd.addReal("", "picardTol", "Tolerance for inner Picard iteration for unsteady problem", picardTol);
     
-    cmd.addString("", "linSolver", "Linear system solver (direct / iter)", linSolver);
+    cmd.addString("", "linSolver", "Linear system solver (direct / iter / petsc)", linSolver);
     cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
     cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
 

@@ -249,40 +249,20 @@ void gsFlowVisitor<T, MatOrder>::evaluate(index_t testFunID)
 
     index_t dim = m_testBasisPtr->domainDim();
     gsMatrix<T> support = m_testBasisPtr->support(testFunID);
-    //typename gsBasis<T>::domainIter domIt = m_testBasisPtr->makeDomainIterator(boundary::none);
 
     gsMatrix<T> quNodes; // quad. nodes for the current element
     gsVector<T> quWeights; // weights for the current element
     std::vector< gsMatrix<T> > quNodesOnElem; // quad. nodes for all elements in support
     std::vector< gsVector<T> > quWeightsOnElem; // weights for all elements in support
 
-    typename gsBasis<T>::domainIter domIt = m_testBasisPtr->domain()->beginAll();
-    typename gsBasis<T>::domainIter domItEnd = m_testBasisPtr->domain()->endAll();
+    gsMatrix<T> lowerCorners, upperCorners; // bounding boxes of all elements in support
+    elementsInSupport(*m_testBasisPtr, testFunID, lowerCorners, upperCorners);
 
-    // loop over elements
-    while(domIt != domItEnd)
+    for (index_t i = 0; i < lowerCorners.cols(); i++)
     {
-        bool inSupport = true; 
-
-        // check if the current element lies in support of test function with testFunID
-        for (index_t d = 0; d < dim; d++)
-        {
-            if ( (domIt.lowerCorner()[d] < support(d,0)) ||  (domIt.upperCorner()[d] > support(d,1)))
-            {
-                inSupport = false;
-                break;
-            }
-        }
-
-        // if so, compute and store the quadrature nodes and weights
-        if (inSupport)
-        {
-            m_quRule.mapTo(domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights);
-            quNodesOnElem.push_back(quNodes);
-            quWeightsOnElem.push_back(quWeights);
-        }
-
-        ++domIt;
+        m_quRule.mapTo((gsVector<T>)(lowerCorners.col(i)), (gsVector<T>)(upperCorners.col(i)), quNodes, quWeights);
+        quNodesOnElem.push_back(quNodes);
+        quWeightsOnElem.push_back(quWeights);
     }
 
     size_t numElemInSupport = quNodesOnElem.size();

@@ -142,7 +142,6 @@ int getMaxNnzPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
 }
 
 
-
 /// @brief Fill a diagonal approximation of an inverse matrix.
 /// @tparam T           real number type
 /// @tparam MatOrder    matrix storage order (RowMajor/ColMajor)
@@ -1253,6 +1252,216 @@ T computeDimensionlessWallDistance(typename gsFlowSolverParams<T>::Ptr paramsPtr
 
     return minYPlusOverSides.minCoeff() * viscosity / u_tau;
 } 
+
+
+template<class T>
+gsMultiPatch<T> linearizeGeometry(gsMultiPatch<T> mp, int uRefine = 0)
+{
+    gsTensorBSpline<2, T>* check1 = dynamic_cast<gsTensorBSpline<2, T>*>(&(mp.patch(0)));
+    gsTensorBSpline<3, T>* check2 = dynamic_cast<gsTensorBSpline<3, T>*>(&(mp.patch(0)));
+
+    if (check1 == NULL && check2 == NULL)
+        GISMO_ERROR("linearizeGeometry() can only be applied to tensor B-spline multi-patches.");
+
+    gsMultiPatch<T> mp_new;
+    int dim = mp.dim();
+    gsMatrix<int> degs(mp.nPatches(), dim);
+
+    for (index_t i = 0; i < mp.nPatches(); i++)
+        for (int j = 0; j < dim; j++) 
+            degs(i, j) = mp[i].degree(j);
+
+    for (index_t i = 0; i < mp.nPatches(); i++)
+    {
+        if (dim == 2)
+        {
+            gsTensorBSpline<2, T>* tbspline = dynamic_cast<gsTensorBSpline<2, T>*>(&(mp.patch(i)));
+
+            for (int j = 0; j < uRefine; j++)
+                tbspline->uniformRefine();
+
+            std::vector<T> knots1 = (tbspline->knots(0)).breaks();
+            std::vector<T> knots2 = (tbspline->knots(1)).breaks();
+            gsMatrix<T> parpoints(2, (knots1.size()) * (knots2.size()));
+            gsMatrix<T> points(2, (knots1.size()) * (knots2.size()));
+
+            for (index_t b = 0; b < knots2.size(); b++)
+                for (index_t a = 0; a < knots1.size(); a++)
+                {
+                    parpoints(0, b * (knots1.size()) + a) = knots1[a];
+                    parpoints(1, b * (knots1.size()) + a) = knots2[b];
+                }
+
+            tbspline->eval_into(parpoints, points);
+
+            gsKnotVector<T> kv1((tbspline->knots(0)).unique(), 1, 0);
+            gsKnotVector<T> kv2((tbspline->knots(1)).unique(), 1, 0);
+
+            gsTensorBSpline<2, T> tbspline_new(kv1, kv2, points.transpose());
+            mp_new.addPatch(tbspline_new);
+        }
+        else 
+        {
+            gsTensorBSpline<3, T>* tbspline = dynamic_cast<gsTensorBSpline<3, T>*>(&(mp.patch(i)));
+
+            for (int j = 0; j < uRefine; j++)
+                tbspline->uniformRefine();
+
+            std::vector<T> knots1 = (tbspline->knots(0)).breaks();
+            std::vector<T> knots2 = (tbspline->knots(1)).breaks();
+            std::vector<T> knots3 = (tbspline->knots(2)).breaks();
+            gsMatrix<T> parpoints(3, (knots1.size()) * (knots2.size()) * (knots3.size()));
+            gsMatrix<T> points(3, (knots1.size()) * (knots2.size()) * (knots3.size()));
+
+            for (index_t c = 0; c < knots3.size(); c++)
+                for (index_t b = 0; b < knots2.size(); b++)
+                    for (index_t a = 0; a < knots1.size(); a++)
+                    {
+                        parpoints(0, c * (knots1.size()) * (knots2.size()) + b * (knots1.size()) + a) = knots1[a];
+                        parpoints(1, c * (knots1.size()) * (knots2.size()) + b * (knots1.size()) + a) = knots2[b];
+                        parpoints(2, c * (knots1.size()) * (knots2.size()) + b * (knots1.size()) + a) = knots3[c];
+                    }
+
+            tbspline->eval_into(parpoints, points);
+
+            gsKnotVector<T> kv1((tbspline->knots(0)).unique(), 1, 0);
+            gsKnotVector<T> kv2((tbspline->knots(1)).unique(), 1, 0);
+            gsKnotVector<T> kv3((tbspline->knots(2)).unique(), 1, 0);
+
+            gsTensorBSpline<3, T> tbspline_new(kv1, kv2, kv3, points.transpose());
+            mp_new.addPatch(tbspline_new);
+        }
+    }
+
+    for (index_t i = 0; i < mp.nInterfaces(); i++)
+        mp_new.addInterface(mp.bInterface(i));
+
+    mp_new.addAutoBoundaries();
+
+    return mp_new;
+}
+
+
+inline gsVector<index_t> tensorIndex(const index_t gl, gsVector<index_t> sizes)
+{
+    index_t dim = sizes.rows();
+    gsVector<index_t> result(dim);
+
+    index_t ii = gl;
+    for (short_t i = 0; i < dim; ++i )
+    {
+        result(i)= ii % sizes(i);
+        ii -= result(i);
+        ii /= sizes(i);
+    }
+    return result;
+}
+
+// implemented here because it is implemented only for gsTensorBsplineBasis in gismo
+template<int d, class T>
+gsMatrix<index_t> elementSupport(const gsTensorNurbsBasis<d, T>& basis, const index_t i)
+{
+    gsMatrix<index_t> result(d, 2);
+    gsMatrix<index_t> tmp_vec;
+
+    gsVector<index_t> sizes(d);
+    for (short_t dim = 0; dim < d; ++dim)
+        sizes(dim) = basis.size(dim);
+
+    const gsVector<index_t> ti = tensorIndex(i, sizes);
+
+    for (short_t dim = 0; dim < d; ++dim)
+    {
+        const gsKnotVector<T> & kv = basis.knots(dim);
+        kv.supportIndex_into(ti[dim], tmp_vec);
+        result.row(dim).noalias() = tmp_vec.cwiseMax(0).cwiseMin(kv.numElements());
+    }
+
+    return result;
+}
+
+// implemented here to be able to call the same function for B-spline and NURBS basis
+template<int d, class T>
+gsMatrix<index_t> elementSupport(const gsTensorBSplineBasis<d, T>& basis, const index_t i)
+{
+    gsMatrix<index_t> result;
+    result = basis.elementSupport(i);
+    return result;
+}
+
+template<int d, class T>
+std::vector<std::vector<T> > getKnotBreaks(const gsTensorBSplineBasis<d, T>& basis)
+{
+    std::vector<std::vector<T> > result(d);
+
+    for (index_t dir = 0; dir < d; dir++)
+        result[dir] = (basis.knots(dir)).breaks();
+
+    return result;
+}
+
+template<int d, class T>
+std::vector<std::vector<T> > getKnotBreaks(const gsTensorNurbsBasis<d, T>& basis)
+{
+    std::vector<std::vector<T> > result(d);
+
+    for (index_t dir = 0; dir < d; dir++)
+        result[dir] = (basis.knots(dir)).breaks();
+
+    return result;
+}
+
+template<class T>
+void elementsInSupport(const gsBasis<T>& basis, const index_t i, gsMatrix<T>& lowerCorners, gsMatrix<T>& upperCorners)
+{
+    const gsTensorBSplineBasis<2, T>* bspline2d = dynamic_cast<const gsTensorBSplineBasis<2, T>*>(&basis);
+    const gsTensorBSplineBasis<3, T>* bspline3d = dynamic_cast<const gsTensorBSplineBasis<3, T>*>(&basis);
+    const gsTensorNurbsBasis<2, T>* nurbs2d = dynamic_cast<const gsTensorNurbsBasis<2, T>*>(&basis);
+    const gsTensorNurbsBasis<3, T>* nurbs3d = dynamic_cast<const gsTensorNurbsBasis<3, T>*>(&basis);    
+
+    gsMatrix<index_t> elemSupport;
+    std::vector<std::vector<real_t> > uKnots;
+
+    if (bspline2d)
+    {
+        elemSupport = elementSupport(*bspline2d, i);
+        uKnots = getKnotBreaks(*bspline2d);
+    }
+    else if (bspline3d)
+    {
+        elemSupport =  elementSupport(*bspline3d, i);
+        uKnots = getKnotBreaks(*bspline3d);
+    }
+    else if (nurbs2d)
+    {
+        elemSupport =  elementSupport(*nurbs2d, i);
+        uKnots = getKnotBreaks(*nurbs2d);
+    }
+    else if (nurbs3d)
+    {
+        elemSupport =  elementSupport(*nurbs3d, i);
+        uKnots = getKnotBreaks(*nurbs3d);
+    }
+    else
+        GISMO_ERROR("elementsInSupport not implemented for this basis type.");
+
+    index_t dim = elemSupport.rows();
+    gsMatrix<index_t> nElemDir = elemSupport.col(1) - elemSupport.col(0);
+    index_t nElem = nElemDir.prod();
+    lowerCorners.resize(dim, nElem);
+    upperCorners.resize(dim, nElem);
+
+    for (index_t i = 0; i < nElem; i++)
+    {
+        gsVector<index_t> elemIdx = tensorIndex(i, nElemDir);
+
+        for (index_t d = 0; d < dim; d++)
+        {
+            lowerCorners(d, i) = uKnots[d][elemSupport(d,0) + elemIdx(d)];
+            upperCorners(d, i) = uKnots[d][elemSupport(d,0) + elemIdx(d) + 1];
+        }
+    }
+}
 
 
 // -----------------------------------------------

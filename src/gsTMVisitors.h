@@ -116,10 +116,6 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
-    void evaluate(index_t testFunID);
-    
-    void evaluate(const gsDomainIterator<T>* domIt);
-
     virtual void defineTerms()
     {
         // production term going to rhs
@@ -134,6 +130,10 @@ protected: // *** Member functions ***
     }
 
 public: // *** Member functions *** 
+
+    void evaluate(index_t testFunID);
+    
+    void evaluate(const gsDomainIterator<T>* domIt);
 
     virtual void assemble();
 
@@ -190,10 +190,6 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
-    void evaluate(index_t testFunID);
-
-    void evaluate(const gsDomainIterator<T>* domIt);
-
     virtual void defineTerms()
     {
         m_numLhsTerms = 4;
@@ -225,6 +221,10 @@ public: // *** Member functions ***
 
     /// @brief Initialize the visitor.
     void initialize();
+
+    void evaluate(index_t testFunID);
+
+    void evaluate(const gsDomainIterator<T>* domIt);
 
     virtual void assemble();
 

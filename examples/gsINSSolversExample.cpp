@@ -71,7 +71,6 @@ int main(int argc, char *argv[])
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
     real_t linTol = 1e-6;
-    std::string matFormation = "EbE";
     std::string precond = "MSIMPLER_FdiagEqual";
     bool stokesInit = false; // start unsteady problem from Stokes solution
 
@@ -123,7 +122,6 @@ int main(int argc, char *argv[])
     cmd.addReal("", "tol", "Stopping tolerance", tol);
     cmd.addReal("", "picardTol", "Tolerance for inner Picard iteration for unsteady problem", picardTol);
     cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
-    cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
 
@@ -257,7 +255,6 @@ int main(int argc, char *argv[])
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger);
-    params.options().setString("assemb.loop", matFormation);
 
     gsOptionList solveOpt;
     solveOpt.addInt("geo", "", geo);

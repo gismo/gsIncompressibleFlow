@@ -63,16 +63,19 @@ public: // *** Constructor/destructor ***
     }
 
 
-protected: // *** Member functions ***
-
-    /// @brief Initialize all members.
-    void initMembers();
+public: // *** Member functions *** 
 
     /// @brief Evaluates turbulent viscosity.
     void evaluate(index_t testFunID);
 
     /// @brief Evaluates turbulent viscosity.
     void evaluate(const gsDomainIterator<T>* domIt);
+
+
+protected: // *** Member functions ***
+
+    /// @brief Initialize all members.
+    void initMembers();
 
     virtual void defineTerms()
     {

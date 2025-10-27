@@ -141,7 +141,7 @@ public: // *** Static functions ***
 
         // asssembly 
         //opt.addString("assemb.quad", "The numerical quadrature (Gauss/WQ)", "Gauss");
-        opt.addString("assemb.loop", "EbE = element by element, RbR = row by row", "EbE");
+        //opt.addString("assemb.loop", "EbE = element by element, RbR = row by row", "EbE");
         //opt.addSwitch("assemb.sumFact", "Use sum factorization for integration", false);
         opt.addSwitch("fillGlobalSyst", "Fill the global linear systems from blocks", true);
         
@@ -151,7 +151,6 @@ public: // *** Static functions ***
         opt.addReal("omega", "Angular velocity (for rotating frame of reference)", 0.0);
 
         // parallel 
-        opt.addSwitch("parallel", "Currently running in parallel", false);
         opt.addInt("mpi.size", "Total number of MPI processes", 1);
         opt.addInt("mpi.rank", "Rank of this process", 0);
 
@@ -170,36 +169,6 @@ public: // *** Static functions ***
         opt.addReal("TM.turbIntensity", "Turbulent intensity", 0.05);
         opt.addReal("TM.viscosityRatio", "Specifies approximate ratio of turbulent viscosity to kinematic viscosity", 50.0);
         opt.addInt("TM.addRefsDF", "Number of additional uniform refinements of pressure basis for distance field computation", 2);
-
-        return opt;
-    }
-
-    /// @brief Returns a list of default options for PETSc solvers.
-    static gsOptionList defaultPETScOptions()
-    {
-        gsOptionList opt;
-
-        opt.addString("-ksp_type", "", "gmres");
-        opt.addString("-pc_type", "", "gamg");
-        //opt.addString("-sub_pc_type", "", "ilu");
-
-        return opt;
-    }
-
-    /// @brief Returns a list of default options for saddle-point PETSc solvers.
-    static gsOptionList defaultPETScOptionsSP()
-    {
-        gsOptionList opt;
-
-        opt.addString("-ksp_type", "", "fgmres"); // flexible GMRES
-        opt.addString("-pc_type", "", "fieldsplit"); // PCFIELDSPLIT preconditioner
-        opt.addString("-pc_fieldsplit_detect_saddle_point", "", ""); // automatically detect saddle-point structure
-        opt.addString("-pc_fieldsplit_type", "", "schur"); // Schur complement preconditioner
-        opt.addString("-pc_fieldsplit_schur_fact_type", "", "upper"); // upper triangular factorization
-        // opt.addString("-fieldsplit_0_ksp_type", "", "preonly"); 
-        // opt.addString("-fieldsplit_0_pc_type", "", "asm"); 
-        //opt.addString("-fieldsplit_0_sub_pc_type", "", "ilu");
-        opt.addString("-fieldsplit_1_pc_type", "", "lsc"); // LSC approximation of Schur complement
 
         return opt;
     }
@@ -267,6 +236,64 @@ public: // *** Member functions ***
 
         finalizeDofMappers();
         createPeriodicHelper(m_dofMappers[0]);
+    }
+
+    /// @brief Returns a list of default options for PETSc solvers.
+    gsOptionList defaultPETScOptions()
+    {
+        // this function is not static because it uses members of this class
+        index_t maxIt = m_opt.getInt("lin.maxIt");
+        real_t linTol = m_opt.getReal("lin.tol");
+
+        gsOptionList opt;
+
+        opt.addString("-ksp_type", "", "gmres");
+        opt.addString("-ksp_max_it", "", util::to_string(maxIt));
+        opt.addString("-ksp_rtol", "", util::to_string(linTol));
+        opt.addString("-pc_type", "", "asm");
+        opt.addString("-sub_pc_type", "", "ilu");
+
+        return opt;
+    }
+
+    /// @brief Returns a list of default options for saddle-point PETSc solvers.
+    gsOptionList defaultPETScOptionsSP()
+    {
+        // this function is not static because it uses members of this class
+        short_t dim = m_pdePtr->dim();
+        index_t maxIt = m_opt.getInt("lin.maxIt");
+        real_t linTol = m_opt.getReal("lin.tol");
+
+        gsOptionList opt;
+
+        opt.addString("-ksp_type", "", "fgmres"); // flexible GMRES
+        opt.addString("-ksp_initial_guess_nonzero", "", "true");
+        opt.addString("-ksp_max_it", "", util::to_string(maxIt));
+        opt.addString("-ksp_rtol", "", util::to_string(linTol));
+
+        opt.addString("-pc_type", "", "fieldsplit"); // PCFIELDSPLIT preconditioner
+        opt.addString("-pc_fieldsplit_detect_saddle_point", "", ""); // automatically detect saddle-point structure
+        opt.addString("-pc_fieldsplit_type", "", "schur"); // Schur complement preconditioner
+        opt.addString("-pc_fieldsplit_schur_fact_type", "", "upper"); // upper triangular factorization
+        opt.addString("-pc_fieldsplit_schur_precondition", "", "self"); // matrix to generate Schur complement preconditioner
+
+        opt.addString("-fieldsplit_0_mat_block_size", "", util::to_string(dim)); // block size = dimension of velocity (not sure, if this does anything)
+        opt.addString("-fieldsplit_0_ksp_type", "", "preonly"); // use only preconditioner
+        opt.addString("-fieldsplit_0_pc_type", "", "lu"); // direct solver for velocity block
+        opt.addString("-fieldsplit_0_pc_factor_mat_solver_type", "", "mumps"); // use MUMPS as direct solver
+
+        opt.addString("-fieldsplit_1_pc_type", "", "lsc"); // LSC approximation of Schur complement
+        opt.addString("-fieldsplit_1_pc_lsc_scale_diag", "", ""); // scale with diagonal of velocity mass matrix
+        opt.addString("-fieldsplit_1_lsc_ksp_type", "", "preonly"); // use only preconditioner
+        opt.addString("-fieldsplit_1_lsc_pc_type", "", "lu"); // direct solver for Schur complement approximation
+        opt.addString("-fieldsplit_1_lsc_pc_factor_mat_solver_type", "", "mumps"); // use MUMPS as direct solver
+
+        // variant with Schwarz preconditioner + ILU:
+        // opt.addString("-fieldsplit_1_lsc_ksp_type", "", "gmres");
+        // opt.addString("-fieldsplit_1_lsc_pc_type", "", "asm");
+        // opt.addString("-fieldsplit_1_lsc_sub_pc_type", "", "ilu");
+
+        return opt;
     }
 
 public: // *** Getters/setters ***

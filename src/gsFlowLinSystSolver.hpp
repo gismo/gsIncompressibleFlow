@@ -19,17 +19,18 @@ template<class T, int MatOrder>
 T gsFlowLinSystSolver<T, MatOrder>::stopwatchStart()
 {
 
-#ifdef GISMO_WITH_PETSC
-    if (m_paramsPtr->options().getSwitch("parallel"))
-    {
-        MPI_Barrier(PETSC_COMM_WORLD);
-        return MPI_Wtime();
-    }
-    else
-#endif
-        m_clock.restart();
+#ifdef GISMO_WITH_MPI
 
+    MPI_Barrier(m_paramsPtr->getMpiComm());
+    return MPI_Wtime();
+
+#else
+
+    m_clock.restart();
     return 0.0;
+
+#endif
+
 }
 
 
@@ -37,15 +38,16 @@ template<class T, int MatOrder>
 T gsFlowLinSystSolver<T, MatOrder>::stopwatchStop()
 {
 
-#ifdef GISMO_WITH_PETSC
-    if (m_paramsPtr->options().getSwitch("parallel"))
-    {
-        MPI_Barrier(PETSC_COMM_WORLD);
-        return MPI_Wtime();
-    }
-    else
+#ifdef GISMO_WITH_MPI
+
+    MPI_Barrier(m_paramsPtr->getMpiComm());
+    return MPI_Wtime();
+
+#else
+
+    return m_clock.stop();
+
 #endif
-        return m_clock.stop();
 
 }
 
@@ -183,7 +185,7 @@ void gsFlowLinSystSolver_PETSc<T>::setupSolver(const gsSparseMatrix<T, RowMajor>
 
     PetscCallVoid( KSPCreate(comm, &m_ksp) );
     PetscCallVoid( KSPGetPC(m_ksp, &m_pc) );
-    this->applyOptions(gsFlowSolverParams<T>::defaultPETScOptions());
+    this->applyOptions(m_paramsPtr->defaultPETScOptions());
 
     real_t time1 = stopwatchStop();
     m_setupT += time1 - time0;
@@ -248,7 +250,7 @@ void gsFlowLinSystSolver_PETSc_SP<T>::setupSolver(const std::vector< gsSparseMat
 
     PetscCallVoid( KSPCreate(comm, &m_ksp) );
     PetscCallVoid( KSPGetPC(m_ksp, &m_pc) );
-    this->applyOptions(gsFlowSolverParams<T>::defaultPETScOptionsSP());
+    this->applyOptions(m_paramsPtr->defaultPETScOptionsSP());
 
     real_t time1 = stopwatchStop();
     m_setupT += time1 - time0;

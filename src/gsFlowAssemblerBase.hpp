@@ -285,9 +285,6 @@ index_t gsFlowAssemblerBase<T, MatOrder>::globalToLocalOnPatch(index_t patch, in
 template<class T, int MatOrder>
 void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
 {
-    // TODO: iteration over all patches at once
-    // typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(0).domain()->beginAll();
-
     for(size_t p = 0; p < getPatches().nPatches(); p++)
     {
         visitor.initOnPatch(p);
