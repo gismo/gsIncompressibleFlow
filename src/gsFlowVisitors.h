@@ -50,7 +50,6 @@ protected: // *** Class members ***
     unsigned m_geoFlags, m_testFunFlags, m_trialFunFlags;
     const gsBasis<T>* m_testBasisPtr;
     const gsBasis<T>* m_trialBasisPtr;
-    std::vector< gsDofMapper > m_dofMappers;
     std::vector< gsFlowTerm<T>* > m_terms;
 
     // updated repeatedly
@@ -88,6 +87,22 @@ public: // *** Constructor/destructor ***
             m_hasPeriodicBC = false;
     }
 
+
+    /// @brief Copy constructor.
+    gsFlowVisitor(const gsFlowVisitor<T, MatOrder>& other):
+    gsFlowVisitor()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of m_terms
+        m_terms.clear();
+        m_terms.reserve(other.m_terms.size());
+        for (auto* t : other.m_terms)
+            m_terms.push_back(t->clone().release());
+    }
+
+
     ~gsFlowVisitor()
     {
         deleteTerms();
@@ -119,8 +134,8 @@ protected: // *** Member functions ***
     /// Set pointers to test and trial basis.
     virtual void defineTestTrialBases()
     { 
-        m_testBasisPtr = &(m_paramsPtr->getBases()[m_testUnkID].piece(m_patchID));
-        m_trialBasisPtr = &(m_paramsPtr->getBases()[m_trialUnkID].piece(m_patchID));
+        m_testBasisPtr = &(m_paramsPtr->getBasis(m_testUnkID).piece(m_patchID));
+        m_trialBasisPtr = &(m_paramsPtr->getBasis(m_trialUnkID).piece(m_patchID));
     }
 
     /// Setup the quadrature rule.
@@ -169,11 +184,7 @@ public: // *** Member functions ***
 
     /// Initialize the visitor.
     void initialize();
-
-    /// @brief Update DoF mappers.
-    /// @param[in] mappers new mappers
-    void updateDofMappers(const std::vector<gsDofMapper>& mappers) { m_dofMappers = mappers; }
-
+    
     /// @brief Initialize the visitor on the given patch.
     /// @param[in] patchID the patch number
     void initOnPatch(index_t patchID);
@@ -188,11 +199,11 @@ public: // *** Member functions ***
 
     /// @brief Evaluate basis data on the support of a given test function (used for row-by-row assembly).
     /// @param[in] testFunID the local test function index on the current patch
-    void evaluate(index_t testFunID);
+    virtual void evaluate(index_t testFunID);
 
     /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
     /// @param[in] domIt domain iterator pointing to the current element
-    void evaluate(const gsDomainIterator<T>* domIt);
+    virtual void evaluate(const gsDomainIterator<T>* domIt);
 
     /// Assemble the local matrix.
     virtual void assemble();
@@ -239,6 +250,7 @@ protected: // *** Base class members ***
     using Base::m_mapData;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
+    using Base::m_quNodes;
     using Base::m_quWeights;
     using Base::m_testFunData;
     using Base::m_trialFunData;
@@ -302,8 +314,8 @@ public: // *** Member functions ***
 //      /// @brief Set pointers to test and trial basis.
 //     virtual void defineTestTrialBases()
 //     { 
-//         m_testBasisPtr = &(m_paramsPtr->getBases()[m_testUnkID].piece(m_patchID).boundaryBasis(m_side));
-//         m_trialBasisPtr = &(m_paramsPtr->getBases()[m_trialUnkID].piece(m_patchID).boundaryBasis(m_side));
+//         m_testBasisPtr = &(m_paramsPtr->getBasis(m_testUnkID).piece(m_patchID).boundaryBasis(m_side));
+//         m_trialBasisPtr = &(m_paramsPtr->getBasis(m_trialUnkID).piece(m_patchID).boundaryBasis(m_side));
 //     }
 
 //     /// @brief Setup the quadrature rule.

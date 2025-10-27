@@ -37,12 +37,10 @@ public:
 
 protected: // *** Base class members ***
 
+    using Base::m_paramsPtr;
     using Base::m_assemblerPtr;
     using Base::m_solution;
     using Base::m_iterationNumber;
-    using Base::m_outFile;
-    using Base::m_fileOutput;
-    using Base::m_dispOutput;
 
 
 public: // *** Constructor/destructor ***
@@ -50,11 +48,15 @@ public: // *** Constructor/destructor ***
     /// @brief Constructor.
     gsINSSolver(gsFlowSolverParams<T>& params):
     Base(params)
-    { }
+    {
+        printOptions();
+    }
 
     gsINSSolver(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr)
-    { }
+    {
+        printOptions();
+    }
 
     virtual ~gsINSSolver()
     { }
@@ -64,6 +66,19 @@ public: // *** Member functions ***
 
     /// @brief Compute the Stokes problem and save the solution into m_solution.
     virtual void solveStokes();
+
+
+protected: // *** Member functions ***
+
+    /// @brief Print the options used by the solver to the logger.
+    void printOptions()
+    {
+        std::stringstream sstr;
+        sstr << "\n-----------------------------------\n";
+        sstr << "Incompressible flow solver options:\n";
+        sstr << m_paramsPtr->options() << "-----------------------------------\n";
+        m_paramsPtr->logger().log(sstr.str(), true); // true = log to file only
+    }
 
 
 public: // *** Getters/setters ***
@@ -165,25 +180,25 @@ protected: // *** Base class members ***
     using Base::m_iterationNumber;
     using Base::m_assemblerPtr;
     using Base::m_paramsPtr;
-    using Base::m_outFile;
-    using Base::m_fileOutput;
-    using Base::m_dispOutput;
 
 
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsINSSolverUnsteady(gsFlowSolverParams<T>& params):
-    gsINSSolverUnsteady(memory::make_shared_not_owned(&params))
+    gsINSSolverUnsteady(gsFlowSolverParams<T>& params, bool createAssembler = true):
+    gsINSSolverUnsteady(memory::make_shared_not_owned(&params), createAssembler)
     { }
 
     /// @brief Constructor.
-    gsINSSolverUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    gsINSSolverUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr, bool createAssembler = true):
     Base(paramsPtr)
     { 
-        m_assemblerPtr = new gsINSAssemblerUnsteady<T, MatOrder>(m_paramsPtr);
+        if (createAssembler)
+        {
+            m_assemblerPtr = new gsINSAssemblerUnsteady<T, MatOrder>(m_paramsPtr);
+            initMembers();
+        }
 
-        initMembers();
         m_paramsPtr->options().setSwitch("unsteady", true);
     }
 
@@ -193,7 +208,7 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     virtual void initMembers() override;
 
-    void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNameSuffix, unsigned plotPts);
+    void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNamePrefix, unsigned plotPts);
 
 
 public: // *** Member functions ***
@@ -201,7 +216,7 @@ public: // *** Member functions ***
     /// @brief Perform next iteration step.
     virtual void nextIteration() override;
 
-    void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, const int minIterations = 1);
+    void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNamePrefix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, const int minIterations = 1);
 
     /// @brief Solve the generalized Stokes problem.
     virtual void solveGeneralizedStokes(const int maxIterations, const T epsilon, const int minIterations = 1)

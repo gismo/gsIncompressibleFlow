@@ -19,7 +19,7 @@ template<class T, int MatOrder>
 void gsINSSolver<T, MatOrder>::solveStokes()
 {
     GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
-    gsWriteOutputLine(m_outFile, "Computing the steady Stokes problem...", m_fileOutput, m_dispOutput);
+    m_paramsPtr->logger() << "Computing the steady Stokes problem...\n";
 
     // Debug: Check DOF counts
     gsInfo << "Velocity DOFs: " << getAssembler()->getUdofs() << "\n";
@@ -74,18 +74,18 @@ void gsINSSolverUnsteady<T, MatOrder>::initMembers()
 
 
 template<class T, int MatOrder>
-void gsINSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNameSuffix, unsigned plotPts)
+void gsINSSolverUnsteady<T, MatOrder>::plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNamePrefix, unsigned plotPts)
 {
     int numPatches = m_paramsPtr->getPde().patches().nPatches();
 
     gsField<T> uSol = this->constructSolution(0);
     std::stringstream filenameU;
-    filenameU << "velocity" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    filenameU << fileNamePrefix + "_velocity_" << m_iterationNumber << "it";
     gsWriteParaview<T>(uSol, filenameU.str(), plotPts);
 
     gsField<T> pSol = this->constructSolution(1);
     std::stringstream filenameP;
-    filenameP << "pressure" + fileNameSuffix + "_" << m_iterationNumber << "it";
+    filenameP << fileNamePrefix + "_pressure_" << m_iterationNumber << "it";
     gsWriteParaview<T>(pSol, filenameP.str(), plotPts);
 
     for (int p = 0; p < numPatches; p++)
@@ -115,22 +115,22 @@ void gsINSSolverUnsteady<T, MatOrder>::nextIteration()
 
     this->applySolver(tmpSolution);
 
-    this->writeSolChangeRelNorm(m_solution, tmpSolution);
+    this->writeSolChangeRelNorm(m_solution, tmpSolution, "[u, p]");
 
     index_t picardIter = 0;
     T relNorm = this->solutionChangeRelNorm(m_solution, tmpSolution);
 
-    gsWriteOutputLine(m_outFile, "        [u, p] Picard's iterations...", m_fileOutput, m_dispOutput);
+    m_paramsPtr->logger() << "     [u, p] Picard's iterations...\n";
 
     while((relNorm > m_innerTol) && (picardIter < m_innerIter))
     {
-        gsWriteOutput(m_outFile, "         ", m_fileOutput, m_dispOutput);
+        m_paramsPtr->logger() << "         ";
 
         gsMatrix<T> oldSol = tmpSolution;
 
         this->updateAssembler(tmpSolution, false);
         this->applySolver(tmpSolution);
-        this->writeSolChangeRelNorm(oldSol, tmpSolution);
+        this->writeSolChangeRelNorm(oldSol, tmpSolution, "[u, p]");
 
         relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);
         picardIter++;
@@ -145,27 +145,27 @@ void gsINSSolverUnsteady<T, MatOrder>::nextIteration()
 
 
 template<class T, int MatOrder>
-void gsINSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, const int iterStep, std::string fileNameSuffix, const T epsilon, unsigned plotPts, const int minIterations)
+void gsINSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, const int iterStep, std::string fileNamePrefix, const T epsilon, unsigned plotPts, const int minIterations)
 {
     // prepare plotting
-    std::string fileNameU = "velocity" + fileNameSuffix + "_animation.pvd";
+    std::string fileNameU = fileNamePrefix + "_velocity_animation.pvd";
     std::ofstream fileU(fileNameU.c_str());
     GISMO_ASSERT(fileU.is_open(), "Error creating " << fileNameU);
 
-    std::string fileNameP = "pressure" + fileNameSuffix + "_animation.pvd";
+    std::string fileNameP = fileNamePrefix + "_pressure_animation.pvd";
     std::ofstream fileP(fileNameP.c_str());
     GISMO_ASSERT(fileP.is_open(), "Error creating " << fileNameP);
 
     startAnimationFile(fileU);
     startAnimationFile(fileP);
 
-    plotCurrentTimeStep(fileU, fileP, fileNameSuffix, plotPts);
+    plotCurrentTimeStep(fileU, fileP, fileNamePrefix, plotPts);
 
     for (int i = 0; i < totalIter; i += iterStep)
     {
         this->solve(math::min(iterStep, totalIter), epsilon, minIterations);
 
-        plotCurrentTimeStep(fileU, fileP, fileNameSuffix, plotPts);
+        plotCurrentTimeStep(fileU, fileP, fileNamePrefix, plotPts);
     }
 
     endAnimationFile(fileU);
@@ -212,7 +212,7 @@ void gsINSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, c
 
 //     while ((iter < minIterations) || ((relNorm > epsilon) && (iter < maxIterations)))
 //     {
-//         gsInfo << "Iteration number " << iter + 1 << "...";
+//         m_paramsPtr->logger() << "Iteration number " << iter + 1 << "...";
 
 //         gsMatrix<T> rhs = stokesRhs;
 //         gsMatrix<T> newSol = m_solution;
@@ -225,7 +225,7 @@ void gsINSSolverUnsteady<T, MatOrder>::solveWithAnimation(const int totalIter, c
 //         m_solveT += m_clock.stop();
 
 //         relNorm = this->solutionChangeRelNorm(m_solution, newSol);
-//         gsInfo << " Solution change relative norm: " << relNorm << "\n";
+//         m_paramsPtr->logger() << " Solution change relative norm: " << relNorm << "\n";
 
 //         m_solution = newSol;
 //         iter++;

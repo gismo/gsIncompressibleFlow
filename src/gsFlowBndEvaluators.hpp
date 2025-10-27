@@ -17,9 +17,12 @@ namespace gismo
 {
 
 template<class T>
-void gsFlowBndEvaluator<T>::evalOnPatchSide(index_t patchID, boxSide side)
+void gsFlowBndEvaluator<T>::evalOnPatchSide(index_t patchID, boxSide side, bool setZeroFirst)
 {
-    const gsBasis<T>* basis = &m_paramsPtr->getBases().at(m_unkID).basis(patchID);
+    if (setZeroFirst)
+        m_quantValue = 0.0;
+
+    const gsBasis<T>* basis = &m_paramsPtr->getBasis(m_unkID).basis(patchID);
     short_t dim = m_paramsPtr->getPde().domain().targetDim();
     m_mapData.patchId = patchID;
 
@@ -34,8 +37,9 @@ void gsFlowBndEvaluator<T>::evalOnPatchSide(index_t patchID, boxSide side)
     gsMatrix<T> quNodes; 
     gsVector<T> quWeights; 
 
-    typename gsBasis<T>::domainIter domItEnd =  basis->domain()->endAll();
-    for (auto domIt = basis->domain()->beginAll(); domIt<domItEnd; ++domIt )
+    typename gsBasis<T>::domainIter domIt = basis->domain()->beginBdr(side);
+    typename gsBasis<T>::domainIter domItEnd = basis->domain()->endBdr(side);
+    for (; domIt!=domItEnd; ++domIt)
     {
         QuRule.mapTo(domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights);
     

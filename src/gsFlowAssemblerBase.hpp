@@ -29,10 +29,10 @@ void gsFlowAssemblerBase<T, MatOrder>::initMembers()
 template<class T, int MatOrder>
 void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofs(const index_t unk, const index_t basisID, gsMatrix<T>& ddofVector)
 {
-    GISMO_ASSERT(ddofVector.rows() == m_dofMappers[basisID].boundarySize(), "Dirichlet DOF vector has wrong size.");
+    GISMO_ASSERT(ddofVector.rows() == getMapper(basisID).boundarySize(), "Dirichlet DOF vector has wrong size.");
 
-    const gsDofMapper & mapper = m_dofMappers[basisID];
-    const gsMultiBasis<T> & mbasis = getBases().at(basisID);
+    const gsDofMapper & mapper = getMapper(basisID);
+    const gsMultiBasis<T> & mbasis = getBasis(basisID);
 
     switch (getAssemblerOptions().dirValues)
     {
@@ -264,87 +264,6 @@ void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofsL2Proj(const index_t 
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     ddofVector = solver.compute(globProjMat).solve(globProjRhs);
-}
-
-
-template<class T, int MatOrder>
-void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
-{
-    // TODO: iteration over all patches at once
-    // typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().domain()->beginAll();
-
-    for(size_t p = 0; p < getPatches().nPatches(); p++)
-    {
-        visitor.initOnPatch(p);
-
-        if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
-        {
-            index_t nBases = m_paramsPtr->getBases()[testBasisID].piece(p).size();
-
-            for(index_t i = 0; i < nBases; i++)
-            {
-                visitor.evaluate(i);
-                visitor.assemble();
-                visitor.localToGlobal(m_ddof, block, blockRhs);
-            }
-        }
-        else
-        {
-            if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
-                gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
-
-            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).domain()->beginAll();
-            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBases().front().piece(p).domain()->endAll();
-
-            while (domIt!=domItEnd)
-            {
-                visitor.evaluate(domIt.get());
-                visitor.assemble();
-                visitor.localToGlobal(m_ddof, block, blockRhs);
-
-                ++domIt;
-            }
-        }    
-    }
-
-    if (compressMat)
-        block.makeCompressed();
-}
-
-
-template<class T, int MatOrder>
-void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsMatrix<T>& rhs)
-{
-    for(size_t p = 0; p < getPatches().nPatches(); p++)
-    {
-        visitor.initOnPatch(p);
-
-        if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
-        {
-            index_t nBases = m_paramsPtr->getBases()[testBasisID].piece(p).size();
-
-            for(index_t i = 0; i < nBases; i++)
-            {
-                visitor.evaluate(i);
-                visitor.assemble();
-                visitor.localToGlobal(rhs);
-            }
-        }
-        else
-        {
-            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBases().front().piece(p).domain()->beginAll();
-            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBases().front().piece(p).domain()->endAll();
-
-            while (domIt!=domItEnd)
-            {
-                visitor.evaluate(domIt.get());
-                visitor.assemble();
-                visitor.localToGlobal(rhs);
-
-                ++domIt;
-            }
-        }
-    }
 }
 
 

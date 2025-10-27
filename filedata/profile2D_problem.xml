@@ -29,7 +29,7 @@
  <boundaryConditions multipatch="0" id="2">
   <Function type="FunctionExpr" dim="2" index="0">
    <c>1</c>
-   <c>0</c>
+   <c>0.53</c>
   </Function>
   <Function type="FunctionExpr" dim="2" index="1">
    <c>0</c>

@@ -38,10 +38,6 @@ protected: // *** Class members ***
     gsStopwatch m_clock;
     T m_initAssembT, m_assembT, m_relNorm;
 
-    bool m_fileOutput, m_dispOutput;
-    std::ofstream m_outFile;
-    std::stringstream m_outStream;
-    
 
 public: // *** Constructor/destructor ***
 
@@ -53,6 +49,10 @@ public: // *** Constructor/destructor ***
     m_paramsPtr(paramsPtr)
     {
         m_assemblerPtr = NULL;
+
+        #ifdef _OPENMP
+        omp_set_num_threads(m_paramsPtr->options().getInt("numThreads"));
+        #endif
     }
 
     virtual ~gsFlowSolverBase()
@@ -68,9 +68,6 @@ public: // *** Constructor/destructor ***
             delete m_linSolverPtr;
             m_linSolverPtr = NULL;
         }
-
-        if (m_outFile.is_open())
-            m_outFile.close();
     }
 
 
@@ -79,11 +76,8 @@ protected: // *** Member functions ***
     /// @brief Initialize all members.
     virtual void initMembers();
 
-    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    /// @brief Update sizes of members (when DOF numbers change after constructing the solver).
     virtual void updateSizes();
-
-    /// @brief Create output file.
-    virtual void createOutputFile();
 
     /// @brief Start measuring time (decides whether to use gsStopwatch or MPI_Wtime)
     real_t stopwatchStart();
@@ -102,7 +96,7 @@ public: // *** Member functions ***
     { getLinSolver()->setupSolver(getAssembler()->matrix()); }
 
     /// @brief Prepare for the solution process.
-    /// @param[in] the linear system matrix
+    /// @param[in] mat the linear system matrix
     virtual void initIteration(const gsSparseMatrix<T, MatOrder>& mat)
     { getLinSolver()->setupSolver(mat); }
 
@@ -144,7 +138,7 @@ public: // *** Member functions ***
     /// @brief Compute and display the relative norm of the solution change given the two successive solutions.
     /// @param[in] solOld the old solution
     /// @param[in] solNew the new solution
-    virtual void writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew);
+    virtual void writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew, std::string solstr);
 
     /// @brief Compute and return the relative residual norm for the current solution.
     virtual T residualRelNorm() const 
@@ -157,13 +151,8 @@ public: // *** Member functions ***
     /// @brief Construct solution field for the unknown \a unk for the current solution vector.
     /// @param[in] unk          the considered unknown (0 - velocity, 1 - pressure)
     /// @param[in] customSwitch a switch to be used for any purpose by derived classes
-    gsField<T> constructSolution(int unk, bool customSwitch = false) const
+    virtual gsField<T> constructSolution(int unk, bool customSwitch = false) const
     { return getAssembler()->constructSolution(m_solution, unk, customSwitch); }
-
-    /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.
-    /// @param[in] boundaryDofs     indices of the given boundary DOFs
-    /// @param[in] unk              the considered unknown
-    virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk);
 
     /// @brief Check values of jacobian near boundaries of all patches. 
     /// @param npts[in] number of evaluation points along a patch side in each direction

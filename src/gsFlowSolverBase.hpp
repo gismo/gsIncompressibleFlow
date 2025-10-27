@@ -23,12 +23,6 @@ void gsFlowSolverBase<T, MatOrder>::initMembers()
     m_iterationNumber = 0;
     m_relNorm = std::numeric_limits<T>::infinity();
 
-    m_fileOutput = m_paramsPtr->options().getSwitch("fileOutput");
-    m_dispOutput = !m_paramsPtr->options().getSwitch("quiet");
-
-    if(m_fileOutput)
-        createOutputFile();
-
     m_initAssembT = 0;
     m_assembT = 0;
 }
@@ -38,22 +32,6 @@ template<class T, int MatOrder>
 void gsFlowSolverBase<T, MatOrder>::updateSizes()
 {
     m_solution.setZero(getAssembler()->numDofs(), 1);
-}
-
-
-template<class T, int MatOrder>
-void gsFlowSolverBase<T, MatOrder>::createOutputFile()
-{
-    std::string fileName = m_paramsPtr->options().getString("outFile");
-
-    if (fileName == "")
-        fileName = this->getName() + "_output.txt";
-
-    m_outFile.open(fileName);
-
-    std::stringstream output;
-    output << "\n" << m_paramsPtr->options() << "\n";
-    gsWriteOutput(m_outFile, output.str(), m_fileOutput, false);
 }
 
 
@@ -127,16 +105,12 @@ void gsFlowSolverBase<T, MatOrder>::solve(const int maxIterations, const T epsil
 
     while ((iter < minIterations) || ((m_relNorm > epsilon) && (iter < maxIterations)))
     {
-        m_outStream.str("");
-        m_outStream << "Iteration number " << m_iterationNumber + 1 << "...";
-        gsWriteOutput(m_outFile, m_outStream.str(), m_fileOutput, m_dispOutput);
+        m_paramsPtr->logger() << "Iteration number " << m_iterationNumber + 1 << "...";
 
         nextIteration();
         m_relNorm = solutionChangeRelNorm();
 
-        m_outStream.str("");
-        m_outStream << " Solution change relative norm: " << m_relNorm;
-        gsWriteOutputLine(m_outFile, m_outStream.str(), m_fileOutput, m_dispOutput);
+        m_paramsPtr->logger() << " Solution change relative norm: " << m_relNorm << "\n";
 
         iter++;
     }
@@ -179,23 +153,14 @@ T gsFlowSolverBase<T, MatOrder>::solutionChangeRelNorm(gsMatrix<T> solOld, gsMat
 
 
 template<class T, int MatOrder>
-void gsFlowSolverBase<T, MatOrder>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew)
+void gsFlowSolverBase<T, MatOrder>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew, std::string solstr)
 {
-    m_outStream.str("");
-    m_outStream << "     [u, p] solution change relative norm: ";
+    m_paramsPtr->logger() << "     " << solstr << " solution change relative norm: ";
 
     for (int i = 0; i < solOld.cols(); i++)
-        m_outStream << solutionChangeRelNorm(solOld.col(i), solNew.col(i)) << ", ";
+        m_paramsPtr->logger() << solutionChangeRelNorm(solOld.col(i), solNew.col(i)) << ", ";
 
-    gsWriteOutputLine(m_outFile, m_outStream.str(), m_fileOutput, m_dispOutput);
-}
-
-
-template<class T, int MatOrder>
-void gsFlowSolverBase<T, MatOrder>::markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const int unk)
-{
-    getAssembler()->markDofsAsEliminatedZeros(boundaryDofs, unk);
-    updateSizes();
+    m_paramsPtr->logger() << "\n";
 }
 
 
@@ -281,7 +246,7 @@ int gsFlowSolverBase<T, MatOrder>::checkGeoJacobian(int npts, T dist, T tol)
             }
         }
 
-        gsInfo << "\n";
+        m_paramsPtr->logger() << "Geometry jacobian checked on patch " << p << ".\n";
     }
 
     return 0;

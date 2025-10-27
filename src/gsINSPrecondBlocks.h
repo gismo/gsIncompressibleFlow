@@ -209,10 +209,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_size; }
+    index_t rows() const { return m_size; }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_size; }
+    index_t cols() const { return m_size; }
 
     /// @brief Returns the block name as a string.
     virtual std::string getName() const
@@ -289,10 +289,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_size; }
+    index_t rows() const { return m_size; }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_size; }
+    index_t cols() const { return m_size; }
 
     /// @brief Returns the block name as a string.
     virtual std::string getName() const
@@ -377,10 +377,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_size; }
+    index_t rows() const { return m_size; }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_size; }
+    index_t cols() const { return m_size; }
 
     /// @brief Returns the block name as a string.
     virtual std::string getName() const
@@ -467,10 +467,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_size; }
+    index_t rows() const { return m_size; }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_size; }
+    index_t cols() const { return m_size; }
 
     /// @brief Returns the block name as a string.
     virtual std::string getName() const
@@ -536,10 +536,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_mat.rows(); }
+    index_t rows() const { return m_mat.rows(); }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_mat.cols(); }
+    index_t cols() const { return m_mat.cols(); }
 
 }; // class gsINSPrecondBlockBt
 
@@ -625,10 +625,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_mat2.rows(); }
+    index_t rows() const { return m_mat2.rows(); }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_mat2.cols(); }
+    index_t cols() const { return m_mat2.cols(); }
 
 }; // class gsINSPrecondSchurLSC
 
@@ -711,10 +711,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_matAp.rows(); }
+    index_t rows() const { return m_matAp.rows(); }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_matAp.cols(); }
+    index_t cols() const { return m_matAp.cols(); }
 
 }; // class gsINSPrecondSchurPCD
 
@@ -843,10 +843,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_mat.rows(); }
+    index_t rows() const { return m_mat.rows(); }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_mat.cols(); }
+    index_t cols() const { return m_mat.cols(); }
 
 }; // class gsINSPrecondSchurAL
 
@@ -930,10 +930,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_mat.rows(); }
+    index_t rows() const { return m_mat.rows(); }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_mat.cols(); }
+    index_t cols() const { return m_mat.cols(); }
 
 }; // class gsINSPrecondSchurSIMPLE
 
@@ -1016,10 +1016,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_mat.rows(); }
+    index_t rows() const { return m_mat.rows(); }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_mat.cols(); }
+    index_t cols() const { return m_mat.cols(); }
 
 }; // class gsINSPrecondSchurMSIMPLER
 
@@ -1089,10 +1089,10 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns the number of rows of the block.
-    int rows() const { return m_mat.rows(); }
+    index_t rows() const { return m_mat.rows(); }
 
     /// @brief Returns the number of columns of the block.
-    int cols() const { return m_mat.cols(); }
+    index_t cols() const { return m_mat.cols(); }
 
 }; // class gsINSPrecondSchurStokes
 

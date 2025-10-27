@@ -22,10 +22,18 @@ namespace gismo
 // ===================================================================================================================
 // VELOCITY-VELOCITY VISITORS
 
-/// @brief Base visitor for the velocity-velocity part of the Navier-Stokes system.
-/// @tparam T           real number type
-/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-/// @ingroup IncompressibleFlow
+/**
+ * @brief Base visitor for the velocity-velocity part of the Navier-Stokes system.
+ * 
+ * Assumes identical matrix for all velocity components,
+ * i.e. only one local matrix is evaluated and 
+ * either global matrix for only one velocity component is assembled 
+ * or the local matrix is distributed into all diagonal blocks of the global velocity matrix.
+ * 
+ * @tparam T           real number type
+ * @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+ * @ingroup IncompressibleFlow
+ */
 template <class T, int MatOrder>
 class gsINSVisitorUU : public gsFlowVisitor<T, MatOrder>
 {
@@ -40,7 +48,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_localMat;
@@ -219,7 +226,6 @@ protected: // *** Base class members ***
 
     using Base::m_paramsPtr;
     using Base::m_terms;
-    using Base::m_dofMappers;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
     using Base::m_testFunActives;
@@ -327,7 +333,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_terms;
@@ -392,7 +397,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_hasPeriodicBC;
@@ -447,7 +451,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_terms;
@@ -506,7 +509,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_trialFunActives;
     using Base::m_localMat;
@@ -536,7 +538,10 @@ protected: // *** Member functions ***
 
     virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
-    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+    {
+        localToGlobal_nonper(eliminatedDofs, globalMat, globalRhs);
+    }
 };
 
 // ===================================================================================================================
@@ -802,7 +807,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_localMat;
     using Base::m_mapData;
@@ -874,7 +878,6 @@ protected: // *** Base class members ***
     using Base::m_patchID;
     using Base::m_testUnkID;
     using Base::m_trialUnkID;
-    using Base::m_dofMappers;
     using Base::m_testFunActives;
     using Base::m_localMat;
     using Base::m_mapData;
@@ -911,7 +914,10 @@ protected: // *** Member functions ***
 
     virtual void localToGlobal_nonper(gsMatrix<T>& globalRhs);
 
-    virtual void localToGlobal_per(gsMatrix<T>& globalRhs);
+    virtual void localToGlobal_per(gsMatrix<T>& globalRhs)
+    {
+        localToGlobal_nonper(globalRhs);
+    }
 
 public: // *** Member functions ***
 

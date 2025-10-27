@@ -33,7 +33,6 @@ protected: // *** Class members ***
     bool m_isInitialized;
     bool m_isBaseReady;
     bool m_isSystemReady;
-    std::vector<gsDofMapper> m_dofMappers;
     std::vector<gsMatrix<T> > m_ddof;
     gsMatrix<T> m_solution;
 
@@ -53,12 +52,8 @@ protected: // *** Member functions ***
     /// @brief Initialize the class members.
     void initMembers();
 
-    /// @brief Update sizes of members (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
+    /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes()
-    { GISMO_NO_IMPLEMENTATION }
-
-    /// @brief Update the DOF mappers in all visitors (when DOF numbers change, e.g. after markDofsAsEliminatedZeros()).
-    virtual void updateDofMappers()
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Compute the coefficients of the basis functions at the Dirichlet boundaries.
@@ -87,13 +82,15 @@ protected: // *** Member functions ***
     /// @param[out] block       the resulting matrix block
     /// @param[out] blockRhs    right-hand side for the matrix block (arising from eliminated Dirichlet DOFs)
     /// @param[in]  compressMat call makeCompressed() at the end
-    void assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat = true);
+    template<class ElementVisitor>
+    void assembleBlock(ElementVisitor& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat = true);
 
     /// @brief Assemble the right-hand side.
     /// @param[in]  visitor     visitor for the right-hand side
     /// @param[in]  testBasisID ID of the test basis
     /// @param[out] rhs         the resulting right-hand side vector
-    void assembleRhs(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsMatrix<T>& rhs);
+    template<class ElementVisitorRhs>
+    void assembleRhs(ElementVisitorRhs& visitor, index_t testBasisID, gsMatrix<T>& rhs);
 
     /// @brief Assemble the linear part of the problem.
     virtual void assembleLinearPart()
@@ -124,12 +121,6 @@ public: // *** Member functions ***
     /// @param[in] updateSol    true - save solVector into m_solution
     virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
 
-    /// @brief Eliminate given DOFs as homogeneous Dirichlet boundary.
-    /// @param[in] boundaryDofs     indices of the given boundary DOFs
-    /// @param[in] unk              the considered unknown
-    virtual void markDofsAsEliminatedZeros(const std::vector< gsMatrix< index_t > > & boundaryDofs, const index_t unk)
-    {GISMO_NO_IMPLEMENTATION}
-
     /// @brief Construct solution from computed solution vector for unknown \a unk.
     /// @param[in]  solVector    the solution vector obtained from the linear system
     /// @param[out] result       the resulting solution as a gsMultiPatch object
@@ -155,13 +146,6 @@ public: // *** Getters/setters ***
     bool isInitialized() { return m_isInitialized; }
 
     /**
-     * @brief Returns a const reference to the DOF mappers.
-     *
-     * In the case of velocity and pressure, the mapper for velocity is stored first, the mapper for pressure is second.
-     */
-    const std::vector<gsDofMapper>& getMappers() const { return m_dofMappers; }
-
-    /**
      * @brief Returns a const reference to the vectors of coefficients at the Dirichlet boundaries.
      *
      * In the case of velocity and pressure, the vector of velocity coefficients is stored first, the vector of pressure coefficients is second.
@@ -177,15 +161,49 @@ public: // *** Getters/setters ***
     /**
      * @brief Returns a reference to the discretization bases.
      *
-     * In the case of velocity and pressure, the velocity basis is stored first, the  pressure basis is second.
+     * Order of bases: velocity, pressure, (turb. model quantities)
      * 
      * There is also a const version returning a const reference.
      */
-    std::vector< gsMultiBasis<T> >& getBases() { return m_paramsPtr->getBases(); }
-    const std::vector< gsMultiBasis<T> >& getBases() const { return m_paramsPtr->getBases(); }
+    virtual std::vector< gsMultiBasis<T> >& getBases() { return m_paramsPtr->getBases(); }
+    virtual const std::vector< gsMultiBasis<T> >& getBases() const { return m_paramsPtr->getBases(); }
+
+    /**
+     * @brief Returns a reference to the discretization bases for variable \a unk.
+     *
+     * Order of bases: velocity, pressure, (turb. model quantities)
+     * 
+     * @param[in] unk unknown index
+     * 
+     * There is also a const version returning a const reference.
+     */
+    virtual gsMultiBasis<T>& getBasis(index_t unk) { return m_paramsPtr->getBasis(unk); }
+    virtual const gsMultiBasis<T>& getBasis(index_t unk) const { return m_paramsPtr->getBasis(unk); }
+
+    /**
+     * @brief Returns a reference to the DOF mappers.
+     *
+     * Order of mappers: velocity, pressure, (turb. model quantities)
+     * 
+     * There is also a const version returning a const reference.
+     */
+    virtual std::vector< gsDofMapper >& getMappers() { return m_paramsPtr->getMappers(); }
+    virtual const std::vector< gsDofMapper >& getMappers() const { return m_paramsPtr->getMappers(); }
+
+    /**
+     * @brief Returns a reference to the DOF mapper for variable \a unk.
+     *
+     * Order of mappers: velocity, pressure, (turb. model quantities)
+     * 
+     * @param[in] unk unknown index
+     * 
+     * There is also a const version returning a const reference.
+     */
+    virtual gsDofMapper& getMapper(index_t unk) { return m_paramsPtr->getMapper(unk); }
+    virtual const gsDofMapper& getMapper(index_t unk) const { return m_paramsPtr->getMapper(unk); }
 
     /// @brief Returns a const reference to the boundary conditions.
-    const gsBoundaryConditions<T>& getBCs() const { return m_paramsPtr->getBCs(); }
+    virtual const gsBoundaryConditions<T>& getBCs() const { return m_paramsPtr->getBCs(); }
 
     /// @brief Returns a pointer to the right-hand-side function.
     const gsFunction<T>* getRhsFcn() const { return m_paramsPtr->getPde().rhs(); }
@@ -223,6 +241,143 @@ public: // *** Getters/setters ***
     {GISMO_NO_IMPLEMENTATION}
 
 };
+
+// ---------------------------------------------------------------------------
+// definitions of template member functions
+
+template<class T, int MatOrder>
+template<class ElementVisitor>
+void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(ElementVisitor& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
+{
+    if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
+    {
+        for(size_t p = 0; p < getPatches().nPatches(); p++)
+        {
+            visitor.initOnPatch(p);
+            index_t nBases = m_paramsPtr->getBasis(testBasisID).piece(p).size();
+
+            for(index_t i = 0; i < nBases; i++)
+            {
+                visitor.evaluate(i);
+                visitor.assemble();
+                visitor.localToGlobal(m_ddof, block, blockRhs);
+            }
+        }
+    }
+    else        
+    {
+        if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
+            gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
+
+        #pragma omp parallel
+        { 
+            ElementVisitor
+            #ifdef _OPENMP
+            // Create thread-private visitor
+            visitor_(visitor);
+            const int threadId = omp_get_thread_num();
+            const int numThreads  = omp_get_num_threads();
+            #else
+            &visitor_ = visitor;
+            #endif
+        
+            // iteration over all elements in all patches
+            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).domain()->endAll();
+
+            index_t patchID = -1;
+
+            #ifdef _OPENMP
+            domIt += threadId;
+            for (; domIt < domItEnd; domIt+=(numThreads) )
+            #else
+            for (; domIt < domItEnd; ++domIt )
+            #endif
+            {
+                index_t p = domIt.patch();
+                if (p != patchID)
+                {
+                    patchID = p;
+                    visitor_.initOnPatch(patchID);
+                }
+
+                visitor_.evaluate(domIt.get());
+                visitor_.assemble();
+
+                #pragma omp critical(localToGlobal) // only one thread at a time
+                visitor_.localToGlobal(m_ddof, block, blockRhs);
+            }
+        }
+    }   
+}
+
+
+template<class T, int MatOrder>
+template<class ElementVisitorRhs>
+void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(ElementVisitorRhs& visitor, index_t testBasisID, gsMatrix<T>& rhs)
+{
+    if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
+    {
+        for(size_t p = 0; p < getPatches().nPatches(); p++)
+        {
+            visitor.initOnPatch(p);
+            index_t nBases = m_paramsPtr->getBasis(testBasisID).piece(p).size();
+
+            for(index_t i = 0; i < nBases; i++)
+            {
+                visitor.evaluate(i);
+                visitor.assemble();
+                visitor.localToGlobal(rhs);
+            }
+        }
+    }
+    else        
+    {
+        if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
+            gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
+
+        #pragma omp parallel
+        { 
+            ElementVisitorRhs
+            #ifdef _OPENMP
+            // Create thread-private visitor
+            visitor_(visitor);
+            const int threadId = omp_get_thread_num();
+            const int numThreads  = omp_get_num_threads();
+            #else
+            &visitor_ = visitor;
+            #endif
+        
+            // iteration over all elements in all patches
+            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).domain()->endAll();
+
+            index_t patchID = -1;
+
+            #ifdef _OPENMP
+            domIt += threadId;
+            for (; domIt < domItEnd; domIt+=(numThreads) )
+            #else
+            for (; domIt < domItEnd; ++domIt )
+            #endif
+            {
+                index_t p = domIt.patch();
+                if (p != patchID)
+                {
+                    patchID = p;
+                    visitor_.initOnPatch(patchID);
+                }
+
+                visitor_.evaluate(domIt.get());
+                visitor_.assemble();
+
+                #pragma omp critical(localToGlobal) // only one thread at a time
+                visitor_.localToGlobal(rhs);
+            }
+        }
+    }   
+}
+
 
 } // namespace gismo
 
