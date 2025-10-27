@@ -28,7 +28,6 @@ public:
     
 protected:
     using Base::m_paramsPtr;
-    using Base::m_dofMappers;
     using Base::m_tarDim;
     using Base::m_visitorUUnonlin;
     using Base::m_currentVelField;
@@ -75,8 +74,8 @@ public:
         Base::initialize();
         
         // Initialize mesh coefficients to zero with full DOF size (velocity + pressure)
-        const index_t udofs = this->m_dofMappers[0].freeSize();
-        const index_t pdofs = this->m_dofMappers[1].freeSize();
+        const index_t udofs = this->getMapper(0).freeSize();
+        const index_t pdofs = this->getMapper(1).freeSize();
         const index_t pshift = m_tarDim * udofs;
         const index_t fullDofs = pshift + pdofs;
         m_meshVelCoefs.setZero(fullDofs, 1);
@@ -86,7 +85,7 @@ public:
         
         // Create ALE visitor with proper paramsPtr (mesh velocity field will be set later)  
         m_visitorUUnonlinALE = new gsINSVisitorUUnonlinALE<T, MatOrder>(
-            m_paramsPtr, m_dofMappers, m_tarDim, nullptr);
+            m_paramsPtr, m_tarDim, nullptr);
         // Initialize visitor so it's ready for assembly
         m_visitorUUnonlinALE->initialize();
         // Propagate current solution if available
@@ -111,14 +110,6 @@ public:
         m_meshDispOld.conservativeResize(pshift, 1);
     }
 
-    /// @brief Update the DOF mappers in all visitors (including ALE visitor)
-    virtual void updateDofMappers() override
-    {
-        Base::updateDofMappers();
-        if (m_visitorUUnonlinALE)
-            m_visitorUUnonlinALE->updateDofMappers(this->m_dofMappers);
-    }
-    
     /// @brief Activate/deactivate ALE formulation
     void setALEActive(bool active) { m_isALEActive = active; }
     
@@ -133,8 +124,8 @@ public:
         T dt = m_paramsPtr->options().getReal("timeStep");
         
         // Number of free velocity DOFs and total DOFs
-        const index_t udofs = this->m_dofMappers[0].freeSize();
-        const index_t pdofs = this->m_dofMappers[1].freeSize();
+        const index_t udofs = this->getMapper(0).freeSize();
+        const index_t pdofs = this->getMapper(1).freeSize();
         const index_t pshift = m_tarDim * udofs;
         const index_t fullDofs = pshift + pdofs;
 
@@ -163,8 +154,8 @@ public:
     /// @param[in] meshVel mesh velocity coefficients for velocity DOFs
     void setMeshVelocity(const gsMatrix<T>& meshVel)
     {
-        const index_t udofs = this->m_dofMappers[0].freeSize();
-        const index_t pdofs = this->m_dofMappers[1].freeSize();
+        const index_t udofs = this->getMapper(0).freeSize();
+        const index_t pdofs = this->getMapper(1).freeSize();
         const index_t pshift = m_tarDim * udofs;
         const index_t fullDofs = pshift + pdofs;
 
@@ -226,15 +217,12 @@ public:
     void updateMeshAfterOptimization(const gsMultiPatch<T>& optimizedPatches, 
                                    const gsMultiPatch<T>& originalMesh)
     {
-        // Update the patches in the assembler
-        const_cast<gsMultiPatch<T>&>(this->getPatches()) = optimizedPatches;
-        
         // Compute displacement coefficients from optimized mesh relative to original mesh
-        const index_t udofs = this->m_dofMappers[0].freeSize();
+        const index_t udofs = this->getMapper(0).freeSize();
         gsMatrix<T> fullDisp(m_tarDim * udofs, 1);
         fullDisp.setZero();
         
-        const gsDofMapper& mapper = this->m_dofMappers[0];
+        const gsDofMapper& mapper = this->getMapper(0);
         for (index_t p = 0; p < optimizedPatches.nPatches(); ++p)
         {
             const auto& origCoefs = originalMesh.patch(p).coefs();
@@ -264,8 +252,8 @@ public:
     /// @param[in] optimizedPatches the optimized mesh patches
     void updateMeshAfterOptimization(const gsMultiPatch<T>& optimizedPatches)
     {
-        // Update the patches in the assembler
-        const_cast<gsMultiPatch<T>&>(this->getPatches()) = optimizedPatches;
+        GISMO_UNUSED(optimizedPatches);
+        // No direct patch replacement here; solver already updates patches.
     }
     
     /// @brief Override updateCurrentSolField to handle time history properly in ALE
@@ -297,7 +285,7 @@ public:
                 // (2) override homogeneous Dirichlet by mesh velocity (automatic no-slip on moving walls)
                 const gsBoundaryConditions<T>& bcs = this->getBCs();
                 const gsMultiBasis<T>& mbasis = this->getBases().at(0);
-                const gsDofMapper& mapper = this->m_dofMappers[0];
+                const gsDofMapper& mapper = this->getMapper(0);
 
                 for (typename gsBoundaryConditions<T>::const_iterator it = bcs.dirichletBegin(); it != bcs.dirichletEnd(); ++it)
                 {
@@ -363,7 +351,7 @@ public:
         if (useALE)
         {
             // Check infinity norm of mesh velocity coefficients (only velocity part)
-            const index_t udofs = this->m_dofMappers[0].freeSize();
+            const index_t udofs = this->getMapper(0).freeSize();
             const index_t pshift = m_tarDim * udofs;
             T velInf = (m_meshVelCoefs.size() >= pshift) ? m_meshVelCoefs.topRows(pshift).template lpNorm<gsEigen::Infinity>() : T(0);
             if (velInf < static_cast<T>(1e-14))

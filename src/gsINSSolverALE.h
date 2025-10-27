@@ -493,10 +493,10 @@ public:
             {
                 optimizeMesh();
             }
-            gsWriteOutputLine(this->m_outFile, "[ALE] Mesh update done.", this->m_fileOutput, this->m_dispOutput);
+            this->m_paramsPtr->logger() << "[ALE] Mesh update done.\n";
         }
 
-        gsWriteOutputLine(this->m_outFile, "[ALE] Updating assembler...", this->m_fileOutput, this->m_dispOutput);
+        this->m_paramsPtr->logger() << "[ALE] Updating assembler...\n";
         // Step 2: Update assembler on the updated geometry
         this->updateAssembler();
         
@@ -508,23 +508,23 @@ public:
         gsMatrix<T> tmpSolution = this->m_solution;
         
         this->applySolver(tmpSolution);
-        this->writeSolChangeRelNorm(this->m_solution, tmpSolution);
+        this->writeSolChangeRelNorm(this->m_solution, tmpSolution, std::string("[ALE]"));
         
         // Step 5: Picard iterations (exactly like non-ALE solver)
         index_t picardIter = 0;
         T relNorm = this->solutionChangeRelNorm(this->m_solution, tmpSolution);
         
-        gsWriteOutputLine(this->m_outFile, "        [u, p] Picard's iterations...", this->m_fileOutput, this->m_dispOutput);
+        this->m_paramsPtr->logger() << "        [u, p] Picard's iterations...\n";
         
         while((relNorm > this->m_innerTol) && (picardIter < this->m_innerIter))
         {
-            gsWriteOutput(this->m_outFile, "         ", this->m_fileOutput, this->m_dispOutput);
+            this->m_paramsPtr->logger() << "         ";
             
             gsMatrix<T> oldSol = tmpSolution;
             
             this->updateAssembler(tmpSolution, false);
             this->applySolver(tmpSolution);
-            this->writeSolChangeRelNorm(oldSol, tmpSolution);
+            this->writeSolChangeRelNorm(oldSol, tmpSolution, std::string("[ALE]"));
             
             relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);
             picardIter++;

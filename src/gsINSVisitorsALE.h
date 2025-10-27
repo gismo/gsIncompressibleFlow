@@ -28,7 +28,6 @@ public:
     typedef gsINSVisitorUU<T, MatOrder> Base;
     
 protected:
-    using Base::m_dofMappers;
     using Base::m_terms;
     
     // Target dimension
@@ -41,34 +40,19 @@ protected:
     gsINSTerm_ALEConvection<T>* m_aleConvectionTerm;
     
 public:
-    /// @brief Constructor with paramsPtr (recommended)
+    /// @brief Constructor with paramsPtr
     gsINSVisitorUUnonlinALE(typename gsFlowSolverParams<T>::Ptr paramsPtr,
-                           const std::vector<gsDofMapper>& dofMappers,
                            index_t targetDim = 2,
                            const gsField<T>* meshVelField = nullptr)
     : Base(paramsPtr),
       m_tarDim(targetDim),
       m_meshVelField(meshVelField)
     {
-        // DON'T set m_dofMappers here, it will be set in initialize()
-        // Then will be updated via updateDofMappers() after initialize()
-        // m_dofMappers = dofMappers;
         // Term will be created in initialize() via defineTerms()
         m_aleConvectionTerm = nullptr;
     }
     
-    /// @brief Constructor without paramsPtr (deprecated, for backward compatibility)
-    gsINSVisitorUUnonlinALE(const std::vector<gsDofMapper>& dofMappers,
-                           index_t targetDim = 2,
-                           const gsField<T>* meshVelField = nullptr)
-    : Base(), 
-      m_tarDim(targetDim),
-      m_meshVelField(meshVelField)
-    { 
-        m_dofMappers = dofMappers;
-        // Term will be created in initialize() via defineTerms()
-        m_aleConvectionTerm = nullptr;
-    }
+    // Deprecated legacy constructor without paramsPtr removed
     
     /// @brief Destructor
     ~gsINSVisitorUUnonlinALE()

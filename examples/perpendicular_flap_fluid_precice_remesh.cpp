@@ -603,7 +603,6 @@ int main(int argc, char* argv[])
     params.options().setReal("nonlin.tol", 1e-6);
     params.options().setInt ("lin.maxIt", 250);
     params.options().setReal("lin.tol", 1e-8);
-    params.options().setSwitch("quiet", false);
 
     gsINSSolverUnsteadyALE<> solver(memory::make_shared_not_owned(&params));
 
