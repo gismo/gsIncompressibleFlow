@@ -766,7 +766,7 @@ protected:
                 // Use global mode: all patches optimized together with free interfaces
                 // patchWise=true: each patch independently with HLBFGS, interfaces fixed
                 // patchWise=false: global optimization with HLBFGS, all patches together, interfaces free
-                gsBarrierPatch<2, T> opt(patches, true);  // false = global mode (interfaces free)
+                gsBarrierPatch<2, T> opt(patches, false);  // false = global mode (interfaces free)
                 opt.options() = m_meshOptOptions;
                 opt.compute();
                 patches = opt.result();

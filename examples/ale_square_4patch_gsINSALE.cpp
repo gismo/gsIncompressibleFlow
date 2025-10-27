@@ -254,7 +254,7 @@ int main(int argc, char* argv[])
 
     gsINSSolverUnsteadyALE<> solver(memory::make_shared_not_owned(&params0));
     solver.initialize();
-    solver.setALEActive(false);
+    solver.setALEActive(true);
 
     // Output collections
     gsParaviewCollection collV("ale4p_velocity");
