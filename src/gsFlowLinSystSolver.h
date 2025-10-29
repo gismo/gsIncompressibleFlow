@@ -357,6 +357,9 @@ public: // *** Constructor/destructor ***
 
 public: // *** Member functions ***
 
+    /// @brief Returns default PETSc options for the solver.
+    virtual gsOptionList getDefaultOptions();
+
     /// @brief Setup the linear solver for a given matrix.
     virtual void setupSolver(const gsSparseMatrix<T, RowMajor>& mat);
 
@@ -381,6 +384,10 @@ public: // *** Member functions ***
 protected: // *** Member functions ***
 
     /// @brief  Apply options for PETSc.
+    void applyOptions();
+
+    /// @brief  Apply given options for PETSc.
+    /// @param petscOpt option list
     void applyOptions(gsOptionList petscOpt);
 
 
@@ -457,7 +464,16 @@ public: // *** Constructor/destructor ***
     }
 
 
+protected: // *** Member functions ***
+
+    /// @brief  Apply options for PETSc.
+    void applyOptions();
+    
+
 public: // *** Member functions ***
+
+    /// @brief Returns default PETSc options for the solver.
+    virtual gsOptionList getDefaultOptions();
 
     /// @brief Setup the linear solver for a matrix given by its blocks.
     /// @param[in] matBlocks vector of saddle-point matrix blocks
@@ -468,7 +484,6 @@ public: // *** Member functions ***
     /// @param[in]  rhsBlocks vector of right-hand side blocks
     /// @param[out] solution  a reference to the vector, where the computed solution will be stored
     virtual void applySolver(const std::vector< gsSparseMatrix<T, RowMajor> >& matBlocks, const std::vector< gsMatrix<T> >& rhsBlocks, gsMatrix<T>& solution);
-
     
 }; // gsFlowLinSystSolver_PETSc_SP
 

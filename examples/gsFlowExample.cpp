@@ -63,6 +63,8 @@ int main(int argc, char *argv[])
     std::string linSolver = "petsc"; // direct / iter / petsc
     int linIt = 50;
     real_t linTol = 1e-6;
+    bool petscOptFile = false;
+    std::string petscOptPath = "petscOpt_saddle-point.xml";
 
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
@@ -96,6 +98,8 @@ int main(int argc, char *argv[])
     cmd.addString("", "linSolver", "Linear system solver (direct / iter / petsc)", linSolver);
     cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
     cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
+    cmd.addSwitch("petscOptFile", "Load PETSc options from file", petscOptFile);
+    cmd.addString("", "petscOptPath", "Path to the file containing PETSc options", petscOptPath);
 
     cmd.addString("o", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
@@ -171,6 +175,8 @@ int main(int argc, char *argv[])
     params.options().setString("lin.solver", linSolver);
     params.options().setInt("lin.maxIt", linIt);
     params.options().setReal("lin.tol", linTol);
+    params.options().setSwitch("petsc.optFromFileSP", petscOptFile);
+    params.options().setString("petsc.optPathSP", petscOptPath);
 
     gsOptionList solveOpt;
     solveOpt.addInt("maxIt", "", maxIt);

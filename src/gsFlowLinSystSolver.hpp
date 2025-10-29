@@ -170,6 +170,29 @@ void gsFlowLinSystSolver_iterSP<T, MatOrder, SolverType>::setupPreconditioner(co
 #ifdef gsPetsc_ENABLED
 
 template<class T>
+gsOptionList gsFlowLinSystSolver_PETSc<T>::getDefaultOptions()
+{
+    index_t maxIt = m_paramsPtr->options().getInt("lin.maxIt");
+    real_t linTol = m_paramsPtr->options().getReal("lin.tol");
+
+    gsOptionList opt;
+
+    opt.addString("-ksp_type", "", "fgmres");
+    opt.addString("-ksp_initial_guess_nonzero", "", "true");
+    opt.addString("-ksp_max_it", "", util::to_string(maxIt));
+    opt.addString("-ksp_rtol", "", util::to_string(linTol));
+    
+    opt.addString("-pc_type", "", "asm");
+    opt.addString("-pc_asm_overlap", "", "1");
+    opt.addString("-sub_pc_type", "", "ilu");
+    opt.addString("-sub_pc_factor_levels", "", "0");
+    opt.addString("-sub_pc_factor_mat_ordering_type", "", "rcm");
+    opt.addString("-sub_pc_factor_reuse_ordering", "", "");
+
+    return opt;
+}
+
+template<class T>
 void gsFlowLinSystSolver_PETSc<T>::setupSolver(const gsSparseMatrix<T, RowMajor>& mat)
 {
     real_t time0 = stopwatchStart();
@@ -185,7 +208,8 @@ void gsFlowLinSystSolver_PETSc<T>::setupSolver(const gsSparseMatrix<T, RowMajor>
 
     PetscCallVoid( KSPCreate(comm, &m_ksp) );
     PetscCallVoid( KSPGetPC(m_ksp, &m_pc) );
-    this->applyOptions(m_paramsPtr->defaultPETScOptions());
+
+    this->applyOptions();
 
     real_t time1 = stopwatchStop();
     m_setupT += time1 - time0;
@@ -220,6 +244,20 @@ void gsFlowLinSystSolver_PETSc<T>::applySolver(const gsSparseMatrix<T, RowMajor>
 }
 
 template<class T>
+void gsFlowLinSystSolver_PETSc<T>::applyOptions()
+{
+    if (m_paramsPtr->options().getSwitch("petsc.optFromFile"))
+    {
+        gsOptionList petscOpt;
+        gsFileData<> fd(m_paramsPtr->options().getString("petsc.optPath"));
+        fd.getId(0, petscOpt);
+        applyOptions(petscOpt);
+    }
+    else
+        applyOptions(getDefaultOptions());
+}
+
+template<class T>
 void gsFlowLinSystSolver_PETSc<T>::applyOptions(gsOptionList petscOpt)
 {
     PetscCallVoid( PetscOptionsClear(NULL) );
@@ -232,6 +270,83 @@ void gsFlowLinSystSolver_PETSc<T>::applyOptions(gsOptionList petscOpt)
 }
 
 // ===========================================================
+
+template<class T>
+gsOptionList gsFlowLinSystSolver_PETSc_SP<T>::getDefaultOptions()
+{
+    short_t dim = m_paramsPtr->getPde().dim();
+    index_t maxIt = m_paramsPtr->options().getInt("lin.maxIt");
+    real_t linTol = m_paramsPtr->options().getReal("lin.tol");
+
+    gsOptionList opt;
+
+    opt.addString("-ksp_type", "", "fgmres");
+    opt.addString("-ksp_initial_guess_nonzero", "", "true");
+    opt.addString("-ksp_max_it", "", util::to_string(maxIt));
+    opt.addString("-ksp_rtol", "", util::to_string(linTol));
+
+    opt.addString("-pc_type", "", "fieldsplit"); // PCFIELDSPLIT preconditioner
+    opt.addString("-pc_fieldsplit_detect_saddle_point", "", ""); // automatically detect saddle-point structure
+    opt.addString("-pc_fieldsplit_type", "", "schur"); // Schur complement preconditioner
+    opt.addString("-pc_fieldsplit_schur_fact_type", "", "upper"); // upper triangular factorization
+    opt.addString("-pc_fieldsplit_schur_precondition", "", "self"); // matrix to generate Schur complement preconditioner
+    
+    // subsystem solvers:
+    // fielssplit_0 - velocity block
+    // fieldsplit_1 - pressure block (Schur complement)
+
+    // universal settings:
+    opt.addString("-fieldsplit_0_mat_block_size", "", util::to_string(dim)); // block size = dimension of velocity (not sure, if this actually does anything)
+    opt.addString("-fieldsplit_1_pc_type", "", "lsc"); // LSC approximation of Schur complement
+    opt.addString("-fieldsplit_1_pc_lsc_scale_diag", "", ""); // scale with diagonal of velocity mass matrix
+
+    // direct solver (MUMPS):
+    // opt.addString("-fieldsplit_0_ksp_type", "", "preonly"); // use only preconditioner
+    // opt.addString("-fieldsplit_0_pc_type", "", "lu"); // direct solver for velocity block
+    // opt.addString("-fieldsplit_0_pc_factor_mat_solver_type", "", "mumps"); // use MUMPS as direct solver
+    // opt.addString("-fieldsplit_1_lsc_ksp_type", "", "preonly"); // use only preconditioner
+    // opt.addString("-fieldsplit_1_lsc_pc_type", "", "lu"); // direct solver for Schur complement approximation
+    // opt.addString("-fieldsplit_1_lsc_pc_factor_mat_solver_type", "", "mumps"); // use MUMPS as direct solver
+
+    // Schwarz method for subsystems:
+    opt.addString("-fieldsplit_0_ksp_type", "", "gmres"); 
+    opt.addString("-fieldsplit_0_ksp_rtol", "", "1e-2"); 
+    opt.addString("-fieldsplit_0_pc_type", "", "asm"); 
+    opt.addString("-fieldsplit_0_pc_asm_overlap", "", "1"); 
+    opt.addString("-fieldsplit_0_sub_pc_type", "", "ilu"); 
+    opt.addString("-fieldsplit_0_sub_pc_factor_levels", "", "0"); 
+    opt.addString("-fieldsplit_0_sub_pc_factor_mat_ordering_type", "", "rcm"); 
+    opt.addString("-fieldsplit_0_sub_pc_factor_reuse_ordering", "", ""); 
+    // opt.addString("-fieldsplit_1_lsc_ksp_type", "", "gmres");
+    // opt.addString("-fieldsplit_1_lsc_ksp_rtol", "", "1e-2");
+    // opt.addString("-fieldsplit_1_lsc_pc_type", "", "asm");
+    // opt.addString("-fieldsplit_1_lsc_pc_asm_overlap", "", "1");
+    // opt.addString("-fieldsplit_1_lsc_sub_pc_type", "", "ilu");
+    // opt.addString("-fieldsplit_1_lsc_sub_pc_factor_levels", "", "0");
+    // opt.addString("-fieldsplit_1_lsc_sub_pc_factor_mat_ordering_type", "", "rcm");
+    // opt.addString("-fieldsplit_1_lsc_sub_pc_factor_reuse_ordering", "", "");
+
+    // Jacobi for Schur complement:
+    opt.addString("-fieldsplit_1_lsc_ksp_type", "", "cg");
+    opt.addString("-fieldsplit_1_lsc_ksp_rtol", "", "1e-2");
+    opt.addString("-fieldsplit_1_lsc_pc_type", "", "jacobi");
+
+    return opt;
+}
+
+template<class T>
+void gsFlowLinSystSolver_PETSc_SP<T>::applyOptions()
+{
+    if (m_paramsPtr->options().getSwitch("petsc.optFromFileSP"))
+    {
+        gsOptionList petscOpt;
+        gsFileData<> fd(m_paramsPtr->options().getString("petsc.optPathSP"));
+        fd.getId(0, petscOpt);
+        Base::applyOptions(petscOpt);
+    }
+    else
+        Base::applyOptions(getDefaultOptions());
+}
 
 template<class T>
 void gsFlowLinSystSolver_PETSc_SP<T>::setupSolver(const std::vector< gsSparseMatrix<T, RowMajor> >& matBlocks)
@@ -250,7 +365,8 @@ void gsFlowLinSystSolver_PETSc_SP<T>::setupSolver(const std::vector< gsSparseMat
 
     PetscCallVoid( KSPCreate(comm, &m_ksp) );
     PetscCallVoid( KSPGetPC(m_ksp, &m_pc) );
-    this->applyOptions(m_paramsPtr->defaultPETScOptionsSP());
+
+    this->applyOptions();
 
     real_t time1 = stopwatchStop();
     m_setupT += time1 - time0;

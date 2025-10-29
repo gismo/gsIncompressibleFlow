@@ -138,6 +138,10 @@ public: // *** Static functions ***
         opt.addString("lin.precType", "Preconditioner to be used with iterative linear solver", "MSIMPLER_FdiagEqual");
         opt.addInt("lin.maxIt", "Maximum number of iterations for linear solver (if iterative)", 200);
         opt.addReal("lin.tol", "Stopping tolerance for linear solver (if iterative)", 1e-6);
+        opt.addSwitch("petsc.optFromFile", "Load the PETSc solver options from file", false);
+        opt.addSwitch("petsc.optFromFileSP", "Load the saddle-point PETSc solver options from file", false);
+        opt.addString("petsc.optPath", "Path to the PETSc options file", "");
+        opt.addString("petsc.optPathSP", "Path to the saddle-point PETSc options file", "");
 
         // asssembly 
         //opt.addString("assemb.quad", "The numerical quadrature (Gauss/WQ)", "Gauss");
@@ -238,63 +242,6 @@ public: // *** Member functions ***
         createPeriodicHelper(m_dofMappers[0]);
     }
 
-    /// @brief Returns a list of default options for PETSc solvers.
-    gsOptionList defaultPETScOptions()
-    {
-        // this function is not static because it uses members of this class
-        index_t maxIt = m_opt.getInt("lin.maxIt");
-        real_t linTol = m_opt.getReal("lin.tol");
-
-        gsOptionList opt;
-
-        opt.addString("-ksp_type", "", "gmres");
-        opt.addString("-ksp_max_it", "", util::to_string(maxIt));
-        opt.addString("-ksp_rtol", "", util::to_string(linTol));
-        opt.addString("-pc_type", "", "asm");
-        opt.addString("-sub_pc_type", "", "ilu");
-
-        return opt;
-    }
-
-    /// @brief Returns a list of default options for saddle-point PETSc solvers.
-    gsOptionList defaultPETScOptionsSP()
-    {
-        // this function is not static because it uses members of this class
-        short_t dim = m_pdePtr->dim();
-        index_t maxIt = m_opt.getInt("lin.maxIt");
-        real_t linTol = m_opt.getReal("lin.tol");
-
-        gsOptionList opt;
-
-        opt.addString("-ksp_type", "", "fgmres"); // flexible GMRES
-        opt.addString("-ksp_initial_guess_nonzero", "", "true");
-        opt.addString("-ksp_max_it", "", util::to_string(maxIt));
-        opt.addString("-ksp_rtol", "", util::to_string(linTol));
-
-        opt.addString("-pc_type", "", "fieldsplit"); // PCFIELDSPLIT preconditioner
-        opt.addString("-pc_fieldsplit_detect_saddle_point", "", ""); // automatically detect saddle-point structure
-        opt.addString("-pc_fieldsplit_type", "", "schur"); // Schur complement preconditioner
-        opt.addString("-pc_fieldsplit_schur_fact_type", "", "upper"); // upper triangular factorization
-        opt.addString("-pc_fieldsplit_schur_precondition", "", "self"); // matrix to generate Schur complement preconditioner
-
-        opt.addString("-fieldsplit_0_mat_block_size", "", util::to_string(dim)); // block size = dimension of velocity (not sure, if this does anything)
-        opt.addString("-fieldsplit_0_ksp_type", "", "preonly"); // use only preconditioner
-        opt.addString("-fieldsplit_0_pc_type", "", "lu"); // direct solver for velocity block
-        opt.addString("-fieldsplit_0_pc_factor_mat_solver_type", "", "mumps"); // use MUMPS as direct solver
-
-        opt.addString("-fieldsplit_1_pc_type", "", "lsc"); // LSC approximation of Schur complement
-        opt.addString("-fieldsplit_1_pc_lsc_scale_diag", "", ""); // scale with diagonal of velocity mass matrix
-        opt.addString("-fieldsplit_1_lsc_ksp_type", "", "preonly"); // use only preconditioner
-        opt.addString("-fieldsplit_1_lsc_pc_type", "", "lu"); // direct solver for Schur complement approximation
-        opt.addString("-fieldsplit_1_lsc_pc_factor_mat_solver_type", "", "mumps"); // use MUMPS as direct solver
-
-        // variant with Schwarz preconditioner + ILU:
-        // opt.addString("-fieldsplit_1_lsc_ksp_type", "", "gmres");
-        // opt.addString("-fieldsplit_1_lsc_pc_type", "", "asm");
-        // opt.addString("-fieldsplit_1_lsc_sub_pc_type", "", "ilu");
-
-        return opt;
-    }
 
 public: // *** Getters/setters ***
 

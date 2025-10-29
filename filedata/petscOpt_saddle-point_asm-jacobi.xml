@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- PETSc options for a saddle-point linear system -->
+<!-- block triangular preconditioner with LSC Schur complement approximation -->
+<!-- GMRES with Schwarz preconditioner for velocity subsystem -->
+<!-- CG with Jacobi preconditioner for Schur complement -->
+
+<xml>
+ <OptionList id="0">
+ 
+  <string label="-ksp_type" desc="" value="fgmres"/>
+  <string label="-ksp_initial_guess_nonzero" desc="" value="true"/>
+  <string label="-ksp_max_it" desc="" value="50"/>
+  <string label="-ksp_rtol" desc="" value="1e-4"/>
+  
+  <string label="-pc_type" desc="" value="fieldsplit"/>
+  <string label="-pc_fieldsplit_detect_saddle_point" desc="" value=""/>
+  <string label="-pc_fieldsplit_type" desc="" value="schur"/>
+  <string label="-pc_fieldsplit_schur_fact_type" desc="" value="upper"/>
+  <string label="-pc_fieldsplit_schur_precondition" desc="" value="self"/>
+  
+  <string label="-fieldsplit_0_mat_block_size" desc="" value="2"/> <!--EQUAL TO DIMENSION!-->
+  <string label="-fieldsplit_1_pc_type" desc="" value="lsc"/>
+  <string label="-fieldsplit_1_pc_lsc_scale_diag" desc="" value=""/>
+  
+  <!--Subsystem solvers:-->
+  <string label="-fieldsplit_0_ksp_type" desc="" value="gmres"/>
+  <string label="-fieldsplit_0_ksp_rtol" desc="" value="1e-2"/>
+  <string label="-fieldsplit_0_pc_type" desc="" value="asm"/>
+  <string label="-fieldsplit_0_pc_asm_overlap" desc="" value="1"/>
+  <string label="-fieldsplit_0_sub_pc_type" desc="" value="ilu"/>
+  <string label="-fieldsplit_0_sub_pc_factor_levels" desc="" value="0"/>
+  <string label="-fieldsplit_0_sub_pc_factor_mat_ordering_type" desc="" value="rcm"/>
+  <string label="-fieldsplit_0_sub_pc_factor_reuse_ordering" desc="" value=""/>
+  
+  <string label="-fieldsplit_1_lsc_ksp_type" desc="" value="cg"/>
+  <string label="-fieldsplit_1_lsc_ksp_rtol" desc="" value="1e-2"/>
+  <string label="-fieldsplit_1_lsc_pc_type" desc="" value="jacobi"/>
+  
+ </OptionList>
+</xml>
+
