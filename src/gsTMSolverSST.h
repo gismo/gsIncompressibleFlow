@@ -92,8 +92,9 @@ public: // *** Member functions ***
 
     /// @brief Evaluates the turbulent viscosity.
     /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch
-    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId);
+    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
 
 public: // *** Getters/setters ***
 

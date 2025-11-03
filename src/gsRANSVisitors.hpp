@@ -26,7 +26,7 @@ void gsRANSVisitorUU<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());
@@ -43,7 +43,7 @@ void gsRANSVisitorUU<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     Base::evaluate(domIt);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());
@@ -60,7 +60,7 @@ void gsRANSVisitorUU<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatr
 {
     index_t dim = m_paramsPtr->getPde().dim();
     const index_t uCompSize = m_paramsPtr->getMapper(m_testUnkID).freeSize(); // number of dofs for one velocity component
-    //index_t nComponents = globalMat.rows() / uCompSize;
+    index_t nComponents = globalMat.rows() / uCompSize;
 
     GISMO_ASSERT(nComponents == dim, "Wrong matrix size in gsRANSVisitorUU::localToGlobal.");
 
@@ -129,7 +129,7 @@ void gsRANSVisitorUU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<
 {
     index_t dim = m_paramsPtr->getPde().dim();
     const index_t uCompSize = m_paramsPtr->getPerHelperPtr()->numFreeDofs(); // number of dofs for one velocity component
-    //index_t nComponents = globalMat.rows() / uCompSize;
+    index_t nComponents = globalMat.rows() / uCompSize;
 
     GISMO_ASSERT(nComponents == dim, "Wrong matrix size in gsINSVisitorUU::localToGlobal_per, matrix has to contain all components.");
 

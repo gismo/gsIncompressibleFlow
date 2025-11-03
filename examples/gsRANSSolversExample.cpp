@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     real_t inVelY = 0.53; // inlet y-velocity for profile2D
     
     // solver settings
-    index_t maxIt = 100;
+    index_t maxIt = 20;
     index_t picardIt = 5;
     index_t maxItTM = 10;
     index_t linIt = 50;
@@ -72,12 +72,12 @@ int main(int argc, char *argv[])
     real_t linTol = 1e-6;
     std::string matFormation = "EbE";
     std::string precond = "MSIMPLER_FdiagEqual";
-    bool stokesInit = false;            // start unsteady problem from Stokes solution
-    bool TCSD_RANS_stab = false;        // use T-CSD stabilization
-    bool TCSD_TM_stab = false;        // use T-CSD stabilization
+    bool stokesInit = false; // start unsteady problem from Stokes solution
+    bool TCSD_RANS_stab = false; // use T-CSD stabilization
+    bool TCSD_TM_stab = false; // use T-CSD stabilization
 
     // output settings
-    std::string outMode = "all"; // terminal/file/all/quiet
+    std::string outMode = "terminal"; // terminal/file/all/quiet
     bool plot = false;
     bool plotMesh = false;
     index_t plotPts = 20000;
@@ -400,6 +400,7 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     logger << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
     logger << "Solve time:" << NSsolver.getSolveTime() << "\n";
     logger << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
+    logger << "TOtal TM time: " << NSsolver.getTMtime() << "\n";
     logger << "Total solveProblem time:" << totalT << "\n\n";
 
     NSsolver.getLinSolver()->reportLinIterations();

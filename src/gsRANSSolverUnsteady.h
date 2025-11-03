@@ -128,6 +128,9 @@ public: // *** Getters/setters ***
     /// @brief Returns the total number of DOFs for turbulent model (the matrix size).
     int numDofsTM() { return (m_TMsolverPtr->getAssembler())->numDofs(); }
 
+    /// @brief Returns time spent on turbulent model computation.
+    T getTMtime() const { return m_turbT; }
+
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsRANSSolverUnsteady"; }
 
