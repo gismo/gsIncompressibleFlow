@@ -32,7 +32,6 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers()
     m_visitorRANS_TCSD_time.initialize();
     m_visitorRANS_TCSD_advection = gsRANSVisitorTCSDStabilization_advection<T, MatOrder>(m_paramsPtr);
     m_visitorRANS_TCSD_advection.initialize();
-
 }
 
 template<class T, int MatOrder>
@@ -107,7 +106,6 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
             m_matRANS_TCSD_advection.reserve(gsVector<index_t>::Constant(m_matRANS_TCSD_advection.outerSize(), m_tarDim * m_nnzPerOuterU));
             m_rhsRANS_TCSD_advection.setZero(m_pshift, 1);
             this->assembleBlock(m_visitorRANS_TCSD_advection, 0, m_matRANS_TCSD_advection, m_rhsRANS_TCSD_advection);
-
         }
     }
 
