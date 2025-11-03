@@ -26,7 +26,7 @@ void gsRANSVisitorUU<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());
@@ -43,7 +43,7 @@ void gsRANSVisitorUU<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     Base::evaluate(domIt);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());

@@ -30,6 +30,11 @@ class gsRANSVisitorUU : public gsFlowVisitorVectorValued<T, MatOrder>
 public:
     typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
+public: // *** Smart pointers ***
+
+    typedef memory::shared_ptr<gsRANSVisitorUU> Ptr; 
+    typedef memory::unique_ptr<gsRANSVisitorUU> uPtr;
+
 protected:  // *** Class members ***
 
     gsMatrix<T> m_solution;
@@ -117,6 +122,10 @@ class gsRANSVisitorUU_full : public gsRANSVisitorUU<T, MatOrder>
 public:
     typedef gsRANSVisitorUU<T, MatOrder> Base;
 
+public: // *** Smart pointers ***
+
+    typedef memory::shared_ptr<gsRANSVisitorUU_full> Ptr; 
+    typedef memory::unique_ptr<gsRANSVisitorUU_full> uPtr;
 
 protected: // *** Base class members ***
 

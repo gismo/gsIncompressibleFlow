@@ -34,7 +34,7 @@ public:
 
 protected: // *** Class members ***
 
-    gsRANSVisitorUU<T, MatOrder> m_visitorRANSsymgrad;
+    typename gsRANSVisitorUU<T, MatOrder>::uPtr m_visitorRANSsymgradPtr;
     gsSparseMatrix<T, MatOrder> m_matRANSsymgrad;
     gsMatrix<T> m_rhsRANS;
     typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;

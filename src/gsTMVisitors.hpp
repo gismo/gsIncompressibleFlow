@@ -57,7 +57,7 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
-    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
+    m_TMModelPtr->updateModel(m_mapData.points, this->m_quRule.numNodes(), m_mapData.patchId);
 }
 
 template <class T, int MatOrder>
@@ -65,7 +65,7 @@ void gsTMVisitorTimeIterationSST<T, MatOrder>::evaluate(const gsDomainIterator<T
 {
     Base::evaluate(domIt);
 
-    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
+    m_TMModelPtr->updateModel(m_mapData.points, this->m_quRule.numNodes(), m_mapData.patchId);
 }
 
 template <class T, int MatOrder>
@@ -141,7 +141,7 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(index_t testFunID)
         } 
     }
 
-    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
+    m_TMModelPtr->updateModel(m_mapData.points, this->m_quRule.numNodes(), m_mapData.patchId);
 
 }
 
@@ -161,7 +161,7 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::evaluate(const gsDomainIterator<T>* d
         } 
     }
 
-    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
+    m_TMModelPtr->updateModel(m_mapData.points, this->m_quRule.numNodes(), m_mapData.patchId);
 
 }
 

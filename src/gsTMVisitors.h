@@ -184,9 +184,7 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorNonlinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
     Base(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
-    { 
-                
-    }
+    { }
 
 protected: // *** Member functions ***
 

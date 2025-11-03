@@ -79,8 +79,9 @@ public: // *** Class functions ***
 
     /// @brief Evaluates the turbulent viscosity.
     /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch   
-    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
+    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Plots the turbulent viscosity.
@@ -88,13 +89,10 @@ public: // *** Class functions ***
 
     /// @brief Update the current turbuelnce model quantities for the given quNodes
     /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch 
-    virtual void updateModel(gsMatrix<T>& quNodes, index_t patchId)
+    virtual void updateModel(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
-
-protected: // *** Class functions ***
-
-    void computeAverage(gsVector<T>& turbFn);
 
 
 public: // *** Getters/setters ***
@@ -121,7 +119,6 @@ public: // *** Getters/setters ***
     std::vector< gsMatrix<T> > getStrainRateTensor() { return m_StrainRateTensor; }    
     gsVector<T> getTurbulentViscosityVals() { return m_turbulentViscosityVals; }
     bool isInitialized() { return m_isInitialized; }
-
 };
 
 
@@ -222,20 +219,22 @@ protected: // *** Class functions ***
     
     void evalF2(gsMatrix<T>& quNodes, index_t patchId);
     
-    void evalTurbViscFromData(gsMatrix<T>& quNodes, index_t patchId);
+    void evalTurbViscFromData(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
     
 
 public: // *** Class functions ***
 
     /// @brief Update the current turbuelnce model quantities for the given quNodes
     /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch 
-    void updateModel(gsMatrix<T>& quNodes, index_t patchId);
+    void updateModel(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
     
     /// @brief Evaluates the turbulent viscosity.
     /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch
-    void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId);
+    void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
     
         
 public: // *** Getters/setters ***

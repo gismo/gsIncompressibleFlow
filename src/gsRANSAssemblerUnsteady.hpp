@@ -21,8 +21,12 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers()
     Base::initMembers();
     updateSizes();
 
-    m_visitorRANSsymgrad = gsRANSVisitorUU<T, MatOrder>(m_paramsPtr);
-    m_visitorRANSsymgrad.initialize();
+    if (m_paramsPtr->options().getString("assemb.loop") == "EbE")
+        m_visitorRANSsymgradPtr = std::make_unique< gsRANSVisitorUU<T, MatOrder> >(m_paramsPtr);
+    else
+        m_visitorRANSsymgradPtr = std::make_unique< gsRANSVisitorUU_full<T, MatOrder> >(m_paramsPtr);
+
+    m_visitorRANSsymgradPtr->initialize();
 
 }
 
@@ -64,12 +68,12 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
     {
         m_rhsTimeDiscr = m_blockTimeDiscr * m_solution.topRows(m_pshift);
 
-        m_visitorRANSsymgrad.setTurbulenceSolver(m_TMsolverPtr);
-        m_visitorRANSsymgrad.setRANSsolution(solVector);
+        m_visitorRANSsymgradPtr->setTurbulenceSolver(m_TMsolverPtr);
+        m_visitorRANSsymgradPtr->setRANSsolution(solVector);
         m_matRANSsymgrad.resize(m_pshift, m_pshift);
         m_matRANSsymgrad.reserve(gsVector<index_t>::Constant(m_matRANSsymgrad.outerSize(), m_tarDim * m_nnzPerOuterU));
         m_rhsRANS.setZero(m_pshift, 1);
-        this->assembleBlock(m_visitorRANSsymgrad, 0, m_matRANSsymgrad, m_rhsRANS);
+        this->assembleBlock(*m_visitorRANSsymgradPtr, 0, m_matRANSsymgrad, m_rhsRANS);
     }
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))

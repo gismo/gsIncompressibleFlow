@@ -145,7 +145,7 @@ public: // *** Static functions ***
 
         // asssembly 
         //opt.addString("assemb.quad", "The numerical quadrature (Gauss/WQ)", "Gauss");
-        //opt.addString("assemb.loop", "EbE = element by element, RbR = row by row", "EbE");
+        opt.addString("assemb.loop", "EbE = element by element, RbR = row by row", "RbR");
         //opt.addSwitch("assemb.sumFact", "Use sum factorization for integration", false);
         opt.addSwitch("fillGlobalSyst", "Fill the global linear systems from blocks", true);
         

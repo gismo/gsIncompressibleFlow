@@ -55,7 +55,7 @@ void gsTMModelData<T>::plotTurbulentViscosity(typename gsFlowSolverParams<T>::Pt
         }
         gsMatrix<T> gridPts = gsPointGrid<T>(rr);
 
-        evalTurbulentViscosity(gridPts, patchId);
+        evalTurbulentViscosity(gridPts, 1, patchId);
         gsVector<T> turbViscVals = getTurbulentViscosityVals();
 
         typename gsGeometry<T>::uPtr geo = basisp.interpolateAtAnchors(turbViscVals.transpose());    // interpolating distances at grid points 
@@ -65,19 +65,6 @@ void gsTMModelData<T>::plotTurbulentViscosity(typename gsFlowSolverParams<T>::Pt
 
     gsField<T> result = gsField<T>(paramsPtr->getPde().patches(), typename gsFunctionSet<T>::Ptr(turbViscMP), true);
     gsWriteParaview<T>(result, str, 10000);
-}
-
-
-
-template <class T>
-void gsTMModelData<T>::computeAverage(gsVector<T>& vec)
-{
-    index_t vecSize = vec.rows();
-    T vecSumTmp = 0.0;
-    for (int k = 0; k < vecSize; k++)
-        vecSumTmp += vec(k);
-    vecSumTmp = vecSumTmp / vecSize;
-    vec.setConstant(vecSize, vecSumTmp);
 }
 
 // ============================================================================================================================
@@ -279,25 +266,34 @@ void gsTMModelData_SST<T>::evalF2(gsMatrix<T>& quNodes, index_t patchId)
 }
 
 template <class T>
-void gsTMModelData_SST<T>::evalTurbViscFromData(gsMatrix<T>& quNodes, index_t patchId)
+void gsTMModelData_SST<T>::evalTurbViscFromData(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
 {
     index_t nQuPoints = quNodes.cols();
-    gsVector<T> TurbulentViscosityVals(nQuPoints);
-    TurbulentViscosityVals.setZero();
+    gsVector<T> turbulentViscosityVals(nQuPoints);
+    turbulentViscosityVals.setZero();
     for (index_t k = 0; k < nQuPoints; k++)
     {
-        TurbulentViscosityVals(k) = (m_a1 * m_KSolVals(0, k)) / (math::max(m_a1 * math::max(m_OSolVals(0, k), m_eps), m_StrainRateMag(k) * m_F2(k)));
-        TurbulentViscosityVals(k) = math::max(TurbulentViscosityVals(k), m_eps);
+        turbulentViscosityVals(k) = (m_a1 * m_KSolVals(0, k)) / (math::max(m_a1 * math::max(m_OSolVals(0, k), m_eps), m_StrainRateMag(k) * m_F2(k)));
+        turbulentViscosityVals(k) = math::max(turbulentViscosityVals(k), m_eps);
     }
 
-    if (m_average)
-        this->computeAverage(TurbulentViscosityVals);
+    if (m_average && numNodesPerElem != 1)
+    {
+        GISMO_ASSERT(nQuPoints % numNodesPerElem == 0, "Total number of quad nodes is not multiple of number of quad nodes per element!");
 
-    m_turbulentViscosityVals = TurbulentViscosityVals;
+        index_t nElements = nQuPoints / numNodesPerElem;
+        for (index_t e = 0; e < nElements; e++)
+        {
+            T avg = turbulentViscosityVals.middleRows(e * numNodesPerElem, numNodesPerElem).sum() / numNodesPerElem;
+            turbulentViscosityVals.middleRows(e * numNodesPerElem, numNodesPerElem).setConstant(avg);
+        }
+    }
+
+    m_turbulentViscosityVals = turbulentViscosityVals;
 }
 
 template <class T>
-void gsTMModelData_SST<T>::updateModel(gsMatrix<T>& quNodes, index_t patchId)
+void gsTMModelData_SST<T>::updateModel(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
 {
     // evaluate k, omega, grad(k), grad(omega)
     evalKSol(quNodes, patchId, 1);
@@ -313,7 +309,7 @@ void gsTMModelData_SST<T>::updateModel(gsMatrix<T>& quNodes, index_t patchId)
     evalF2(quNodes, patchId);
 
     // evaluate turbulent viscosity
-    evalTurbViscFromData(quNodes, patchId);
+    evalTurbViscFromData(quNodes, numNodesPerElem, patchId);
     
     // evaluate F1
     evalF1(quNodes, patchId);
@@ -322,7 +318,7 @@ void gsTMModelData_SST<T>::updateModel(gsMatrix<T>& quNodes, index_t patchId)
 }
 
 template <class T>
-void gsTMModelData_SST<T>::evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
+void gsTMModelData_SST<T>::evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
 {
     // evaluate k, omega, grad(k), grad(omega)
     evalKSol(quNodes, patchId, 0);
@@ -338,7 +334,7 @@ void gsTMModelData_SST<T>::evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t 
     evalF2(quNodes, patchId);
 
     // evaluate turbulent viscosity
-    evalTurbViscFromData(quNodes, patchId);
+    evalTurbViscFromData(quNodes, numNodesPerElem, patchId);
 
 }
 
