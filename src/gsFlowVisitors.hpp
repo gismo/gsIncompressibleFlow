@@ -329,4 +329,156 @@ void gsFlowVisitor<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
         evalBasisData(m_trialFunFlags, m_trialBasisPtr, m_trialFunActives, m_trialFunData);
 }
 
+
+// ===================================================================================================================
+// ===================================================================================================================
+// for boundary visitors
+
+template<class T, int MatOrder>
+void gsFlowVisitorBnd<T, MatOrder>::setupQuadrature()
+{
+    gsVector<int> numQuadNodes(m_paramsPtr->getPde().domain().targetDim());
+    index_t maxDegTest = m_testBasisPtr->maxDegree();
+    index_t maxDegTrial = m_trialBasisPtr->maxDegree();
+    
+    numQuadNodes.setConstant(math::max(maxDegTest, maxDegTrial)+1);
+        
+    const int dir = m_side.direction();
+    numQuadNodes[dir] = 1;
+    
+    m_quRule = gsGaussRule<T>(numQuadNodes);
+
+}
+
+template<class T, int MatOrder>
+void gsFlowVisitorBnd<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    Base::evaluate(domIt);
+
+    const gsBoundaryConditions<T>* bc = &(m_paramsPtr->getBCs());
+    const boundary_condition<T>* sideBC;
+    patchSide ps;
+    ps.patch = m_patchID;
+    ps.m_index = m_side;
+    sideBC = bc->getConditionFromSide(ps);
+
+    gsMatrix<T> bndPoints;
+    m_paramsPtr->getPde().patches().patch(m_patchID).eval_into(m_mapData.points, bndPoints);
+    
+    sideBC->function()->eval_into(bndPoints, m_bcvals);
+    
+}
+
+/*
+template<class T, int MatOrder>
+void gsFlowVisitorBnd<T, MatOrder>::evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, gsMatrix<index_t>& activesUnique, std::vector< gsMatrix<T> >& basisData)
+{
+    gsMatrix<index_t> actives;
+    basisPtr->active_into(m_quNodes, actives);
+    activesUnique = createVectorOfUniqueIndices(actives);
+
+    // reduction of active basis function to nonzero ones at m_quNodes
+    gsMatrix<real_t> bV;
+    basisPtr->eval_into(m_quNodes, bV);
+    std::vector<index_t> act, act_indices;
+    for (index_t i = 0; i < activesUnique.rows(); i++)
+        if (bV.row(i).norm() > 0)
+        {
+            act.push_back(activesUnique(i, 0));
+            act_indices.push_back(i);
+        }
+    activesUnique.setZero(act.size(), 1);
+    for (size_t i = 0; i < act.size(); i++)
+        activesUnique(i, 0) = act[i];
+
+    bool multipleElem = (activesUnique.rows() > actives.rows());
+    std::unordered_map<int, int> activesUnique_val_to_ID;
+
+    if (multipleElem)
+    {
+        for (int i = 0; i < activesUnique.size(); ++i)
+            activesUnique_val_to_ID[activesUnique(i)] = i;
+    }
+
+    index_t dim = basisPtr->dim();
+    index_t numAct = activesUnique.rows();
+
+    if(basisFlags & NEED_VALUE)
+    {
+        gsMatrix<real_t> basisVals(numAct, m_quNodes.cols());
+        for (index_t i = 0; i < numAct; i++)
+            basisVals.row(i) = bV.row(act_indices[i]);
+
+        if (multipleElem)
+        {
+            basisData[0].setZero(numAct, m_quNodes.cols());
+
+            for (index_t i = 0; i < actives.rows(); i++)
+                for (index_t j = 0; j < actives.cols(); j++)
+                    basisData[0](activesUnique_val_to_ID[actives(i, j)], j) = basisVals(i,j);
+        }
+        else
+        {
+            basisData[0] = basisVals;
+        }
+    }
+
+    if(basisFlags & NEED_DERIV)
+    {
+        gsMatrix<real_t> bD, basisDers;
+        basisPtr->deriv_into(m_quNodes, bD);
+        
+        basisDers.setZero(dim * numAct, m_quNodes.cols());
+        for (index_t i = 0; i < numAct; i++)
+            for (index_t j = 0; j < dim; j++)
+                basisDers.row(i*dim + j) = bD.row(dim*act_indices[i] + j);
+
+        if (multipleElem)
+        {
+            basisData[1].setZero(dim*numAct, m_quNodes.cols());
+
+            for (index_t i = 0; i < actives.rows(); i++)
+            {
+                for (index_t j = 0; j < actives.cols(); j++)
+                {
+                    index_t ii = activesUnique_val_to_ID[actives(i, j)];
+                    basisData[1].block(dim*ii, j, dim, 1) = basisDers.block(dim*i, j, dim, 1);
+                }
+            }
+        }
+        else
+        {
+            basisData[1] = basisDers;
+        }
+    }
+
+    // currently not needed
+    // if(basisFlags & NEED_DERIV2)
+    // {
+    //     gsMatrix<real_t> basisDers2;
+    //     basisPtr->deriv2_into(m_quNodes, basisDers2);
+
+    //     if (multipleElem)
+    //     {
+    //         index_t dimSq = dim*dim;
+    //         basisData[2].setZero(dimSq*numAct, m_quNodes.cols());
+
+    //         for (index_t i = 0; i < actives.rows(); i++)
+    //         {
+    //             for (index_t j = 0; j < actives.cols(); j++)
+    //             {
+    //                 index_t ii = activesUnique_val_to_ID[actives(i, j)];
+    //                 basisData[2].block(dimSq*ii, j, dimSq, 1) = basisDers2.block(dimSq*i, dimSq ,j, 1);
+    //             }
+    //         }
+    //     }
+    //     else
+    //     {
+    //         basisData[2] = basisDers2;
+    //     }
+    // }
+    
+}
+*/
+
 } // namespace gismo

@@ -51,6 +51,14 @@ protected: // *** Class members ***
     gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsF, m_rhsG;
     gsField<T>  m_currentVelField, m_currentPresField;
 
+    gsINSVisitorUUnonlinWeakDirichlet<T, MatOrder> m_visitorUUnonlinWeakDirichlet;
+    gsINSVisitorUUlinWeakDirichlet<T, MatOrder> m_visitorUUlinWeakDirichlet;
+    gsINSVisitorPUWeakDirichlet<T, MatOrder> m_visitorPUWeakDirichlet;
+    gsINSVisitorUPWeakDirichlet<T, MatOrder> m_visitorUPWeakDirichlet;
+    gsINSVisitorPPWeakDirichlet<T, MatOrder> m_visitorPPWeakDirichlet;
+    gsSparseMatrix<T, MatOrder> m_blockUUnonlinWeakDirichlet_comp_In, m_blockUUnonlinWeakDirichlet_comp_Wall, m_blockUUnonlinWeakDirichlet_whole_In, m_blockUUnonlinWeakDirichlet_whole_Wall, m_blockUUlinWeakDirichlet_whole_In, m_blockUUlinWeakDirichlet_whole_Wall, m_blockPUWeakDirichlet_In, m_blockPUWeakDirichlet_Wall, m_blockUPWeakDirichlet_Out, m_blockPPWeakDirichlet_Out;
+    gsMatrix<T> m_rhsUnonlinWeakDirichlet_In, m_rhsUnonlinWeakDirichlet_Wall, m_rhsUlinWeakDirichlet_In, m_rhsUlinWeakDirichlet_Wall, m_rhsPUWeakDirichlet_In, m_rhsPUWeakDirichlet_Wall, m_rhsUPWeakDirichlet_Out, m_rhsPPWeakDirichlet_Out;
+
     bool m_isMassMatReady;
     std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;
     std::vector< gsMatrix<T> > m_massMatRhs;

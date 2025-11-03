@@ -85,12 +85,30 @@ protected: // *** Member functions ***
     template<class ElementVisitor>
     void assembleBlock(ElementVisitor& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat = true);
 
+    /// @brief Assemble a matrix block.
+    /// @param[in]  visitor     visitor for the required block
+    /// @param[in]  testBasisID ID of the test basis
+    /// @param[in]  bndPart     patch boundaries
+    /// @param[out] block       the resulting matrix block
+    /// @param[out] blockRhs    right-hand side for the matrix block (arising from eliminated Dirichlet DOFs)
+    /// @param[in]  compressMat call makeCompressed() at the end
+    template<class ElementVisitor>
+    void assembleBlockBnd(ElementVisitor& visitor, index_t testBasisID, const std::vector< std::pair<int, boxSide> >& bndPart, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat = true);
+
     /// @brief Assemble the right-hand side.
     /// @param[in]  visitor     visitor for the right-hand side
     /// @param[in]  testBasisID ID of the test basis
     /// @param[out] rhs         the resulting right-hand side vector
     template<class ElementVisitorRhs>
     void assembleRhs(ElementVisitorRhs& visitor, index_t testBasisID, gsMatrix<T>& rhs);
+
+    /// @brief Assemble the right-hand side.
+    /// @param[in]  visitor     visitor for the right-hand side
+    /// @param[in]  testBasisID ID of the test basis
+    /// @param[in]  bndPart     patch boundaries
+    /// @param[out] rhs         the resulting right-hand side vector
+    template<class ElementVisitorRhs>
+    void assembleRhsBnd(ElementVisitorRhs& visitor, index_t testBasisID, const std::vector< std::pair<int, boxSide> >& bndPart, gsMatrix<T>& rhs);
 
     /// @brief Assemble the linear part of the problem.
     virtual void assembleLinearPart()
@@ -376,6 +394,190 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(ElementVisitorRhs& visitor, i
             }
         }
     }   
+}
+
+
+template<class T, int MatOrder>
+template<class ElementVisitor>
+void gsFlowAssemblerBase<T, MatOrder>::assembleBlockBnd(ElementVisitor& visitor, index_t testBasisID, const std::vector< std::pair<int, boxSide> >& bndPart, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
+{
+    for(size_t j = 0; j < bndPart.size(); j++)
+    {
+        index_t p = bndPart[j].first;
+        boxSide s = bndPart[j].second;
+        
+        if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
+        {
+            // TODO: definition of evaluate(i) must be added to weak Dirichlet visitors
+            /*for(size_t p = 0; p < getPatches().nPatches(); p++)
+            {
+                visitor.initOnPatchSide(p, s);
+                index_t nBases = m_paramsPtr->getBasis(testBasisID).piece(p).size();
+
+                for(index_t i = 0; i < nBases; i++)
+                {
+                    visitor.evaluate(i);
+                    visitor.assemble();
+                    visitor.localToGlobal(m_ddof, block, blockRhs);
+                }
+            }*/        
+        }
+        else        
+        {
+            if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
+                gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
+
+            /*#pragma omp parallel
+            { 
+                ElementVisitor
+                #ifdef _OPENMP
+                // Create thread-private visitor
+                visitor_(visitor);
+                const int threadId = omp_get_thread_num();
+                const int numThreads  = omp_get_num_threads();
+                #else
+                &visitor_ = visitor;
+                #endif
+
+                // iteration over all elements in all patches
+                typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->beginBdr(s);
+                typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->endBdr(s);
+
+                #ifdef _OPENMP
+                domIt += threadId;
+                for (; domIt < domItEnd; domIt+=(numThreads) )
+                #else
+                for (; domIt < domItEnd; ++domIt )
+                #endif
+                {
+                    //ndex_t p = domIt.patch();
+                    //if (p != patchID)
+                    //{
+                    //    patchID = p;
+                    //    visitor_.initOnPatch(patchID);
+                    //}
+                    visitor_.initOnPatchSide(p, s);
+
+                    visitor_.evaluate(domIt.get());
+                    visitor_.assemble();
+
+                    #pragma omp critical(localToGlobal) // only one thread at a time
+                    visitor_.localToGlobal(m_ddof, block, blockRhs);
+                }
+            }*/
+
+            visitor.initOnPatchSide(p, s);
+
+            //gsInfo << "(LHS) Patch: " << p << ", side: " << s << " ... ";
+
+            // iteration over all elements in all patches
+            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->beginBdr(s);
+            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->endBdr(s);
+
+            while (domIt!=domItEnd)
+            {
+                visitor.evaluate(domIt.get());
+                visitor.assemble();
+                visitor.localToGlobal(m_ddof, block, blockRhs);
+
+                ++domIt;
+            }
+
+           //gsInfo << "Done\n";
+        }
+    }
+}
+
+
+template<class T, int MatOrder>
+template<class ElementVisitorRhs>
+void gsFlowAssemblerBase<T, MatOrder>::assembleRhsBnd(ElementVisitorRhs& visitor, index_t testBasisID, const std::vector< std::pair<int, boxSide> >& bndPart, gsMatrix<T>& rhs)
+{
+    for(size_t j = 0; j < bndPart.size(); j++)
+    {
+        index_t p = bndPart[j].first;
+        boxSide s = bndPart[j].second;
+    
+        if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
+        {
+            // TODO: definition of evaluate(i) must be added to weak Dirichlet visitors
+            /*for(size_t p = 0; p < getPatches().nPatches(); p++)
+            {
+                visitor.initOnPatchSide(p, s);
+                index_t nBases = m_paramsPtr->getBasis(testBasisID).piece(p).size();
+
+                for(index_t i = 0; i < nBases; i++)
+                {
+                    visitor.evaluate(i);
+                    visitor.assemble();
+                    visitor.localToGlobal(rhs);
+                }
+            }*/
+        }
+        else        
+        {
+            if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
+                gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
+
+            /*#pragma omp parallel
+            { 
+                ElementVisitorRhs
+                #ifdef _OPENMP
+                // Create thread-private visitor
+                visitor_(visitor);
+                const int threadId = omp_get_thread_num();
+                const int numThreads  = omp_get_num_threads();
+                #else
+                &visitor_ = visitor;
+                #endif
+
+                // iteration over all elements in all patches
+                typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->beginBdr(s);
+                typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->endBdr(s);
+
+                #ifdef _OPENMP
+                domIt += threadId;
+                for (; domIt < domItEnd; domIt+=(numThreads) )
+                #else
+                for (; domIt < domItEnd; ++domIt )
+                #endif
+                {
+                    //ndex_t p = domIt.patch();
+                    //if (p != patchID)
+                    //{
+                    //    patchID = p;
+                    //    visitor_.initOnPatch(patchID);
+                    //}
+                    visitor_.initOnPatchSide(p, s);
+
+                    visitor_.evaluate(domIt.get());
+                    visitor_.assemble();
+
+                    #pragma omp critical(localToGlobal) // only one thread at a time
+                    visitor_.localToGlobal(rhs);
+                }
+            }*/
+
+            visitor.initOnPatchSide(p, s);
+            
+            //gsInfo << "(RHS) Patch: " << p << ", side: " << s << " ... ";
+
+            // iteration over all elements in all patches
+            typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->beginBdr(s);
+            typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->endBdr(s);
+
+            while (domIt!=domItEnd)
+            {
+                visitor.evaluate(domIt.get());
+                visitor.assemble();
+                visitor.localToGlobal(rhs);
+
+                ++domIt;
+            }
+
+            //gsInfo << "Done\n";
+        }
+    }  
 }
 
 

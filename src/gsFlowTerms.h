@@ -34,6 +34,7 @@ protected: // *** Class members ***
 
     unsigned m_geoFlags, m_testFunFlags, m_trialFunFlags; // evaluation flags
     gsVector<T> m_coeff;
+    gsMatrix<T> m_vals;
 
 
 public: // *** Constructor/destructor ***
@@ -81,6 +82,11 @@ public: // *** Member functions ***
         geoFlags |= m_geoFlags;
         testFunFlags |= m_testFunFlags;
         trialFunFlags |= m_trialFunFlags;
+    }
+
+    virtual void setBndVals(gsMatrix<T> vals)
+    {
+        m_vals = vals;
     }
 
 

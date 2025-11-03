@@ -925,6 +925,404 @@ public: // *** Member functions ***
 
 };
 
+
+// ===================================================================================================================
+// For weak imposition of Dirichlet boundary conditions
+// ===================================================================================================================
+
+template <class T, int MatOrder>
+class gsINSVisitorUUnonlinWeakDirichlet : public gsFlowVisitorBnd<T, MatOrder>
+{
+
+public:
+
+    typedef gsFlowVisitorBnd<T, MatOrder> Base;
+
+public:
+
+    index_t m_numLhsTerms;
+    index_t m_numRhsTerms;
+    gsMatrix<T> m_solution;
+
+protected: // *** Base class members ***
+
+    using Base::m_locMatVec;
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_testFunActives;
+    using Base::m_trialFunActives;
+    using Base::m_terms;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_trialFunData;
+    using Base::m_bcvals;
+    using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorUUnonlinWeakDirichlet() {}
+
+    gsINSVisitorUUnonlinWeakDirichlet(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { }
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_numLhsTerms = 1;
+        m_numRhsTerms = 1;
+        
+        // further, define all lhs terms first and all rhs terms then
+        // LHS
+        m_terms.push_back( new gsINSTerm_CoeffUvalUval_WeakDirichlet<T>() );
+               
+        // RHS
+        m_terms.push_back( new gsINSTerm_RhsUVal_WeakDirichlet<T>() );
+                
+    }
+
+    virtual void defineTestTrialUnknowns()
+    {
+        m_testUnkID = 0; 
+        m_trialUnkID = 0;
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
+    /// @param[in] domIt domain iterator pointing to the current element
+    virtual void evaluate(const gsDomainIterator<T>* domIt);
+
+    virtual void assemble();
+
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+public: // Getter/setters
+
+    /// @brief Set the current solution field.
+    /// @param[in] solution new solution field
+    void setCurrentSolution(gsField<T>& solution);
+
+};
+
+// ===================================================================================================================
+
+template <class T, int MatOrder>
+class gsINSVisitorUUlinWeakDirichlet : public gsFlowVisitorBnd<T, MatOrder>
+{
+
+public:
+
+    typedef gsFlowVisitorBnd<T, MatOrder> Base;
+
+public:
+    
+    index_t m_numLhsTerms;
+    index_t m_numRhsTerms;
+    
+protected: // *** Base class members ***
+
+    using Base::m_locMatVec;
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_testFunActives;
+    using Base::m_trialFunActives;
+    using Base::m_terms;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_trialFunData;
+    using Base::m_bcvals;
+    using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorUUlinWeakDirichlet() {}
+
+    gsINSVisitorUUlinWeakDirichlet(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { }
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_numLhsTerms = 2;
+        m_numRhsTerms = 2;
+        
+        // further, define all lhs terms first and all rhs terms then
+        // LHS
+        m_terms.push_back( new gsINSTerm_CoeffUvalUdiv_WeakDirichlet<T>(m_paramsPtr->getPde().viscosity()) ); 
+        m_terms.push_back( new gsINSTerm_CoeffUvalUvalPenalty_WeakDirichlet<T>(m_paramsPtr->getWeakDirichletPenalties()) );
+               
+        // RHS
+        m_terms.push_back( new gsINSTerm_RhsUdiv_WeakDirichlet<T>(m_paramsPtr->getPde().viscosity()) );
+        m_terms.push_back( new gsINSTerm_RhsUValPenalty_WeakDirichlet<T>(m_paramsPtr->getWeakDirichletPenalties()) );
+                
+    }
+
+    virtual void defineTestTrialUnknowns()
+    {
+        m_testUnkID = 0; 
+        m_trialUnkID = 0;
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
+    /// @param[in] domIt domain iterator pointing to the current element
+    virtual void evaluate(const gsDomainIterator<T>* domIt);
+
+    virtual void assemble();
+
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+};
+
+// ===================================================================================================================
+
+template <class T, int MatOrder>
+class gsINSVisitorPUWeakDirichlet : public gsFlowVisitorBnd<T, MatOrder>
+{
+
+public:
+
+    typedef gsFlowVisitorBnd<T, MatOrder> Base;
+
+public:
+    
+    index_t m_numLhsTerms;
+    index_t m_numRhsTerms;
+    gsMatrix<T> m_solution;
+
+protected: // *** Base class members ***
+
+    using Base::m_locMatVec;
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_testFunActives;
+    using Base::m_trialFunActives;
+    using Base::m_terms;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_trialFunData;
+    using Base::m_bcvals;
+    using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorPUWeakDirichlet() {}
+
+    gsINSVisitorPUWeakDirichlet(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { }
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_numLhsTerms = 1;
+        m_numRhsTerms = 1;
+        
+        // further, define all lhs terms first and all rhs terms then
+        // LHS
+        m_terms.push_back( new gsINSTerm_PvalUval_WeakDirichlet<T>() );
+        
+        // RHS
+        m_terms.push_back( new gsINSTerm_RhsPvalU_WeakDirichlet<T>() );
+        
+    }
+
+    virtual void defineTestTrialUnknowns()
+    {
+        m_testUnkID = 1; 
+        m_trialUnkID = 0;
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
+    /// @param[in] domIt domain iterator pointing to the current element
+    virtual void evaluate(const gsDomainIterator<T>* domIt);
+
+    virtual void assemble();
+
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+};
+
+// ===================================================================================================================
+
+template <class T, int MatOrder>
+class gsINSVisitorUPWeakDirichlet : public gsFlowVisitorBnd<T, MatOrder>
+{
+
+public:
+
+    typedef gsFlowVisitorBnd<T, MatOrder> Base;
+
+public:
+    
+    index_t m_numLhsTerms;
+    index_t m_numRhsTerms;
+    gsMatrix<T> m_solution;
+
+protected: // *** Base class members ***
+
+    using Base::m_locMatVec;
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_testFunActives;
+    using Base::m_trialFunActives;
+    using Base::m_terms;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_trialFunData;
+    using Base::m_bcvals;
+    using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorUPWeakDirichlet() {}
+
+    gsINSVisitorUPWeakDirichlet(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { }
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_numLhsTerms = 0;
+        m_numRhsTerms = 1;
+        
+        // further, define all lhs terms first and all rhs terms then
+        // LHS
+        //m_terms.push_back( new gsINSTerm_UvalPval_WeakDirichlet<T>() );
+        
+        // RHS
+        m_terms.push_back( new gsINSTerm_RhsUvalP_WeakDirichlet<T>() );
+        
+    }
+
+    virtual void defineTestTrialUnknowns()
+    {
+        m_testUnkID = 0; 
+        m_trialUnkID = 1;
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
+    /// @param[in] domIt domain iterator pointing to the current element
+    virtual void evaluate(const gsDomainIterator<T>* domIt);
+
+    virtual void assemble();
+
+    virtual void localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+    virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+};
+
+// ===================================================================================================================
+
+template <class T, int MatOrder>
+class gsINSVisitorPPWeakDirichlet : public gsFlowVisitorBnd<T, MatOrder>
+{
+
+public:
+
+    typedef gsFlowVisitorBnd<T, MatOrder> Base;
+
+public:
+    
+    index_t m_numLhsTerms;
+    index_t m_numRhsTerms;
+    gsMatrix<T> m_solution;
+
+protected: // *** Base class members ***
+
+    using Base::m_locMatVec;
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_testFunActives;
+    using Base::m_trialFunActives;
+    using Base::m_terms;
+    using Base::m_mapData;
+    using Base::m_quWeights;
+    using Base::m_testFunData;
+    using Base::m_trialFunData;
+    using Base::m_bcvals;
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorPPWeakDirichlet() {}
+
+    gsINSVisitorPPWeakDirichlet(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { }
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_numLhsTerms = 1;
+        m_numRhsTerms = 1;
+
+        std::vector<real_t> penalties = m_paramsPtr->getWeakDirichletPenalties();
+        
+        // further, define all lhs terms first and all rhs terms then
+        // LHS
+        m_terms.push_back( new gsINSTerm_PvalPval_WeakDirichlet<T>(penalties) );
+        
+        // RHS
+        m_terms.push_back( new gsINSTerm_RhsPvalP_WeakDirichlet<T>(penalties) );
+        
+    }
+
+    virtual void defineTestTrialUnknowns()
+    {
+        m_testUnkID = 1; 
+        m_trialUnkID = 1;
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
+    /// @param[in] domIt domain iterator pointing to the current element
+    virtual void evaluate(const gsDomainIterator<T>* domIt);
+
+    virtual void assemble();
+
+    virtual void localToGlobal(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
+
+};
+
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

@@ -68,6 +68,7 @@ protected: // *** Class members ***
     bool m_hasPeriodicBC;
     gsMatrix<T> m_periodicTransformMat;
     
+    gsMatrix<T> m_bcvals;
 
 public: // *** Constructor/destructor ***
 
@@ -189,6 +190,12 @@ public: // *** Member functions ***
     /// @param[in] patchID the patch number
     void initOnPatch(index_t patchID);
 
+    /// @brief Initialize the visitor on the given patch.
+    /// @param[in] patchID  the patch number
+    /// @param[in] side     the box side on the given patch
+    virtual void initOnPatchSide(index_t patchID, boxSide side)
+    { GISMO_NO_IMPLEMENTATION } 
+
     /// @brief Set all needed current solution fields.
     /// @param[in] solutions vector of new solution fields
     void setCurrentSolution(std::vector<gsField<T> >& solutions);
@@ -277,69 +284,97 @@ public: // *** Member functions ***
 
 // TODO
 
-// /// @brief              Base class for incompressible flow boundary visitors.
-// /// @tparam T           real number type
-// /// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
-// /// @ingroup IncompressibleFlow
-// template <class T, int MatOrder>
-// class gsFlowVisitorBnd : public gsFlowVisitor<T, MatOrder> 
-// {
+/// @brief              Base class for incompressible flow boundary visitors.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
+class gsFlowVisitorBnd : public gsFlowVisitorVectorValued<T, MatOrder>
+{
 
-// public:
-//     typedef gsFlowVisitor<T, MatOrder> Base;
+public:
+    typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
-// protected: // *** Class members ***
+protected: // *** Base class members ***
 
-//     boxSide m_side;
+    using Base::m_paramsPtr;
+    using Base::m_mapData;
+    using Base::m_testBasisPtr;
+    using Base::m_trialBasisPtr;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_patchID;
+    using Base::m_quRule;
+    using Base::m_quNodes;
+    using Base::m_quWeights;
+    using Base::m_bcvals;
+    using Base::m_terms;
 
-// protected: // *** Base class members ***
+protected: // *** Class members ***
 
-//     //using Base::;
+    boxSide m_side;
+    typename gsBasis<T>::uPtr testBasisPtr;
+    typename gsBasis<T>::uPtr trialBasisPtr;
 
-// protected: // *** Class members ***
+public: // *** Constructor/destructor ***
 
-    
+    gsFlowVisitorBnd() {}
 
-// public: // *** Constructor/destructor ***
+    gsFlowVisitorBnd(typename gsFlowSolverParams<T>::Ptr paramsPtr):
+    Base(paramsPtr)
+    { }
 
-//     gsFlowVisitorBnd() {}
+    /// @brief Copy constructor.
+    /*gsFlowVisitorBnd(const gsFlowVisitorBnd<T, MatOrder>& other):
+    gsFlowVisitorBnd()
+    {
+        // shallow copy of all members
+        *this = other;
 
-//     gsFlowVisitorBnd(typename gsFlowSolverParams<T>::Ptr paramsPtr):
-//     Base(paramsPtr)
-//     { }
-    
-
-// protected: // *** Member functions ***
-
-//      /// @brief Set pointers to test and trial basis.
-//     virtual void defineTestTrialBases()
-//     { 
-//         m_testBasisPtr = &(m_paramsPtr->getBasis(m_testUnkID).piece(m_patchID).boundaryBasis(m_side));
-//         m_trialBasisPtr = &(m_paramsPtr->getBasis(m_trialUnkID).piece(m_patchID).boundaryBasis(m_side));
-//     }
-
-//     /// @brief Setup the quadrature rule.
-//     void setupQuadrature();
+        // deep copy of m_terms
+        m_terms.clear();
+        m_terms.reserve(other.m_terms.size());
+        for (auto* t : other.m_terms)
+            m_terms.push_back(t->clone().release());
+    }
 
 
-// public: // *** Member functions ***
+    ~gsFlowVisitorBnd()
+    {
+        this->deleteTerms();
+    }
+    */
 
-//     /// @brief Initialize the visitor on the given patch.
-//     /// @param[in] patchID the patch number
-//     void initOnPatchSide(index_t patchID, boxSide side)
-//     {
-//         m_side = side;
-//         Base::initOnPatch(patchID);
-//     }
+protected: // *** Member functions ***
 
-//     /// @brief Evaluate basis data on the support of a given test function (used for row-by-row assembly).
-//     /// @param[in] testFunID the local test function index on the current patch
-//     void evaluate(index_t testFunID);
+    /// @brief Setup the quadrature rule.
+    void setupQuadrature();
 
-//     /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
-//     /// @param[in] domIt domain iterator pointing to the current element
-//     void evaluate(const gsDomainIterator<T>* domIt);
-// };
+    /// @brief Evaluate required data for the given basis.
+    /// @param[in]  basisFlags      evaluation flags
+    /// @param[in]  basisPtr        the given basis
+    /// @param[out] activesUnique   vector of indices of basis functions that are nonzero in any of quNodes
+    /// @param[out] basisData       resulting data
+    //virtual void evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, gsMatrix<index_t>& activesUnique, std::vector< gsMatrix<T> >& basisData);
+
+
+public: // *** Member functions ***
+
+    /// @brief Initialize the visitor on the given patch.
+    /// @param[in] patchID  the patch number
+    /// @param[in] side     the box side on the given patch
+    void initOnPatchSide(index_t patchID, boxSide side)
+    {
+        m_side = side;
+        m_mapData.side = side;
+        Base::initOnPatch(patchID);
+    }
+
+    /// @brief Evaluate basis data on the current element (used for element-by-element assembly).
+    /// @param[in] domIt domain iterator pointing to the current element
+    virtual void evaluate(const gsDomainIterator<T>* domIt);
+
+};
 
 } // namespace gismo
 

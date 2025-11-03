@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     // ========================================= Settings ========================================= 
 
     // solvers
-    bool steady = false;
+    bool steady = true;
     bool unsteady = false;
 
     // domain definition
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     int wallRefine = 0;
 
     // problem parameters
-    real_t viscosity = 0.01;
+    real_t viscosity = 0.1;
     real_t inVelMag = 1;
     real_t inVelAngle = 20; // in degrees
     real_t omega = 0; // angular velocity for rotation
@@ -50,10 +50,13 @@ int main(int argc, char *argv[])
     real_t linTol = 1e-6;
     std::string precond = "MSIMPLER_FdiagEqual";
     bool stokesInit = false; // start unsteady problem from Stokes solution
+    bool weakDir = false;
+    std::vector<real_t> weakDir_penalties = {100.0, 10.0, 100.0};               // 2D
+    std::vector<real_t> weakDir_penalties = {100000.0, 10000.0, 100000.0};      // 3D Francis
     
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
-    bool plot = false;
+    bool plot = true;
     int plotPts = 50000;
     bool plotMesh = false;
     std::string outPath = "";
@@ -85,6 +88,7 @@ int main(int argc, char *argv[])
     cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
+    cmd.addSwitch("weakDir", "Weak imposition of Dirichlet BCs", weakDir);
 
     cmd.addString("", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
@@ -118,6 +122,7 @@ int main(int argc, char *argv[])
     //gsFunctionExpr<> Uwall("0", "0", "0", 3);
     gsFunctionExpr<> Ublade(rotX, rotY, "0", 3);
     gsFunctionExpr<> f("0", "0", "0", 3);
+    gsFunctionExpr<> Pout = gsFunctionExpr<>("0", 3);
 
     // transformation matrix for periodic sides
     real_t phi = -(2. / nBlades)*EIGEN_PI;
@@ -144,13 +149,33 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(1, boundary::back, condition_type::dirichlet, Ublade, 0);
     bcInfo.addCondition(2, boundary::front, condition_type::dirichlet, Ublade, 0);
     bcInfo.addCondition(2, boundary::back, condition_type::dirichlet, Ublade, 0);
-    bcInfo.addPeriodic(0, boundary::west, 0, boundary::east, 3);
-    bcInfo.addPeriodic(2, boundary::west, 2, boundary::east, 3);
-    bcInfo.setTransformMatrix(transformMatrix);
-    // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, Uwall, 0);
-    // bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, Uwall, 0);
-    // bcInfo.addCondition(2, boundary::west, condition_type::dirichlet, Uwall, 0);
-    // bcInfo.addCondition(2, boundary::east, condition_type::dirichlet, Uwall, 0);
+    bcInfo.addCondition(2, boundary::north, condition_type::dirichlet, Pout, 1);
+    //bcInfo.addPeriodic(0, boundary::west, 0, boundary::east, 3);
+    //bcInfo.addPeriodic(2, boundary::west, 2, boundary::east, 3);
+    //bcInfo.setTransformMatrix(transformMatrix);
+    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, Ublade, 0);
+    bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, Ublade, 0);
+    bcInfo.addCondition(2, boundary::west, condition_type::dirichlet, Ublade, 0);
+    bcInfo.addCondition(2, boundary::east, condition_type::dirichlet, Ublade, 0);
+
+    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall;
+    bndIn.clear();
+    bndOut.clear();
+    bndWall.clear();
+    bndIn.push_back(std::make_pair(0, boundary::south));
+    bndWall.push_back(std::make_pair(0, boundary::front));
+    bndWall.push_back(std::make_pair(0, boundary::back));
+    bndWall.push_back(std::make_pair(0, boundary::west));
+    bndWall.push_back(std::make_pair(0, boundary::east));
+    bndWall.push_back(std::make_pair(1, boundary::west));
+    bndWall.push_back(std::make_pair(1, boundary::east));
+    bndWall.push_back(std::make_pair(1, boundary::front));
+    bndWall.push_back(std::make_pair(1, boundary::back));
+    bndWall.push_back(std::make_pair(2, boundary::front));
+    bndWall.push_back(std::make_pair(2, boundary::back));
+    bndWall.push_back(std::make_pair(2, boundary::west));
+    bndWall.push_back(std::make_pair(2, boundary::east));
+    bndOut.push_back(std::make_pair(2, boundary::north));
 
     logger << "Solving Navier-Stokes problem in the Francis turbine runner wheel.\n";
     logger << "domain: " << mp;
@@ -184,11 +209,16 @@ int main(int argc, char *argv[])
 
     gsNavStokesPde<real_t> NSpde(mp, bcInfo, &f, viscosity);
     gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger);
-    params.options().setString("lin.solver", "iter");
+    //params.options().setString("lin.solver", "iter");
+    params.options().setString("lin.solver", "direct");
     params.options().setInt("lin.maxIt", linIt);
     params.options().setReal("lin.tol", linTol);
     params.options().setString("lin.precType", precond);
     params.options().setReal("omega", omega);
+
+    params.setBndParts(bndIn, bndOut, bndWall);
+    params.options().setSwitch("weakDirichlet", weakDir);
+    params.setWeakDirichletPenalties(weakDir_penalties);
 
     gsOptionList solveOpt;
     solveOpt.addInt("maxIt", "", maxIt);

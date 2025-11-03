@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     // ========================================= Settings ========================================= 
 
     // lin. solvers
-    bool direct = false;
+    bool direct = true;
     bool iter = false;
 
     // domain definition

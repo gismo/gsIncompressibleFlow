@@ -30,6 +30,9 @@ void gsINSSolver<T, MatOrder>::solveStokes()
         this->initIteration(stokesMat);
 
     this->getLinSolver()->applySolver(stokesMat, stokesRhs, m_solution);
+
+    gsField<T> uSol = this->constructSolution(0);
+    gsWriteParaview<T>(uSol, "Stokes_velocity", 20000);
 }
 
 // ===================================================================================================================

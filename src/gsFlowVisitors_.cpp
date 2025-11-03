@@ -7,8 +7,10 @@ namespace gismo
 {
     CLASS_TEMPLATE_INST gsFlowVisitor<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsFlowVisitorVectorValued<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsFlowVisitorBnd<real_t, RowMajor>;
 
     CLASS_TEMPLATE_INST gsFlowVisitor<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsFlowVisitorVectorValued<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsFlowVisitorBnd<real_t, ColMajor>;
 
 } // namespace gismo

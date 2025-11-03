@@ -55,6 +55,8 @@ protected: // *** Class members ***
     bool m_isBndSet;
     std::vector<std::pair<int, boxSide> > m_bndIn, m_bndOut, m_bndWall;
 
+    std::vector<real_t> m_weakDirichlet_penalties = {100, 10, 100};
+
     gsField<T> m_USolField;
     gsField<T> m_KSolField;
     gsField<T> m_OSolField;
@@ -74,7 +76,8 @@ public: // *** Constructor/destructor ***
         : m_pdePtr(memory::make_shared_not_owned(&pde)), m_bases(bases)
     {
         m_assembOpt.dirStrategy = dirichlet::elimination;
-        m_assembOpt.dirValues = dirichlet::interpolation;
+        //m_assembOpt.dirValues = dirichlet::interpolation;
+        m_assembOpt.dirValues = dirichlet::l2Projection;
         m_assembOpt.intStrategy = iFace::glue;
 
         m_opt = gsFlowSolverParams<T>::defaultOptions();
@@ -138,6 +141,7 @@ public: // *** Static functions ***
         opt.addString("assemb.loop", "EbE = element by element, RbR = row by row", "EbE");
         //opt.addSwitch("assemb.sumFact", "Use sum factorization for integration", false);
         opt.addSwitch("fillGlobalSyst", "Fill the global linear systems from blocks", true);
+        opt.addSwitch("weakDirichlet", "Apply weak imposition of Dirichlet BCs", false);
         
         // problem settings
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
@@ -186,9 +190,17 @@ public: // *** Member functions ***
     void createDofMappers(std::vector<gsDofMapper>& mappers, bool finalize = true)
     {
         mappers.resize(m_bases.size());
+
+        if (m_opt.getSwitch("weakDirichlet"))
+        {
+            //gsInfo << "Setting Dirichlet boundary conditions to weak imposition ...\n";
+            m_assembOpt.dirStrategy = dirichlet::nitsche;
+        }
    
         for (size_t i = 0; i < m_bases.size(); i++)
             m_bases[i].getMapper(m_assembOpt.dirStrategy, m_assembOpt.intStrategy, m_BC, mappers[i], i, finalize);
+
+        updatePeriodicHelper();
     }
 
     /// @brief Finalize all stored DOF mappers.
@@ -359,6 +371,16 @@ public: // *** Getters/setters ***
     {
         GISMO_ASSERT(m_isBndSet, "Boundary parts are not set in gsFlowSolverParams, call setBndParts(...).");
         return m_bndWall;
+    }
+
+    void setWeakDirichletPenalties(std::vector<real_t> vec)
+    {
+        m_weakDirichlet_penalties = vec;
+    }
+
+    std::vector<real_t> getWeakDirichletPenalties()
+    {
+        return m_weakDirichlet_penalties;
     }
 
     /// @brief Returns true if the angular velocity omega is non-zero.

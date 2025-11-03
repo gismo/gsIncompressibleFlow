@@ -555,6 +555,33 @@ void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide>
 }
 
 
+/// @brief Define boundary conditions for the corresponding boundary parts.
+/// @tparam T            real number type
+/// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
+/// @param[in]  bndOut   reference to a container of patch sides corresponding to outflow boundaries
+/// @param[in]  Pout     the pressure at outflow as gsFunctionExpr
+/// @param[in]  unk      specifies which unknown variable the boundary condition refers to
+template<class T>
+void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndOut, gsFunctionExpr<T> Pout, short_t unk)
+{
+    for (size_t i = 0; i < bndOut.size(); i++)
+        bcInfo.addCondition(bndOut[i].first, bndOut[i].second, condition_type::dirichlet, Pout, unk);
+}
+
+template <class T>
+void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide> >& bndIn, std::vector<std::pair<int, boxSide> >& bndWall, std::vector<std::pair<int, boxSide> >& bndOut, gsFunctionExpr<T> Uin, gsFunctionExpr<T> Uwall, gsFunctionExpr<T> Pout)
+{
+    for (size_t i = 0; i < bndIn.size(); i++)
+        bcInfo.addCondition(bndIn[i].first, bndIn[i].second, condition_type::dirichlet, Uin, 0);
+
+    for (size_t i = 0; i < bndWall.size(); i++)
+        bcInfo.addCondition(bndWall[i].first, bndWall[i].second, condition_type::dirichlet, Uwall, 0);
+    
+    for (size_t i = 0; i < bndOut.size(); i++)
+        bcInfo.addCondition(bndOut[i].first, bndOut[i].second, condition_type::dirichlet, Pout, 1);
+}
+
+
 /// @brief Define boundary conditions for the backward-facing step problem.
 /// @tparam T            real number type
 /// @param[out] bcInfo   reference to the boundary conditions as gsBoundaryConditions 
@@ -564,7 +591,7 @@ void addBCs(gsBoundaryConditions<T>& bcInfo, std::vector<std::pair<int, boxSide>
 template <class T>
 void defineBCs_step(gsBoundaryConditions<T>& bcInfo, int dim, bool periodic = false, std::string inVel = "default")
 {
-    gsFunctionExpr<T> Uin, Uwall;
+    gsFunctionExpr<T> Uin, Uwall, Pout;
 
     switch (dim)
     {
@@ -574,6 +601,7 @@ void defineBCs_step(gsBoundaryConditions<T>& bcInfo, int dim, bool periodic = fa
             inVel = "(-4*(y-1.5)^2 + 1)";
         Uin = gsFunctionExpr<T>(inVel, "0", 2);
         Uwall = gsFunctionExpr<T>("0", "0", 2);
+        Pout = gsFunctionExpr<T>("0", 2);
         break;
     }
 
@@ -586,6 +614,7 @@ void defineBCs_step(gsBoundaryConditions<T>& bcInfo, int dim, bool periodic = fa
 
             Uin = gsFunctionExpr<T>(inVel, "0", "0", 3);
             Uwall = gsFunctionExpr<T>("0", "0", "0", 3);
+            Pout = gsFunctionExpr<T>("0", 3);
         }
         else
         {
@@ -594,6 +623,7 @@ void defineBCs_step(gsBoundaryConditions<T>& bcInfo, int dim, bool periodic = fa
 
             Uin = gsFunctionExpr<T>(inVel, "0", "0", 3);
             Uwall = gsFunctionExpr<T>("0", "0", "0", 3);
+            Pout = gsFunctionExpr<T>("0", 3);
         }
         break;
     }
@@ -605,7 +635,8 @@ void defineBCs_step(gsBoundaryConditions<T>& bcInfo, int dim, bool periodic = fa
 
     std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall;
     defineBndParts_step(dim, bndIn, bndOut, bndWall, periodic);
-    addBCs(bcInfo, bndIn, bndWall, Uin, Uwall);
+    //addBCs(bcInfo, bndIn, bndWall, Uin, Uwall);
+    addBCs(bcInfo, bndIn, bndWall, bndOut, Uin, Uwall, Pout);
 }
 
 
@@ -680,10 +711,12 @@ void defineBCs_profile2D(gsBoundaryConditions<T>& bcInfo, T inVelX, T inVelY)
 {
     gsFunctionExpr<T> Uin = gsFunctionExpr<T>(util::to_string(inVelX), util::to_string(inVelY), 2);
     gsFunctionExpr<T> Uwall = gsFunctionExpr<T>("0", "0", 2);
+    gsFunctionExpr<T> Pout = gsFunctionExpr<T>("0", 2);
 
     std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall;
     defineBndParts_profile2D(bndIn, bndOut, bndWall);
-    addBCs(bcInfo, bndIn, bndWall, Uin, Uwall);
+    //addBCs(bcInfo, bndIn, bndWall, Uin, Uwall);
+    addBCs(bcInfo, bndIn, bndWall, bndOut, Uin, Uwall, Pout);
 }
 
 

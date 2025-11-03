@@ -22,6 +22,11 @@ namespace gismo
     CLASS_TEMPLATE_INST gsINSVisitorPPconvection<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorRhsU<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorRhsP<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUUnonlinWeakDirichlet<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUUlinWeakDirichlet<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorPUWeakDirichlet<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUPWeakDirichlet<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorPPWeakDirichlet<real_t, RowMajor>;
 
     CLASS_TEMPLATE_INST gsINSVisitorUU<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorUUlin<real_t, ColMajor>;
@@ -40,6 +45,11 @@ namespace gismo
     CLASS_TEMPLATE_INST gsINSVisitorPPconvection<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorRhsU<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsINSVisitorRhsP<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUUnonlinWeakDirichlet<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUUlinWeakDirichlet<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorPUWeakDirichlet<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorUPWeakDirichlet<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsINSVisitorPPWeakDirichlet<real_t, ColMajor>;
 
 
 } // namespace gismo
