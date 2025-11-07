@@ -88,7 +88,7 @@ public:
         if (mapData.points.cols()==0)
             return;
 
-        // 若派生数据为空，直接返回
+        // If derived data is empty, return directly
         if (trialFunData.size() < 2 || trialFunData[1].size()==0)
             return;
 
