@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
             break;
             
         case 4:
-            // 对flapping beam进行适当的细化
+            // Apply appropriate refinement for flapping beam
             for (int r = 0; r < numRefine; ++r)
                 basis.uniformRefine();
             break;
