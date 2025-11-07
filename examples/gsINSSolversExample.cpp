@@ -364,7 +364,7 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, int geo)
                 geoStr = "flapping_beam" + dimStr;
                 break;
             default:
-                // 如果没有匹配的几何体ID，使用一个通用名称
+                // If no matching geometry ID, use a generic name
                 geoStr = "geo" + util::to_string(opt.getInt("geo")) + "_" + dimStr;
                 break;
         }
