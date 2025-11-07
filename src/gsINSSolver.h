@@ -254,11 +254,11 @@ public: // *** Getters/setters ***
         const index_t tarDim = this->m_paramsPtr->getPde().domain().geoDim();
         const index_t pShift = tarDim * fullUdofs;
         
-        if (unk == 0) // 速度
+        if (unk == 0) // velocity
         {
             return this->m_solution.topRows(pShift);
         }
-        else // 压力
+        else // pressure
         {
             return this->m_solution.bottomRows(this->m_solution.rows() - pShift);
         }
