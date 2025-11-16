@@ -231,4 +231,179 @@ void gsTMVisitorNonlinearSST<T, MatOrder>::localToGlobal(const std::vector<gsMat
     }
 }
 
+
+// ================================================================================================================
+// For T-CSD stabilization
+//
+
+template <class T, int MatOrder>
+void gsTMVisitorSSTTCSDStabilization_time<T, MatOrder>::initMembers()
+{
+    m_viscosity = m_paramsPtr->getPde().viscosity();
+}
+
+template <class T, int MatOrder>
+void gsTMVisitorSSTTCSDStabilization_time<T, MatOrder>::evaluate(index_t testFunID)
+{
+    Base::evaluate(testFunID);
+
+    m_TMModelPtr->updateModel(m_quNodes, m_patchID);
+    
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
+    gsMatrix<T> OSolVals = m_TMModelPtr->getOSolVals();
+    gsVector<T> F1 = m_TMModelPtr->getF1Vals();
+    real_t betaStar = m_TMModelPtr->get_betaStar();
+    real_t sigmaK1 = m_TMModelPtr->get_sigmaK1();
+    real_t sigmaK2 = m_TMModelPtr->get_sigmaK2();
+    real_t sigmaO1 = m_TMModelPtr->get_sigmaO1();
+    real_t sigmaO2 = m_TMModelPtr->get_sigmaO2();
+    real_t beta1 = m_TMModelPtr->get_beta1();
+    real_t beta2 = m_TMModelPtr->get_beta2();
+    real_t eps = m_TMModelPtr->get_eps();
+
+    const index_t nQuPoints = m_quNodes.cols();
+    gsMatrix<T> physPoints = m_mapData.values[0];
+    real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
+    
+    gsMatrix<T> velocities = m_solution.value(m_quNodes);
+    m_tauS.resize(1, nQuPoints);
+    for (index_t i = 0; i < nQuPoints; i++)
+        if (m_unknown == 2)
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaK1 + (1 - F1(i)) * sigmaK2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max(betaStar * OSolVals(0, i), eps));
+        else if (m_unknown == 3)
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaO1 + (1 - F1(i)) * sigmaO2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max((F1(i) * beta1 + (1 - F1(i)) * beta2) * OSolVals(0, i), eps));
+        else
+            gsWarn << "Wrong unknown identification!\n";
+
+    gsFlowTerm_TCSDStabilization_time<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_time<T>* > (m_terms.back());
+    if (termPtr)
+        termPtr->setTauS(m_tauS);
+
+}
+
+
+template <class T, int MatOrder>
+void gsTMVisitorSSTTCSDStabilization_time<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    Base::evaluate(domIt);
+
+    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
+
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
+    gsMatrix<T> OSolVals = m_TMModelPtr->getOSolVals();
+    gsVector<T> F1 = m_TMModelPtr->getF1Vals();
+    real_t betaStar = m_TMModelPtr->get_betaStar();
+    real_t sigmaK1 = m_TMModelPtr->get_sigmaK1();
+    real_t sigmaK2 = m_TMModelPtr->get_sigmaK2();
+    real_t sigmaO1 = m_TMModelPtr->get_sigmaO1();
+    real_t sigmaO2 = m_TMModelPtr->get_sigmaO2();
+    real_t beta1 = m_TMModelPtr->get_beta1();
+    real_t beta2 = m_TMModelPtr->get_beta2();
+    real_t eps = m_TMModelPtr->get_eps();
+
+    const index_t nQuPoints = m_quNodes.cols();
+    gsMatrix<T> physPoints = m_mapData.values[0];
+    real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
+    
+    gsMatrix<T> velocities = m_solution.value(m_quNodes);
+    m_tauS.resize(1, nQuPoints);
+    for (index_t i = 0; i < nQuPoints; i++)
+        if (m_unknown == 2)
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaK1 + (1 - F1(i)) * sigmaK2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max(betaStar * OSolVals(0, i), eps));
+        else if (m_unknown == 3)
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaO1 + (1 - F1(i)) * sigmaO2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max((F1(i) * beta1 + (1 - F1(i)) * beta2) * OSolVals(0, i), eps));
+        else
+            gsWarn << "Wrong unknown identification!\n";
+
+    gsFlowTerm_TCSDStabilization_time<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_time<T>* > (m_terms.back());
+    if (termPtr)
+        termPtr->setTauS(m_tauS);
+
+}
+
+template <class T, int MatOrder>
+void gsTMVisitorSSTTCSDStabilization_advection<T, MatOrder>::initMembers()
+{
+    m_viscosity = m_paramsPtr->getPde().viscosity();
+}
+
+template <class T, int MatOrder>
+void gsTMVisitorSSTTCSDStabilization_advection<T, MatOrder>::evaluate(index_t testFunID)
+{
+    Base::evaluate(testFunID);
+
+    m_TMModelPtr->updateModel(m_quNodes, m_patchID);
+    
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
+    gsMatrix<T> OSolVals = m_TMModelPtr->getOSolVals();
+    gsVector<T> F1 = m_TMModelPtr->getF1Vals();
+    real_t betaStar = m_TMModelPtr->get_betaStar();
+    real_t sigmaK1 = m_TMModelPtr->get_sigmaK1();
+    real_t sigmaK2 = m_TMModelPtr->get_sigmaK2();
+    real_t sigmaO1 = m_TMModelPtr->get_sigmaO1();
+    real_t sigmaO2 = m_TMModelPtr->get_sigmaO2();
+    real_t beta1 = m_TMModelPtr->get_beta1();
+    real_t beta2 = m_TMModelPtr->get_beta2();
+    real_t eps = m_TMModelPtr->get_eps();
+
+    const index_t nQuPoints = m_quNodes.cols();
+    gsMatrix<T> physPoints = m_mapData.values[0];
+    real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
+    
+    gsMatrix<T> velocities = m_solution.value(m_quNodes);
+    m_tauS.resize(1, nQuPoints);
+    for (index_t i = 0; i < nQuPoints; i++)
+        if (m_unknown == 2)
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaK1 + (1 - F1(i)) * sigmaK2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max(betaStar * OSolVals(0, i), eps));
+        else if (m_unknown == 3)
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaO1 + (1 - F1(i)) * sigmaO2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max((F1(i) * beta1 + (1 - F1(i)) * beta2) * OSolVals(0, i), eps));
+        else
+            gsWarn << "Wrong unknown identification!\n";
+
+    gsFlowTerm_TCSDStabilization_advection<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_advection<T>* > (m_terms.back());
+    if (termPtr)
+        termPtr->setTauS(m_tauS);
+
+}
+
+
+template <class T, int MatOrder>
+void gsTMVisitorSSTTCSDStabilization_advection<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    Base::evaluate(domIt);
+
+    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
+
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
+    gsMatrix<T> OSolVals = m_TMModelPtr->getOSolVals();
+    gsVector<T> F1 = m_TMModelPtr->getF1Vals();
+    real_t betaStar = m_TMModelPtr->get_betaStar();
+    real_t sigmaK1 = m_TMModelPtr->get_sigmaK1();
+    real_t sigmaK2 = m_TMModelPtr->get_sigmaK2();
+    real_t sigmaO1 = m_TMModelPtr->get_sigmaO1();
+    real_t sigmaO2 = m_TMModelPtr->get_sigmaO2();
+    real_t beta1 = m_TMModelPtr->get_beta1();
+    real_t beta2 = m_TMModelPtr->get_beta2();
+    real_t eps = m_TMModelPtr->get_eps();
+
+    const index_t nQuPoints = m_quNodes.cols();
+    gsMatrix<T> physPoints = m_mapData.values[0];
+    real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
+    
+    gsMatrix<T> velocities = m_solution.value(m_quNodes);
+    m_tauS.resize(1, nQuPoints);
+    for (index_t i = 0; i < nQuPoints; i++)
+        if (m_unknown == 2)
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaK1 + (1 - F1(i)) * sigmaK2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max(betaStar * OSolVals(0, i), eps));
+        else if (m_unknown == 3)
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaO1 + (1 - F1(i)) * sigmaO2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max((F1(i) * beta1 + (1 - F1(i)) * beta2) * OSolVals(0, i), eps));
+        else
+            gsWarn << "Wrong unknown identification!\n";
+
+    gsFlowTerm_TCSDStabilization_advection<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_advection<T>* > (m_terms.back());
+    if (termPtr)
+        termPtr->setTauS(m_tauS);
+
+}
+
 }

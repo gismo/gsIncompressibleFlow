@@ -24,6 +24,11 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers()
     m_visitorRANSsymgrad = gsRANSVisitorUUSymmetricGradient<T, MatOrder>(m_paramsPtr);
     m_visitorRANSsymgrad.initialize();
 
+    m_visitorRANS_TCSD_time = gsRANSVisitorTCSDStabilization_time<T, MatOrder>(m_paramsPtr);
+    m_visitorRANS_TCSD_time.initialize();
+    m_visitorRANS_TCSD_advection = gsRANSVisitorTCSDStabilization_advection<T, MatOrder>(m_paramsPtr);
+    m_visitorRANS_TCSD_advection.initialize();
+
 }
 
 template<class T, int MatOrder>
@@ -53,6 +58,14 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::fillSystem()
 
     this->fillGlobalMat_UU(m_matrix, m_matRANSsymgrad);
     m_rhs.topRows(m_pshift) += m_rhsRANS;
+
+    if (m_paramsPtr->options().getSwitch("TCSD_RANS"))
+    {
+        this->fillGlobalMat_UU(m_matrix, m_matRANS_TCSD_time);
+        m_rhs.topRows(m_pshift) += m_rhsRANS_TCSD_time;
+        this->fillGlobalMat_UU(m_matrix, m_matRANS_TCSD_advection);
+        m_rhs.topRows(m_pshift) += m_rhsRANS_TCSD_advection;
+    }
 }
 
 template<class T, int MatOrder>
@@ -70,6 +83,28 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
         m_matRANSsymgrad.reserve(gsVector<index_t>::Constant(m_matRANSsymgrad.outerSize(), m_tarDim * m_nnzPerOuterU));
         m_rhsRANS.setZero(m_pshift, 1);
         this->assembleBlock(m_visitorRANSsymgrad, 0, m_matRANSsymgrad, m_rhsRANS);
+
+        if (m_paramsPtr->options().getSwitch("TCSD_RANS"))
+        {
+            m_visitorRANS_TCSD_time.setTurbulenceSolver(m_TMsolverPtr);
+            gsField<T> velocityField = this->constructSolution(solVector, 0);
+            m_visitorRANS_TCSD_time.setCurrentSolution(velocityField);
+            m_visitorRANS_TCSD_time.setRANSsolution(velocityField);
+            m_matRANS_TCSD_time.resize(m_pshift, m_pshift);
+            m_matRANS_TCSD_time.reserve(gsVector<index_t>::Constant(m_matRANS_TCSD_time.outerSize(), m_tarDim * m_nnzPerOuterU));
+            m_rhsRANS_TCSD_time.setZero(m_pshift, 1);
+            this->assembleBlock(m_visitorRANS_TCSD_time, 0, m_matRANS_TCSD_time, m_rhsRANS_TCSD_time);
+            m_rhsRANS_TCSD_time = m_matRANS_TCSD_time * m_solution.topRows(m_pshift);
+
+            m_visitorRANS_TCSD_advection.setTurbulenceSolver(m_TMsolverPtr);
+            m_visitorRANS_TCSD_advection.setCurrentSolution(velocityField);
+            m_visitorRANS_TCSD_advection.setRANSsolution(velocityField);
+            m_matRANS_TCSD_advection.resize(m_pshift, m_pshift);
+            m_matRANS_TCSD_advection.reserve(gsVector<index_t>::Constant(m_matRANS_TCSD_advection.outerSize(), m_tarDim * m_nnzPerOuterU));
+            m_rhsRANS_TCSD_advection.setZero(m_pshift, 1);
+            this->assembleBlock(m_visitorRANS_TCSD_advection, 0, m_matRANS_TCSD_advection, m_rhsRANS_TCSD_advection);
+
+        }
     }
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))

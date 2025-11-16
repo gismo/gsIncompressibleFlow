@@ -35,8 +35,12 @@ public:
 protected: // *** Class members ***
 
     gsRANSVisitorUUSymmetricGradient<T, MatOrder> m_visitorRANSsymgrad;
-    gsSparseMatrix<T, MatOrder> m_matRANSsymgrad;
-    gsMatrix<T> m_rhsRANS;
+    gsRANSVisitorTCSDStabilization_time<T, MatOrder> m_visitorRANS_TCSD_time;
+    gsRANSVisitorTCSDStabilization_advection<T, MatOrder> m_visitorRANS_TCSD_advection;
+
+    gsSparseMatrix<T, MatOrder> m_matRANSsymgrad, m_matRANS_TCSD_time, m_matRANS_TCSD_advection;
+    gsMatrix<T> m_rhsRANS, m_rhsRANS_TCSD_time, m_rhsRANS_TCSD_advection;
+
     typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
     bool m_bComputeTMfirst;
     gsField<T> m_oldTimeFieldU, m_currentFieldU;

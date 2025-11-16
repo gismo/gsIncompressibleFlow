@@ -8,9 +8,13 @@ namespace gismo
     CLASS_TEMPLATE_INST gsTMVisitorLinearSST<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsTMVisitorTimeIterationSST<real_t, RowMajor>;
     CLASS_TEMPLATE_INST gsTMVisitorNonlinearSST<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsTMVisitorSSTTCSDStabilization_time<real_t, RowMajor>;
+    CLASS_TEMPLATE_INST gsTMVisitorSSTTCSDStabilization_advection<real_t, RowMajor>;
 
     CLASS_TEMPLATE_INST gsTMVisitorLinearSST<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsTMVisitorTimeIterationSST<real_t, ColMajor>;
     CLASS_TEMPLATE_INST gsTMVisitorNonlinearSST<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsTMVisitorSSTTCSDStabilization_time<real_t, ColMajor>;
+    CLASS_TEMPLATE_INST gsTMVisitorSSTTCSDStabilization_advection<real_t, ColMajor>;
     
 } // namespace gismo

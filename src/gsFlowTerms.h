@@ -286,6 +286,96 @@ protected: // *** Member functions ***
 };
 
 // ===================================================================================================================
+
+/// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
+/// @tparam T   real number type
+/// @ingroup IncompressibleFlow
+template <class T>
+class gsFlowTerm_TCSDStabilization_time : public gsFlowTermNonlin<T>
+{
+
+public:
+    typedef gsFlowTermNonlin<T> Base;
+
+protected: // *** Base class members ***
+    
+    using Base::m_currentSolU;
+    using Base::m_isCurrentSolSet;
+    using Base::m_solUVals;
+
+protected: // *** Class members ***
+
+    gsMatrix<T> m_tauS;
+
+public: // *** Constructor/destructor ***
+
+    gsFlowTerm_TCSDStabilization_time()
+    { 
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
+        this->m_testFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_VALUE;
+    }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_TCSDStabilization_time)
+
+
+protected: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat);
+
+public: // *** Getters/setters ***
+
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
+
+    gsMatrix<T> getTauS() { return m_tauS; }
+};
+
+// ===================================================================================================================
+
+/// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
+/// @tparam T   real number type
+/// @ingroup IncompressibleFlow
+template <class T>
+class gsFlowTerm_TCSDStabilization_advection : public gsFlowTermNonlin<T>
+{
+
+public:
+    typedef gsFlowTermNonlin<T> Base;    
+
+protected: // *** Base class members ***
+    
+    using Base::m_currentSolU;
+    using Base::m_isCurrentSolSet;
+    using Base::m_solUVals;
+
+protected: // *** Class members ***
+
+    gsMatrix<T> m_tauS;
+
+public: // *** Constructor/destructor ***
+
+    gsFlowTerm_TCSDStabilization_advection()
+    { 
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
+        this->m_testFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
+    }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_TCSDStabilization_advection)
+
+
+protected: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat);
+
+public: // *** Getters/setters ***
+
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
+
+    gsMatrix<T> getTauS() { return m_tauS; }
+};
+
+// ===================================================================================================================
 // ===================================================================================================================
 
 /// @brief      A class for integrals of the form: test function value * rhs function value.

@@ -242,7 +242,7 @@ public: // *** Class functions ***
     void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId);
     
         
-public: // *** Getters/setters ***
+//public: // *** Getters/setters ***
     
     
 };

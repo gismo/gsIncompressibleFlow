@@ -143,6 +143,8 @@ public: // *** Static functions ***
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
         opt.addReal("timeStep", "Time step size", 0.1);
         opt.addReal("omega", "Angular velocity (for rotating frame of reference)", 0.0);
+        opt.addSwitch("TCSD_RANS", "Use T-CSD stabilization of numerical solution for RANS", false);
+        opt.addSwitch("TCSD_TM", "Use T-CSD stabilization of numerical solution for TM", false);
         
         // geometry jacobian evaluation
         opt.addInt("jac.npts", "Number of points along a patch side (in each direction) for geometry jacobian check", 100);
