@@ -115,7 +115,6 @@ int getMaxNnzPerOuter(const gsSparseMatrix<T, MatOrder>& mat)
 }
 
 
-
 /// @brief Fill a diagonal approximation of an inverse matrix.
 /// @tparam T           real number type
 /// @tparam MatOrder    matrix storage order (RowMajor/ColMajor)
@@ -1313,6 +1312,128 @@ gsMultiPatch<T> linearizeGeometry(gsMultiPatch<T> mp, int uRefine = 0)
     mp_new.addAutoBoundaries();
 
     return mp_new;
+}
+
+
+inline gsVector<index_t> tensorIndex(const index_t gl, gsVector<index_t> sizes)
+{
+    index_t dim = sizes.rows();
+    gsVector<index_t> result(dim);
+
+    index_t ii = gl;
+    for (short_t i = 0; i < dim; ++i )
+    {
+        result(i)= ii % sizes(i);
+        ii -= result(i);
+        ii /= sizes(i);
+    }
+    return result;
+}
+
+// implemented here because it is implemented only for gsTensorBsplineBasis in gismo
+template<int d, class T>
+gsMatrix<index_t> elementSupport(const gsTensorNurbsBasis<d, T>& basis, const index_t i)
+{
+    gsMatrix<index_t> result(d, 2);
+    gsMatrix<index_t> tmp_vec;
+
+    gsVector<index_t> sizes(d);
+    for (short_t dim = 0; dim < d; ++dim)
+        sizes(dim) = basis.size(dim);
+
+    const gsVector<index_t> ti = tensorIndex(i, sizes);
+
+    for (short_t dim = 0; dim < d; ++dim)
+    {
+        const gsKnotVector<T> & kv = basis.knots(dim);
+        kv.supportIndex_into(ti[dim], tmp_vec);
+        result.row(dim).noalias() = tmp_vec.cwiseMax(0).cwiseMin(kv.numElements());
+    }
+
+    return result;
+}
+
+// implemented here to be able to call the same function for B-spline and NURBS basis
+template<int d, class T>
+gsMatrix<index_t> elementSupport(const gsTensorBSplineBasis<d, T>& basis, const index_t i)
+{
+    gsMatrix<index_t> result;
+    result = basis.elementSupport(i);
+    return result;
+}
+
+template<int d, class T>
+std::vector<std::vector<T> > getKnotBreaks(const gsTensorBSplineBasis<d, T>& basis)
+{
+    std::vector<std::vector<T> > result(d);
+
+    for (index_t dir = 0; dir < d; dir++)
+        result[dir] = (basis.knots(dir)).breaks();
+
+    return result;
+}
+
+template<int d, class T>
+std::vector<std::vector<T> > getKnotBreaks(const gsTensorNurbsBasis<d, T>& basis)
+{
+    std::vector<std::vector<T> > result(d);
+
+    for (index_t dir = 0; dir < d; dir++)
+        result[dir] = (basis.knots(dir)).breaks();
+
+    return result;
+}
+
+template<class T>
+void elementsInSupport(const gsBasis<T>& basis, const index_t i, gsMatrix<T>& lowerCorners, gsMatrix<T>& upperCorners)
+{
+    const gsTensorBSplineBasis<2, T>* bspline2d = dynamic_cast<const gsTensorBSplineBasis<2, T>*>(&basis);
+    const gsTensorBSplineBasis<3, T>* bspline3d = dynamic_cast<const gsTensorBSplineBasis<3, T>*>(&basis);
+    const gsTensorNurbsBasis<2, T>* nurbs2d = dynamic_cast<const gsTensorNurbsBasis<2, T>*>(&basis);
+    const gsTensorNurbsBasis<3, T>* nurbs3d = dynamic_cast<const gsTensorNurbsBasis<3, T>*>(&basis);    
+
+    gsMatrix<index_t> elemSupport;
+    std::vector<std::vector<real_t> > uKnots;
+
+    if (bspline2d)
+    {
+        elemSupport = elementSupport(*bspline2d, i);
+        uKnots = getKnotBreaks(*bspline2d);
+    }
+    else if (bspline3d)
+    {
+        elemSupport =  elementSupport(*bspline3d, i);
+        uKnots = getKnotBreaks(*bspline3d);
+    }
+    else if (nurbs2d)
+    {
+        elemSupport =  elementSupport(*nurbs2d, i);
+        uKnots = getKnotBreaks(*nurbs2d);
+    }
+    else if (nurbs3d)
+    {
+        elemSupport =  elementSupport(*nurbs3d, i);
+        uKnots = getKnotBreaks(*nurbs3d);
+    }
+    else
+        GISMO_ERROR("elementsInSupport not implemented for this basis type.");
+
+    index_t dim = elemSupport.rows();
+    gsMatrix<index_t> nElemDir = elemSupport.col(1) - elemSupport.col(0);
+    index_t nElem = nElemDir.prod();
+    lowerCorners.resize(dim, nElem);
+    upperCorners.resize(dim, nElem);
+
+    for (index_t i = 0; i < nElem; i++)
+    {
+        gsVector<index_t> elemIdx = tensorIndex(i, nElemDir);
+
+        for (index_t d = 0; d < dim; d++)
+        {
+            lowerCorners(d, i) = uKnots[d][elemSupport(d,0) + elemIdx(d)];
+            upperCorners(d, i) = uKnots[d][elemSupport(d,0) + elemIdx(d) + 1];
+        }
+    }
 }
 
 

@@ -34,7 +34,8 @@ public:
 
 protected: // *** Class members ***
 
-    gsRANSVisitorUUSymmetricGradient<T, MatOrder> m_visitorRANSsymgrad;
+    gsRANSVisitorUU<T, MatOrder> m_visitorRANSsymgrad;
+    //gsRANSVisitorUU_full<T, MatOrder> m_visitorRANSsymgrad; // TODO: choose automatically for RbR loop
     gsRANSVisitorTCSDStabilization_time<T, MatOrder> m_visitorRANS_TCSD_time;
     gsRANSVisitorTCSDStabilization_advection<T, MatOrder> m_visitorRANS_TCSD_advection;
 
