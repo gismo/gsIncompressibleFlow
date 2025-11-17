@@ -21,10 +21,20 @@ void gsINSSolver<T, MatOrder>::solveStokes()
     GISMO_ASSERT(getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
     m_paramsPtr->logger() << "Computing the steady Stokes problem...\n";
 
+    // Debug: Check DOF counts
+    gsInfo << "Velocity DOFs: " << getAssembler()->getUdofs() << "\n";
+    gsInfo << "Pressure DOFs: " << getAssembler()->getPdofs() << "\n";
+    gsInfo << "Total DOFs: " << getAssembler()->numDofs() << "\n";
+
     gsSparseMatrix<T, MatOrder> stokesMat;
     gsMatrix<T> stokesRhs;
 
     getAssembler()->fillStokesSystem(stokesMat, stokesRhs);
+
+    // Debug: Check matrix
+    gsInfo << "Stokes matrix size: " << stokesMat.rows() << " x " << stokesMat.cols() << "\n";
+    gsInfo << "Stokes matrix non-zeros: " << stokesMat.nonZeros() << "\n";
+    gsInfo << "Stokes RHS size: " << stokesRhs.rows() << " x " << stokesRhs.cols() << "\n";
 
     if (!m_iterationNumber)
         this->initIteration(stokesMat);
