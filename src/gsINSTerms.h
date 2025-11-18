@@ -34,6 +34,8 @@ public: // *** Constructor/destructor ***
         this->m_trialFunFlags = NEED_VALUE;
     }
 
+    GISMO_CLONE_FUNCTION(gsINSTerm_PvalUdiv)
+
 
 protected: // *** Member functions ***
 
@@ -65,6 +67,7 @@ public: // *** Constructor/destructor ***
         this->m_trialFunFlags = NEED_DERIV;
     }
 
+    GISMO_CLONE_FUNCTION(gsINSTerm_UdivPval)
 
 public: // *** Member functions ***
 
@@ -89,6 +92,8 @@ public: // *** Constructor/destructor ***
         this->m_testFunFlags = NEED_VALUE;
         this->m_trialFunFlags = NEED_DERIV;
     }
+
+    GISMO_CLONE_FUNCTION(gsINSTerm_UsolGradVal)
 
 
 public: // *** Member functions ***

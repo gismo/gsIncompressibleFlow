@@ -49,6 +49,8 @@ public: // *** Constructor/destructor ***
     virtual ~gsFlowTerm()
     {}
 
+    GISMO_UPTR_FUNCTION_PURE(gsFlowTerm, clone)
+
 
 public: // *** Member functions ***
 
@@ -140,6 +142,7 @@ public: // *** Constructor/destructor ***
     gsFlowTermNonlin()
     { }
 
+    GISMO_CLONE_FUNCTION(gsFlowTermNonlin)
 
 public: // *** Member functions ***
 
@@ -187,6 +190,8 @@ public: // *** Constructor/destructor ***
         this->m_trialFunFlags = NEED_VALUE;
     }
 
+    GISMO_CLONE_FUNCTION(gsFlowTerm_ValVal)
+
 
 public: // *** Member functions ***
 
@@ -214,6 +219,8 @@ public: // *** Constructor/destructor ***
     m_timeStep(timeStep)
     { }
 
+    GISMO_CLONE_FUNCTION(gsFlowTerm_TimeDiscr)
+
 
 protected: // *** Member functions ***
 
@@ -240,6 +247,8 @@ public: // *** Constructor/destructor ***
         this->m_trialFunFlags = NEED_DERIV;
     }
 
+    GISMO_CLONE_FUNCTION(gsFlowTerm_GradGrad)
+
 
 public: // *** Member functions ***
 
@@ -265,6 +274,8 @@ public: // *** Constructor/destructor ***
     gsFlowTerm_Diffusion(real_t viscosity) :
     m_viscosity(viscosity)
     { }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_Diffusion)
 
 
 protected: // *** Member functions ***
@@ -303,6 +314,8 @@ public: // *** Constructor/destructor ***
         this->m_testFunFlags = NEED_VALUE;
         m_pRhsFun = pRhsFun;
     }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_rhs)
 
 
 public: // *** Member functions ***

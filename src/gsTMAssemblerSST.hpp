@@ -296,12 +296,8 @@ void gsTMAssemblerSST<T, MatOrder>::fillSystem()
         m_matrix.makeCompressed();
 
     m_rhs = m_baseRhs;
-    m_rhs.topRows(m_kdofs[0]) += m_rhsLinearK;
-    m_rhs.bottomRows(m_kdofs[1]) += m_rhsLinearO;
-    m_rhs.topRows(m_kdofs[0]) += m_rhsNonlinearK;
-    m_rhs.bottomRows(m_kdofs[1]) += m_rhsNonlinearO;
-    m_rhs.topRows(m_kdofs[0]) += m_rhsTimeIterationK;
-    m_rhs.bottomRows(m_kdofs[1]) += m_rhsTimeIterationO;
+    m_rhs.topRows(m_kdofs[0]) += m_rhsLinearK + m_rhsNonlinearK + m_rhsTimeIterationK;
+    m_rhs.bottomRows(m_kdofs[1]) += m_rhsLinearO + m_rhsNonlinearO + m_rhsTimeIterationO;
 
     m_isSystemReady = true;
 }
@@ -316,10 +312,7 @@ void gsTMAssemblerSST<T, MatOrder>::initialize()
     gsField<T> distfield = computeDistanceField<T>(m_paramsPtr);
     m_paramsPtr->setDistanceField(distfield);
 
-    // gsWriteParaview<T>(distfield, "distanceField", 10000);
-
-    if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
-        fillBaseSystem();
+    fillBaseSystem();
     
     m_isInitialized = true;
 }
@@ -357,8 +350,7 @@ void gsTMAssemblerSST<T, MatOrder>::update(const gsMatrix<T> & solVector, bool u
         m_rhsLinearO = m_blockLinearO * m_solution.bottomRows(m_kdofs[1]);
     }
 
-    if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
-        fillSystem();
+    fillSystem();
 
 }
 

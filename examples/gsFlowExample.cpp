@@ -58,13 +58,14 @@ int main(int argc, char *argv[])
     real_t timeStep = 0.1;
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
+    std::string matFormation = "EbE";
 
     // linear solver settings
     std::string linSolver = "petsc"; // direct / iter / petsc
     int linIt = 50;
     real_t linTol = 1e-6;
     bool petscOptFile = false;
-    std::string petscOptPath = "petscOpt_saddle-point.xml";
+    std::string petscOptPath = "petscOpt_saddle-point_mumps-mumps.xml";
 
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
@@ -94,6 +95,7 @@ int main(int argc, char *argv[])
     cmd.addReal("", "timeStep", "Time discretization step for unsteady problem", timeStep);
     cmd.addReal("", "tol", "Stopping tolerance", tol);
     cmd.addReal("", "picardTol", "Tolerance for inner Picard iteration for unsteady problem", picardTol);
+    cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     
     cmd.addString("", "linSolver", "Linear system solver (direct / iter / petsc)", linSolver);
     cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
@@ -169,6 +171,7 @@ int main(int argc, char *argv[])
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger, comm);
+    params.options().setString("assemb.loop", matFormation);
     params.options().setReal("timeStep", timeStep);
     params.options().setInt("nonlin.maxIt", picardIt);
     params.options().setReal("nonlin.tol", picardTol);
@@ -242,13 +245,6 @@ void solveProblem(gsINSSolver<T, MatOrder>& NSsolver, gsOptionList opt, gsFlowLo
     NSsolver.initialize();
 
     logger << "numDofs: " << NSsolver.numDofs() << "\n";
-
-    // std::stringstream ss;
-    // ss << "\nrank " << rank << "\nglobalStartEnd =\n" << NSsolver.getAssembler()->getGlobalStartEnd() << "\n" <<
-    //     "\nblockUU:\n" << matStructureStr(NSsolver.getAssembler()->getBlockUU()) << "\n" <<
-    //     "\nblockUP:\n" << matStructureStr(NSsolver.getAssembler()->getBlockUP()) << "\n" <<
-    //     "\nblockPU:\n" << matStructureStr(NSsolver.getAssembler()->getBlockPU()) << "\n";
-    // printOrderedOutput(ss.str(), NSsolver.getParams()->getMpiComm());
 
     gsINSSolverUnsteady<T, MatOrder>* pSolver = dynamic_cast<gsINSSolverUnsteady<T, MatOrder>* >(&NSsolver);
 

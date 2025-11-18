@@ -111,6 +111,16 @@ protected: // *** Member functions ***
     /// @brief Assemble the linear part of the problem.
     virtual void assembleNonlinearPart();
 
+    /// @brief Creates the velocity-velocity block of the linear system from its components.
+    /// @param[out] result      the resulting matrix block
+    /// @param[in]  linPartOnly if true, makes only the linear part of the velocity-velocity block
+    virtual void makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false);
+
+    /// @brief Creates the velocity part of the right-hand side from its components.
+    /// @param[out] result      the resulting matrix block
+    /// @param[in]  linPartOnly if true, makes only the linear part of the rhs
+    virtual void makeRhsU(gsMatrix<T>& result, bool linPartOnly = false);
+
     /// @brief Fill the velocity-velocity block into the global saddle-point matrix.
     /// @param globalMat[out]   global saddle-point matrix
     /// @param sourceMat[in]    velocity-velocity block (either for one velocity component or the whole block for all components)
@@ -244,11 +254,11 @@ public: // *** Getters/setters ***
 
     /// @brief Returns the velocity-velocity block of the linear system.
     /// @param[in] linPartOnly if true, returns only the linear part of the velocity-velocity block
-    virtual gsSparseMatrix<T, MatOrder> getBlockUU(bool linPartOnly = false);
+    gsSparseMatrix<T, MatOrder> getBlockUU(bool linPartOnly = false);
 
     /// @brief Returns the diagonal block of velocity-velocity block for i-th component.
     /// @param[in] linPartOnly if true, returns only the linear part of the velocity-velocity block
-    virtual gsSparseMatrix<T, MatOrder> getBlockUUcompDiag(index_t i = 0, bool linPartOnly = false)
+    gsSparseMatrix<T, MatOrder> getBlockUUcompDiag(index_t i = 0, bool linPartOnly = false)
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
         return getBlockUU(linPartOnly).block(i * m_udofs, i * m_udofs, m_udofs, m_udofs); 
@@ -264,14 +274,14 @@ public: // *** Getters/setters ***
     { return m_blockPU; }
 
     /// @brief Returns the part of velocity-pressure block for i-th velocity component.
-    virtual gsSparseMatrix<T, MatOrder> getBlockUPcomp(index_t i) const
+    gsSparseMatrix<T, MatOrder> getBlockUPcomp(index_t i) const
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
         return getBlockUP().middleRows(i * m_udofs, m_udofs);
     }
 
     /// @brief Returns part of pressure-velocity block for i-th velocity component.
-    virtual gsSparseMatrix<T, MatOrder> getBlockPUcomp(index_t i) const
+    gsSparseMatrix<T, MatOrder> getBlockPUcomp(index_t i) const
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
         return getBlockPU().middleCols(i * m_udofs, m_udofs);
@@ -279,14 +289,14 @@ public: // *** Getters/setters ***
 
     /// @brief Returns the mass matrix for unknown with index \a unk.  There is also a const version.
     /// @param[in] unkID index of the unknown (0 - velocity, 1 - pressure)
-    virtual gsSparseMatrix<T, MatOrder>& getMassMatrix(index_t unkID)
+    gsSparseMatrix<T, MatOrder>& getMassMatrix(index_t unkID)
     {
         GISMO_ASSERT(unkID == 0 || unkID == 1, "unkID must be 0 (velocity) or 1 (pressure).");
         GISMO_ASSERT(m_isMassMatReady, "Mass matrices not assembled in gsINSAssembler.");
         return m_massMatBlocks[unkID];
     }
 
-    virtual const gsSparseMatrix<T, MatOrder>& getMassMatrix(index_t unkID) const
+    const gsSparseMatrix<T, MatOrder>& getMassMatrix(index_t unkID) const
     { 
         GISMO_ASSERT(unkID == 0 || unkID == 1, "unkID must be 0 (velocity) or 1 (pressure).");
         GISMO_ASSERT(m_isMassMatReady, "Mass matrices not assembled in gsINSAssembler.");
@@ -295,11 +305,11 @@ public: // *** Getters/setters ***
 
     /// @brief Returns the velocity part of the right-hand side.
     /// @param[in] linPartOnly if true, returns only the linear part of the velocity rhs
-    virtual gsMatrix<T> getRhsU(bool linPartOnly = false) const;
+    gsMatrix<T> getRhsU(bool linPartOnly = false);
 
     /// @brief Returns part of the right-hand side for i-th velocity component.
     /// @param[in] linPartOnly if true, returns only the linear part of the velocity rhs component
-    virtual gsMatrix<T> getRhsUcomp(index_t i, bool linPartOnly = false) const
+    gsMatrix<T> getRhsUcomp(index_t i, bool linPartOnly = false)
     { 
         GISMO_ASSERT(i >= 0 && i < m_tarDim, "Component index out of range.");
         return getRhsU(linPartOnly).middleRows(i * m_udofs, m_udofs);
@@ -329,7 +339,7 @@ public: // *** Getters/setters ***
      * 
      * The global right-hand side consits of 2 blocks (for velocity and pressure).
      **/
-    virtual std::vector< gsMatrix<T> > rhsBlocks() const
+    virtual std::vector< gsMatrix<T> > rhsBlocks()
     {
         std::vector< gsMatrix<T> > result;
         result.push_back(getRhsU());
@@ -436,6 +446,18 @@ protected: // *** Member functions ***
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();
 
+    virtual void makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false)
+    {
+        Base::makeBlockUU(result, linPartOnly);
+        result += m_blockTimeDiscr;
+    }
+
+    virtual void makeRhsU(gsMatrix<T>& result, bool linPartOnly = false)
+    {
+        Base::makeRhsU(result, linPartOnly);
+        result += m_rhsTimeDiscr;
+    }
+
 
 public: // *** Member functions ***
 
@@ -443,19 +465,6 @@ public: // *** Member functions ***
     /// @param solVector 
     /// @param[in] updateSol    true - save solVector into m_solution (false is used in the inner Picard iteration for unsteady problem)
     virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
-
-
-public: // *** Getters/setters ***
-
-    /// @brief Returns the velocity-velocity block of the linear system.
-    virtual gsSparseMatrix<T, MatOrder> getBlockUU()
-    { return Base::getBlockUU() + m_blockTimeDiscr; }
-
-
-    /// @brief /// @brief Returns the velocity part of the right-hand side.
-    virtual gsMatrix<T> getRhsU() const
-    { return Base::getRhsU() + m_rhsTimeDiscr; }
-
 
 }; //gsINSAssemblerUnsteady
 

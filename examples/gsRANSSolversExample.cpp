@@ -27,7 +27,7 @@ template<class T, int MatOrder> void solveProblem(gsRANSSolverUnsteady<T, MatOrd
 
 int main(int argc, char *argv[])
 {
-
+    
 #if defined(gsPetsc_ENABLED) && defined(GISMO_WITH_MPI)
 
     // initialize MPI
@@ -37,10 +37,6 @@ int main(int argc, char *argv[])
     int rank  = comm.rank();
 
     PetscCall( PetscInitializeNoArguments() );
-
-#endif
-
-    typedef gsGMRes<real_t> LinSolver;
 
     // ========================================= Settings ========================================= 
 
@@ -78,15 +74,20 @@ int main(int argc, char *argv[])
     index_t maxIt = 20;
     index_t picardIt = 5;
     index_t maxItTM = 10;
-    index_t linIt = 50;
     real_t timeStep = 0.05;
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
-    real_t linTol = 1e-6;
-    std::string itSolver = "iter"; // iter (= gismo solver) / petsc
     std::string matFormation = "EbE";
-    std::string precond = "MSIMPLER_FdiagEqual";
     bool stokesInit = false; // start unsteady problem from Stokes solution
+
+    // linear solver settings
+    std::string itSolver = "iter"; // iter (= gismo solver) / petsc
+    index_t linIt = 50;
+    real_t linTol = 1e-6;
+    std::string precond = "MSIMPLER_FdiagEqual";
+    bool petscOptFile = false;
+    std::string petscOptPathSP = "petscOpt_saddle-point_mumps-mumps.xml";
+    std::string petscOptPath = "petscOpt.xml";
 
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
@@ -139,6 +140,9 @@ int main(int argc, char *argv[])
     cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
+    cmd.addSwitch("petscOptFile", "Load PETSc options from file", petscOptFile);
+    cmd.addString("", "petscOptPath", "Path to the file containing PETSc options", petscOptPath);
+    cmd.addString("", "petscOptPathSP", "Path to the file containing saddle-point PETSc options", petscOptPathSP);
 
     cmd.addString("o", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
@@ -153,7 +157,7 @@ int main(int argc, char *argv[])
         gsWarn << "All computation flags set to false - nothing will be computed.\nPlease select at least one of the flags: --direct, --iter\n\n";
 
     // ========================================= Define geometry ========================================= 
-    
+
     gsMultiPatch<> patches;
     std::string geoStr;
 
@@ -325,17 +329,23 @@ int main(int argc, char *argv[])
         paramsIter.options().setReal("nonlin.tol", picardTol);
         paramsIter.setBndParts(bndIn, bndOut, bndWall);
         paramsIter.options().setString("lin.solver", itSolver);
+        
         paramsIter.options().setInt("lin.maxIt", linIt);
         paramsIter.options().setReal("lin.tol", linTol);
         paramsIter.options().setString("lin.precType", precond);
-
+        paramsIter.options().setSwitch("petsc.optFromFile", petscOptFile);
+        paramsIter.options().setSwitch("petsc.optFromFileSP", petscOptFile);
+        paramsIter.options().setString("petsc.optPath", petscOptPath);
+        paramsIter.options().setString("petsc.optPathSP", petscOptPathSP);
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsIter);
         solveProblem(NSsolver, solveOpt, geo, logger);
     }
 
-#if defined(gsPetsc_ENABLED) && defined(GISMO_WITH_MPI)
     PetscCall( PetscFinalize() );
+
+#else
+    gsWarn << "This version of INS solver requires MPI and PETSc, but some of them is not enabled!"
 #endif
 
     return 0; 
@@ -403,10 +413,14 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     logger << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
     logger << "Solve time:" << NSsolver.getSolveTime() << "\n";
     logger << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
-    logger << "TOtal TM time: " << NSsolver.getTMtime() << "\n";
+    logger << "Total TM time: " << NSsolver.getTMtime() << "\n";
     logger << "Total solveProblem time:" << totalT << "\n\n";
 
+    logger << "RANS lin. it.:\n";
     NSsolver.getLinSolver()->reportLinIterations();
+
+    logger << "\nTM lin. it.:\n";
+    NSsolver.getTMsolver().getLinSolver()->reportLinIterations();
 
     // ------------------------------------
     // plot

@@ -125,6 +125,12 @@ public: // *** Getters/setters ***
         return dynamic_cast<gsRANSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
     }
 
+    gsTMSolverBase<T, MatOrder>& getTMsolver() 
+    {
+        GISMO_ASSERT(m_TMsolverPtr != NULL, "TM solver not created yet.");
+        return *m_TMsolverPtr;
+    }
+
     /// @brief Returns the total number of DOFs for turbulent model (the matrix size).
     int numDofsTM() { return (m_TMsolverPtr->getAssembler())->numDofs(); }
 

@@ -43,6 +43,8 @@ public: // *** Constructor/destructor ***
         this->m_trialFunFlags = NEED_DERIV;
     }
 
+    GISMO_CLONE_FUNCTION(gsRANSTerm_SymmetricGradient)
+
 
 public: // *** Member functions ***
 
@@ -82,6 +84,8 @@ public: // *** Constructor/destructor ***
     gsRANSTerm_SymmetricGradient_full():
     Base()
     { }
+
+    GISMO_CLONE_FUNCTION(gsRANSTerm_SymmetricGradient_full)
 
 
 public: // *** Member functions ***

@@ -285,19 +285,48 @@ index_t gsFlowAssemblerBase<T, MatOrder>::globalToLocalOnPatch(index_t patch, in
 template<class T, int MatOrder>
 void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
 {
-    for(size_t p = 0; p < getPatches().nPatches(); p++)
+
+    if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
     {
-        visitor.initOnPatch(p);
-
-        gsVector<index_t> ownedLocalDofs = m_ownedLocalDofs[p][testBasisID%2]; // map testBasisID to 0/1 also for TM variables
-
-        for(index_t i = 0; i < ownedLocalDofs.size(); i++)
+        for(size_t p = 0; p < getPatches().nPatches(); p++)
         {
-            visitor.evaluate(ownedLocalDofs(i));
+            visitor.initOnPatch(p);
+
+            gsVector<index_t> ownedLocalDofs = m_ownedLocalDofs[p][testBasisID%2]; // map testBasisID to 0/1 also for TM variables
+
+            for(index_t i = 0; i < ownedLocalDofs.size(); i++)
+            {
+                visitor.evaluate(ownedLocalDofs(i));
+                visitor.assemble();
+                visitor.localToGlobal(m_ddof, block, blockRhs);
+            }
+        }
+    }
+    else        
+    {
+        if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
+            gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
+    
+        // iteration over all elements in all patches
+        typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).domain()->endAll();
+
+        index_t patchID = -1;
+
+        for (; domIt < domItEnd; ++domIt )
+        {
+            index_t p = domIt.patch();
+            if (p != patchID)
+            {
+                patchID = p;
+                visitor.initOnPatch(patchID);
+            }
+
+            visitor.evaluate(domIt.get());
             visitor.assemble();
             visitor.localToGlobal(m_ddof, block, blockRhs);
         }
-    }
+    }   
 
     if (compressMat)
         block.makeCompressed();
@@ -307,19 +336,47 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlock(gsFlowVisitor<T, MatOrder>&
 template<class T, int MatOrder>
 void gsFlowAssemblerBase<T, MatOrder>::assembleRhs(gsFlowVisitor<T, MatOrder>& visitor, index_t testBasisID, gsMatrix<T>& rhs)
 {
-    for(size_t p = 0; p < getPatches().nPatches(); p++)
+    if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
     {
-        visitor.initOnPatch(p);
-    
-        gsVector<index_t> ownedLocalDofs = m_ownedLocalDofs[p][testBasisID];
-
-        for(index_t i = 0; i < ownedLocalDofs.size(); i++)
+        for(size_t p = 0; p < getPatches().nPatches(); p++)
         {
-            visitor.evaluate(ownedLocalDofs(i));
+            visitor.initOnPatch(p);
+        
+            gsVector<index_t> ownedLocalDofs = m_ownedLocalDofs[p][testBasisID];
+
+            for(index_t i = 0; i < ownedLocalDofs.size(); i++)
+            {
+                visitor.evaluate(ownedLocalDofs(i));
+                visitor.assemble();
+                visitor.localToGlobal(rhs);
+            }
+        }
+    }
+    else        
+    {
+        if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
+            gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
+        
+        // iteration over all elements in all patches
+        typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).domain()->endAll();
+
+        index_t patchID = -1;
+
+        for (; domIt < domItEnd; ++domIt )
+        {
+            index_t p = domIt.patch();
+            if (p != patchID)
+            {
+                patchID = p;
+                visitor.initOnPatch(patchID);
+            }
+
+            visitor.evaluate(domIt.get());
             visitor.assemble();
             visitor.localToGlobal(rhs);
         }
-    }
+    }   
 }
 
 

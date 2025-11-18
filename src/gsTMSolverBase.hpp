@@ -74,7 +74,6 @@ void gsTMSolverBase<T, MatOrder>::nextIteration()
         
         this->updateAssembler(tmpSolution, false);
         this->applySolver(tmpSolution);
-
         this->writeSolChangeRelNorm(oldSol, tmpSolution, "TM");
 
         relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);

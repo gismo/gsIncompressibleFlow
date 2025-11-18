@@ -79,6 +79,18 @@ protected: // *** Member functions ***
     /// @brief Assemble the linear part of the matrix.
     virtual void assembleLinearPart();
 
+    virtual void makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false)
+    {
+        Base::makeBlockUU(result, linPartOnly);
+        result += m_matRANSsymgrad;
+    }
+
+    virtual void makeRhsU(gsMatrix<T>& result, bool linPartOnly = false)
+    {
+        Base::makeRhsU(result, linPartOnly);
+        result += m_rhsRANS;
+    }
+
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();
 

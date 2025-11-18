@@ -305,6 +305,45 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
 
 
 template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly)
+{
+    if (m_blockUUlin_comp.nonZeros() > 0)
+    {
+        gsSparseMatrix<T, MatOrder> blockUUcomp = m_blockUUlin_comp;
+
+        if(!linPartOnly)
+            blockUUcomp += m_blockUUnonlin_comp;
+
+        gsVector<index_t> nonZerosVector(m_pshift);
+        gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);
+
+        for (short_t d = 0; d < m_tarDim; d++)
+            nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
+
+        result.reserve(nonZerosVector);
+        fillGlobalMat_UU(result, blockUUcomp);
+    }
+    
+    result += m_blockUUlin_whole;
+
+    if(!linPartOnly)
+        result += m_blockUUnonlin_whole;
+
+    result.makeCompressed();
+}
+
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::makeRhsU(gsMatrix<T>& result, bool linPartOnly)
+{
+    result = m_rhsF + m_rhsUlin;
+
+    if(!linPartOnly)
+        result += m_rhsUnonlin;
+}
+
+
+template<class T, int MatOrder>
 void gsINSAssembler<T, MatOrder>::fillGlobalMat_UU(gsSparseMatrix<T, MatOrder>& globalMat, const gsSparseMatrix<T, MatOrder>& sourceMat)
 {
     if (sourceMat.rows() == m_udofs) // sourceMat is a block for one velocity component
@@ -592,38 +631,14 @@ gsSparseMatrix<T, MatOrder> gsINSAssembler<T, MatOrder>::getBlockUU(bool linPart
     else
     {
         gsSparseMatrix<T, MatOrder> blockUU(m_pshift, m_pshift);
-
-        if (m_blockUUlin_comp.nonZeros() > 0)
-        {
-            gsSparseMatrix<T, MatOrder> blockUUcomp = m_blockUUlin_comp;
-
-            if(!linPartOnly)
-                blockUUcomp += m_blockUUnonlin_comp;
-    
-            gsVector<index_t> nonZerosVector(m_pshift);
-            gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);
-    
-            for (short_t d = 0; d < m_tarDim; d++)
-                nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
-    
-            blockUU.reserve(nonZerosVector);
-            fillGlobalMat_UU(blockUU, blockUUcomp);
-        }
-        
-        blockUU += m_blockUUlin_whole;
-
-        if(!linPartOnly)
-            blockUU += m_blockUUnonlin_whole;
-
-        blockUU.makeCompressed();
-
+        makeBlockUU(blockUU, linPartOnly);
         return blockUU;
     }
 }
 
 
 template<class T, int MatOrder>
-gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU(bool linPartOnly) const
+gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU(bool linPartOnly)
 { 
     if (m_isSystemReady && !linPartOnly)
         return m_rhs.topRows(m_pshift);
@@ -631,11 +646,8 @@ gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU(bool linPartOnly) const
         return m_baseRhs.topRows(m_pshift);
     else
     {
-        gsMatrix<T> rhsU = m_rhsF + m_rhsUlin;
-
-        if(!linPartOnly)
-            rhsU += m_rhsUnonlin;
-
+        gsMatrix<T> rhsU;
+        makeRhsU(rhsU, linPartOnly);
         return rhsU;
     }
 }

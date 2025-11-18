@@ -87,6 +87,22 @@ public: // *** Constructor/destructor ***
             m_hasPeriodicBC = false;
     }
 
+
+    /// @brief Copy constructor.
+    gsFlowVisitor(const gsFlowVisitor<T, MatOrder>& other):
+    gsFlowVisitor()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of m_terms
+        m_terms.clear();
+        m_terms.reserve(other.m_terms.size());
+        for (auto* t : other.m_terms)
+            m_terms.push_back(t->clone().release());
+    }
+
+
     ~gsFlowVisitor()
     {
         deleteTerms();
