@@ -400,10 +400,14 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     logger << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
     logger << "Solve time:" << NSsolver.getSolveTime() << "\n";
     logger << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
-    logger << "TOtal TM time: " << NSsolver.getTMtime() << "\n";
+    logger << "Total TM time: " << NSsolver.getTMtime() << "\n";
     logger << "Total solveProblem time:" << totalT << "\n\n";
 
+    logger << "RANS lin. it.:\n";
     NSsolver.getLinSolver()->reportLinIterations();
+
+    logger << "\nTM lin. it.:\n";
+    NSsolver.getTMsolver().getLinSolver()->reportLinIterations();
 
     // ------------------------------------
     // plot

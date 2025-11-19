@@ -79,12 +79,6 @@ protected: // *** Member functions ***
     /// @brief Update sizes of members (when DOF numbers change after constructing the solver).
     virtual void updateSizes();
 
-    /// @brief Start measuring time (decides whether to use gsStopwatch or MPI_Wtime)
-    real_t stopwatchStart();
-
-    /// @brief Stop measuring time (decides whether to use gsStopwatch or MPI_Wtime)
-    real_t stopwatchStop();
-
 
 public: // *** Member functions ***
 

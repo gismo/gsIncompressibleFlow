@@ -115,9 +115,6 @@ protected: // *** Member functions ***
     {
         m_terms.push_back( new gsFlowTerm_Diffusion<T>(m_paramsPtr->getPde().viscosity()) );
 
-        // if(m_paramsPtr->options().getSwitch("unsteady"))
-        //     m_terms.push_back( new gsFlowTermTimeDiscr<T>(m_paramsPtr->options().getReal("timeStep")) );
-
         // ... other terms, e.g. from stabilizations
     }
 

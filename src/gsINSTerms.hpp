@@ -60,7 +60,7 @@ void gsINSTerm_UdivPval<T>::assemble(const gsMapData<T>& mapData, const gsVector
         transformGradients(mapData, k, trialFunGrads, trialFunPhysGrad);
 
         for (size_t i = 0; i != localMat.size(); ++i)
-            localMat[i].noalias() += weight * (trialFunPhysGrad.row(i) * testFunVals(k) );
+            localMat[i].noalias() += weight * (testFunVals.col(k) * trialFunPhysGrad.row(i) );
     }
 }
 

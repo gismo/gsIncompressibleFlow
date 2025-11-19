@@ -80,8 +80,9 @@ protected: // *** Member functions ***
     /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
 
-    /// @brief Assemble the linear part of the matrix.
-    virtual void assembleLinearPart();
+    virtual void makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false);
+
+    virtual void makeRhsU(gsMatrix<T>& result, bool linPartOnly = false);
 
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();

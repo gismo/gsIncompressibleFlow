@@ -282,10 +282,7 @@ void gsTMAssemblerSST<T, MatOrder>::initialize()
     gsField<T> distfield = computeDistanceField<T>(m_paramsPtr);
     m_paramsPtr->setDistanceField(distfield);
 
-    // gsWriteParaview<T>(distfield, "distanceField", 10000);
-
-    if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
-        fillBaseSystem();
+    fillBaseSystem();
     
     m_isInitialized = true;
 }
@@ -311,11 +308,6 @@ void gsTMAssemblerSST<T, MatOrder>::update(const gsMatrix<T> & solVector, bool u
         // memory allocation
         m_blockTimeIterationK.reserve(gsVector<index_t>::Constant(m_blockTimeIterationK.outerSize(), m_nnzPerRowTM));
         m_blockTimeIterationO.reserve(gsVector<index_t>::Constant(m_blockTimeIterationO.outerSize(), m_nnzPerRowTM));
-
-        // ???
-        // gsField<T> velocity = m_paramsPtr->getVelocitySolution();
-        // m_visitorTimeIterationSST_K.setCurrentSolution(velocity);
-        // m_visitorTimeIterationSST_O.setCurrentSolution(velocity);
 
         this->assembleBlock(m_visitorTimeIterationSST_K, 2, m_blockTimeIterationK, m_rhsTimeIterationK);
         this->assembleBlock(m_visitorTimeIterationSST_O, 3, m_blockTimeIterationO, m_rhsTimeIterationO);
@@ -361,8 +353,7 @@ void gsTMAssemblerSST<T, MatOrder>::update(const gsMatrix<T> & solVector, bool u
         }
     }
 
-    if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))
-        fillSystem();
+    fillSystem();
 
 }
 

@@ -594,7 +594,7 @@ void gsRANSVisitorTCSDStabilization_time<T, MatOrder>::evaluate(index_t testFunI
 {
     Base::evaluate(testFunID);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     const index_t nQuPoints = m_quNodes.cols();
@@ -615,7 +615,7 @@ void gsRANSVisitorTCSDStabilization_time<T, MatOrder>::evaluate(const gsDomainIt
 {
     Base::evaluate(domIt);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
+    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
 
     const index_t nQuPoints = m_quNodes.cols();

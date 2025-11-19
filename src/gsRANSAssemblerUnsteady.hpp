@@ -49,9 +49,29 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::updateSizes()
 }
 
 template<class T, int MatOrder>
-void gsRANSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
+void gsRANSAssemblerUnsteady<T, MatOrder>::makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false)
 {
-    Base::assembleLinearPart();
+    Base::makeBlockUU(result, linPartOnly);
+    result += m_matRANSsymgrad;
+
+    if (m_paramsPtr->options().getSwitch("TCSD_RANS"))
+    {
+        this->fillGlobalMat_UU(result, m_matRANS_TCSD_time);
+        this->fillGlobalMat_UU(result, m_matRANS_TCSD_advection);
+    }
+}
+
+template<class T, int MatOrder>
+void gsRANSAssemblerUnsteady<T, MatOrder>::makeRhsU(gsMatrix<T>& result, bool linPartOnly = false)
+{
+    Base::makeRhsU(result, linPartOnly);
+    result += m_rhsRANS;
+
+    if (m_paramsPtr->options().getSwitch("TCSD_RANS"))
+    {
+        result += m_rhsRANS_TCSD_time;
+        result += m_rhsRANS_TCSD_advection;
+    }
 }
 
 template<class T, int MatOrder>

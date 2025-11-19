@@ -48,15 +48,6 @@ public: // *** Constructor/destructor ***
     { }
 
 
-protected: // *** Member functions ***
-
-    /// @brief Start measuring time (decides whether to use gsStopwatch or MPI_Wtime)
-    T stopwatchStart();
-
-    /// @brief Stop measuring time (decides whether to use gsStopwatch or MPI_Wtime)
-    T stopwatchStop();
-
-
 public: // *** Member functions ***
 
     /// @brief Setup the linear solver for a given matrix.
@@ -124,8 +115,6 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_setupT;
     using Base::m_solveT;
-    using Base::stopwatchStart;
-    using Base::stopwatchStop;
 
 
 public: // *** Constructor/destructor ***
@@ -178,8 +167,6 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_setupT;
     using Base::m_solveT;
-    using Base::stopwatchStart;
-    using Base::stopwatchStop;
 
 
 public: // *** Constructor/destructor ***
@@ -262,8 +249,6 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_setupT;
     using Base::m_solveT;
-    using Base::stopwatchStart;
-    using Base::stopwatchStop;
 
 
 public: // *** Constructor/destructor ***
@@ -304,14 +289,11 @@ gsFlowLinSystSolver<T, MatOrder>* createLinSolver(typename gsFlowSolverParams<T>
         return new gsFlowLinSystSolver_iter<T, MatOrder, SolverType>(paramsPtr);
     else if (type == "iter" && INSassembPtr != NULL) // assembler is an INS assembler
         return new gsFlowLinSystSolver_iterSP<T, MatOrder, SolverType>(paramsPtr, INSassembPtr);
-    // else if (type == _"petsc")
-    //     return new gsFlowLinSystSolver_PETSc<T, MatOrder>(paramsPtr);
     else
     {
         paramsPtr->logger() << "Invalid linear system solver type, using direct solver.\n";
         return new gsFlowLinSystSolver_direct<T, MatOrder>(paramsPtr);
     }
-
 }
 
 } // namespace gismo

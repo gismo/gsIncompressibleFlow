@@ -389,6 +389,13 @@ public: // *** Getters/setters ***
     gsFlowLogger& logger() { return *m_logger; }
     void setOutputMode(typename gsFlowLogger::mode mode) { m_logger->setMode(mode); }
 
+    void copyAllOptionsFrom(const gsFlowSolverParams<T>& other)
+    {
+        m_opt = other.m_opt;
+        m_assembOpt = other.m_assembOpt;
+        m_precOpt = other.m_precOpt;
+    }
+
 }; // class gsFlowSolverParams
 
 // ======================================================================================================================================

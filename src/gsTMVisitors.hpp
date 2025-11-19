@@ -247,7 +247,7 @@ void gsTMVisitorSSTTCSDStabilization_time<T, MatOrder>::evaluate(index_t testFun
 {
     Base::evaluate(testFunID);
 
-    m_TMModelPtr->updateModel(m_quNodes, m_patchID);
+    m_TMModelPtr->updateModel(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     
     m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
     gsMatrix<T> OSolVals = m_TMModelPtr->getOSolVals();
@@ -287,7 +287,7 @@ void gsTMVisitorSSTTCSDStabilization_time<T, MatOrder>::evaluate(const gsDomainI
 {
     Base::evaluate(domIt);
 
-    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
+    m_TMModelPtr->updateModel(m_mapData.points, this->m_quRule.numNodes(), m_mapData.patchId);
 
     m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
     gsMatrix<T> OSolVals = m_TMModelPtr->getOSolVals();
@@ -332,7 +332,7 @@ void gsTMVisitorSSTTCSDStabilization_advection<T, MatOrder>::evaluate(index_t te
 {
     Base::evaluate(testFunID);
 
-    m_TMModelPtr->updateModel(m_quNodes, m_patchID);
+    m_TMModelPtr->updateModel(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     
     m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
     gsMatrix<T> OSolVals = m_TMModelPtr->getOSolVals();
@@ -372,7 +372,7 @@ void gsTMVisitorSSTTCSDStabilization_advection<T, MatOrder>::evaluate(const gsDo
 {
     Base::evaluate(domIt);
 
-    m_TMModelPtr->updateModel(m_mapData.points, m_mapData.patchId);
+    m_TMModelPtr->updateModel(m_mapData.points, this->m_quRule.numNodes(), m_mapData.patchId);
 
     m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
     gsMatrix<T> OSolVals = m_TMModelPtr->getOSolVals();

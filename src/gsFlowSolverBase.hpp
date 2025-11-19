@@ -36,50 +36,13 @@ void gsFlowSolverBase<T, MatOrder>::updateSizes()
 
 
 template<class T, int MatOrder>
-real_t gsFlowSolverBase<T, MatOrder>::stopwatchStart()
-{
-
-#ifdef GISMO_WITH_PETSC
-    if (m_paramsPtr->options().getSwitch("parallel"))
-    {
-        MPI_Barrier(PETSC_COMM_WORLD);
-        return MPI_Wtime();
-    }
-    else
-#endif
-        m_clock.restart();
-
-    return 0.0;
-}
-
-
-template<class T, int MatOrder>
-real_t gsFlowSolverBase<T, MatOrder>::stopwatchStop()
-{
-
-#ifdef GISMO_WITH_PETSC
-    if (m_paramsPtr->options().getSwitch("parallel"))
-    {
-        MPI_Barrier(PETSC_COMM_WORLD);
-        return MPI_Wtime();
-    }
-    else
-#endif
-        return m_clock.stop();
-
-}
-
-
-template<class T, int MatOrder>
 void gsFlowSolverBase<T, MatOrder>::initialize()
 { 
     if (!getAssembler()->isInitialized())
     {
-        real_t time0 = stopwatchStart();
+        m_clock.restart();
         getAssembler()->initialize();
-        real_t time1 = stopwatchStop();
-
-        m_initAssembT += time1 - time0;
+        m_initAssembT += m_clock.stop();
     }
 
     m_linSolverPtr = createLinSolver<T, MatOrder>(m_paramsPtr, getAssembler());
@@ -120,11 +83,9 @@ void gsFlowSolverBase<T, MatOrder>::solve(const int maxIterations, const T epsil
 template<class T, int MatOrder>
 void gsFlowSolverBase<T, MatOrder>::updateAssembler(const gsMatrix<T>& sol, bool updateSol)
 { 
-    real_t time0 = stopwatchStart();
+    m_clock.restart();
     getAssembler()->update(sol, updateSol);
-    real_t time1 = stopwatchStop();
-
-    m_assembT += time1 - time0;
+    m_assembT += m_clock.stop();
 }
 
 
