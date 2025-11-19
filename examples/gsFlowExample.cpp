@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     real_t timeStep = 0.1;
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
-    std::string matFormation = "EbE";
+    std::string matFormation = "RbR";
 
     // linear solver settings
     std::string linSolver = "petsc"; // direct / iter / petsc
