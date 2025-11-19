@@ -184,9 +184,6 @@ void gsTMAssemblerSST<T, MatOrder>::initParallel()
     }
 
     m_isParallelInitialized = true;
-
-    gsInfo << "rank " << m_paramsPtr->options().getInt("mpi.rank") << ": m_globalStartEnd =\n" << m_globalStartEnd << "\n";
-
 }
 
 

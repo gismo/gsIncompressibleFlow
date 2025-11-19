@@ -49,7 +49,7 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::updateSizes()
 }
 
 template<class T, int MatOrder>
-void gsRANSAssemblerUnsteady<T, MatOrder>::makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false)
+void gsRANSAssemblerUnsteady<T, MatOrder>::makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly)
 {
     Base::makeBlockUU(result, linPartOnly);
     result += m_matRANSsymgrad;
@@ -62,7 +62,7 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::makeBlockUU(gsSparseMatrix<T, MatOrde
 }
 
 template<class T, int MatOrder>
-void gsRANSAssemblerUnsteady<T, MatOrder>::makeRhsU(gsMatrix<T>& result, bool linPartOnly = false)
+void gsRANSAssemblerUnsteady<T, MatOrder>::makeRhsU(gsMatrix<T>& result, bool linPartOnly)
 {
     Base::makeRhsU(result, linPartOnly);
     result += m_rhsRANS;
