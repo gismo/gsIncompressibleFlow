@@ -51,7 +51,7 @@ protected: // *** Class members ***
 
     gsField<T> m_distanceField;
     
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr; 
+    typename gsTMModelData<T>::Ptr m_TMModelPtr; 
 
     real_t m_kin, m_kwall, m_oin, m_owall;
 
@@ -92,7 +92,7 @@ public: // *** Base class member functions ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsTMAssemblerSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr):
+    gsTMAssemblerSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr):
     Base(paramsPtr), m_TMModelPtr(TMModelPtr)
     { 
         m_numVars = 2;

@@ -39,7 +39,7 @@ protected:  // *** Class members ***
 
     gsMatrix<T> m_solution;
     real_t m_viscosity;
-    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
+    typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
 
 protected: // *** Base class members ***
@@ -108,7 +108,7 @@ protected: // *** Member functions ***
 
 public: // *** Getters/setters ***
 
-    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
+    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::Ptr TMsolver) { m_TMsolverPtr = TMsolver;}
 
     void setRANSsolution(gsMatrix<T> sol) { m_solution = sol;}
 
@@ -190,7 +190,7 @@ public:
 public:
     gsField<T> m_solution;
     real_t m_viscosity;
-    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
+    typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
     gsMatrix<T> m_tauS;
 
@@ -245,7 +245,7 @@ public: // *** Member functions ***
 
 public: // *** Getters/setters ***
 
-    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
+    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::Ptr TMsolver) { m_TMsolverPtr = TMsolver;}
 
     void setRANSsolution(gsField<T>& solution) { m_solution = solution;}
 

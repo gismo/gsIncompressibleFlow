@@ -40,8 +40,8 @@ public:
 
 public: // *** Class members ***
 
-    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr = NULL;
+    typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
     bool m_bComputeTMfirst;
     real_t m_turbT;
 

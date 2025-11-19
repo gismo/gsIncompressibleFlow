@@ -85,7 +85,7 @@ public:
     typedef gsFlowVisitorVectorValued<T, MatOrder> Base;
 
 public:
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;
     index_t m_unknown;
 
 protected: // *** Base class members ***
@@ -109,7 +109,7 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorTimeIterationSST() {}
 
-    gsTMVisitorTimeIterationSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    gsTMVisitorTimeIterationSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr, index_t unk) :
     Base(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     { }
 
@@ -122,7 +122,7 @@ public: // *** Constructor/destructor ***
 
         // deep copy of TM model
         if (other.m_TMModelPtr)
-            m_TMModelPtr = typename gsTMModelData<T>::tdPtr(other.m_TMModelPtr->clone().release());
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
 
         // create new terms
         // terms cannot be cloned here, because they store m_TMModelPtr
@@ -170,7 +170,7 @@ public:
 
 public:
     
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;
     index_t m_unknown;
     real_t m_konst1, m_konst2, m_konst3;
     real_t m_konst;
@@ -199,7 +199,7 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorNonlinearSST() {}
 
-    gsTMVisitorNonlinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    gsTMVisitorNonlinearSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr, index_t unk) :
     Base(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     { }
 
@@ -212,7 +212,7 @@ public: // *** Constructor/destructor ***
 
         // deep copy of TM model
         if (other.m_TMModelPtr)
-            m_TMModelPtr = typename gsTMModelData<T>::tdPtr(other.m_TMModelPtr->clone().release());
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
 
         // create new terms
         // terms cannot be cloned here, because they store m_TMModelPtr
@@ -286,7 +286,7 @@ public:
     gsVector<T> m_TurbulentViscosityVals;
     gsMatrix<T> m_tauS;
 
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;
 
 protected: // *** Base class members ***
 
@@ -309,7 +309,7 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorSSTTCSDStabilization_time() {}
 
-    gsTMVisitorSSTTCSDStabilization_time(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    gsTMVisitorSSTTCSDStabilization_time(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr, index_t unk) :
     Base(paramsPtr, unk), m_TMModelPtr(TMModelPtr)
     { 
         initMembers();
@@ -324,7 +324,7 @@ public: // *** Constructor/destructor ***
 
         // deep copy of TM model
         if (other.m_TMModelPtr)
-            m_TMModelPtr = typename gsTMModelData<T>::tdPtr(other.m_TMModelPtr->clone().release());
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
 
         // create new terms
         // terms cannot be cloned here, because they store m_TMModelPtr
@@ -379,7 +379,7 @@ public:
     gsVector<T> m_TurbulentViscosityVals;
     gsMatrix<T> m_tauS;
 
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;
 
 protected: // *** Base class members ***
 
@@ -402,7 +402,7 @@ public: // *** Constructor/destructor ***
 
     gsTMVisitorSSTTCSDStabilization_advection() {}
 
-    gsTMVisitorSSTTCSDStabilization_advection(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    gsTMVisitorSSTTCSDStabilization_advection(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr, index_t unk) :
     Base(paramsPtr, unk), m_TMModelPtr(TMModelPtr)
     { 
         initMembers();
@@ -417,7 +417,7 @@ public: // *** Constructor/destructor ***
 
         // deep copy of TM model
         if (other.m_TMModelPtr)
-            m_TMModelPtr = typename gsTMModelData<T>::tdPtr(other.m_TMModelPtr->clone().release());
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
 
         // create new terms
         // terms cannot be cloned here, because they store m_TMModelPtr

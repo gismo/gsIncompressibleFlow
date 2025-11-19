@@ -71,7 +71,7 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr; 
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;
     index_t m_unknown;
 
 protected: // *** Base class members ***
@@ -80,7 +80,7 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_CoeffGradGrad(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    gsTMTerm_CoeffGradGrad(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr, index_t unk) :
     m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
@@ -112,7 +112,7 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;
     index_t m_unknown;
     
 protected: // *** Base class members ***
@@ -121,7 +121,7 @@ protected: // *** Base class members ***
     
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_CoeffValVal(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    gsTMTerm_CoeffValVal(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr, index_t unk) :
     m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_MEASURE;
@@ -154,7 +154,7 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;
     index_t m_unknown;
     
 protected: // *** Base class members ***
@@ -163,7 +163,7 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_BlendCoeff(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    gsTMTerm_BlendCoeff(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr, index_t unk) :
     m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;;
@@ -197,7 +197,7 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;
     index_t m_unknown;
     
 protected: // *** Base class members ***
@@ -206,7 +206,7 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_BlendCoeffRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    gsTMTerm_BlendCoeffRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr, index_t unk) :
     m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
@@ -239,7 +239,7 @@ public: // *** Type definitions ***
 protected: // *** Class members ***
 
     typename gsFlowSolverParams<T>::Ptr m_paramsPtr;
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;
     index_t m_unknown;
     
 protected: // *** Base class members ***
@@ -248,7 +248,7 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsTMTerm_ProductionRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr, index_t unk) :
+    gsTMTerm_ProductionRhs(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr, index_t unk) :
     m_paramsPtr(paramsPtr), m_TMModelPtr(TMModelPtr), m_unknown(unk)
     {
         this->m_geoFlags = NEED_VALUE | NEED_MEASURE;
