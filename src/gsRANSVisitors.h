@@ -175,6 +175,131 @@ protected: // *** Member functions ***
 
 };
 
+
+// ================================================================================================================
+// For T-CSD stabilization
+//
+
+template <class T, int MatOrder>
+class gsRANSVisitorTCSDStabilization_time : public gsINSVisitorUU<T, MatOrder>
+{
+
+public:
+    typedef gsINSVisitorUU<T, MatOrder> Base;
+
+public:
+    gsField<T> m_solution;
+    real_t m_viscosity;
+    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
+    gsVector<T> m_TurbulentViscosityVals;
+    gsMatrix<T> m_tauS;
+
+protected: // *** Base class members ***
+
+    using Base::m_localMat;
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_testFunActives;
+    using Base::m_trialFunActives;
+    using Base::m_terms;
+    using Base::m_quNodes;
+    using Base::m_mapData;
+    using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
+    
+
+public: // *** Constructor/destructor ***
+
+    gsRANSVisitorTCSDStabilization_time() {}
+
+    gsRANSVisitorTCSDStabilization_time(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { 
+        initMembers();
+    }
+
+
+protected: // *** Member functions ***
+
+    /// @brief Initialize all members.
+    void initMembers();
+
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsFlowTerm_TCSDStabilization_time<T>() );
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Initialize the visitor.
+    void initialize();
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(index_t testFunID);
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(const gsDomainIterator<T>* domIt);
+
+public: // *** Getters/setters ***
+
+    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
+
+    void setRANSsolution(gsField<T>& solution) { m_solution = solution;}
+
+};
+
+template <class T, int MatOrder>
+class gsRANSVisitorTCSDStabilization_advection : public gsRANSVisitorTCSDStabilization_time<T, MatOrder>
+{
+
+public:
+    typedef gsRANSVisitorTCSDStabilization_time<T, MatOrder> Base;
+
+protected: // *** Base class members ***
+
+    using Base::m_tauS;
+    using Base::m_localMat;
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_testFunActives;
+    using Base::m_trialFunActives;
+    using Base::m_terms;
+    using Base::m_quNodes;
+    using Base::m_hasPeriodicBC;
+    using Base::m_periodicTransformMat;
+    
+
+public: // *** Constructor/destructor ***
+
+    gsRANSVisitorTCSDStabilization_advection() {}
+
+    gsRANSVisitorTCSDStabilization_advection(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    {   }
+
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsFlowTerm_TCSDStabilization_advection<T>() );
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(index_t testFunID);
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(const gsDomainIterator<T>* domIt);
+
+};
+
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

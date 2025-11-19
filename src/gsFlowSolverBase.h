@@ -37,7 +37,7 @@ protected: // *** Class members ***
     unsigned m_iterationNumber;
     gsStopwatch m_clock;
     T m_initAssembT, m_assembT, m_relNorm;
-    
+
 
 public: // *** Constructor/destructor ***
 

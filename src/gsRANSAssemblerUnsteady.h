@@ -35,8 +35,12 @@ public:
 protected: // *** Class members ***
 
     typename gsRANSVisitorUU<T, MatOrder>::uPtr m_visitorRANSsymgradPtr;
-    gsSparseMatrix<T, MatOrder> m_matRANSsymgrad;
-    gsMatrix<T> m_rhsRANS;
+    gsRANSVisitorTCSDStabilization_time<T, MatOrder> m_visitorRANS_TCSD_time;
+    gsRANSVisitorTCSDStabilization_advection<T, MatOrder> m_visitorRANS_TCSD_advection;
+
+    gsSparseMatrix<T, MatOrder> m_matRANSsymgrad, m_matRANS_TCSD_time, m_matRANS_TCSD_advection;
+    gsMatrix<T> m_rhsRANS, m_rhsRANS_TCSD_time, m_rhsRANS_TCSD_advection;
+
     typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
     bool m_bComputeTMfirst;
     gsField<T> m_oldTimeFieldU, m_currentFieldU;
@@ -76,20 +80,9 @@ protected: // *** Member functions ***
     /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
 
-    /// @brief Assemble the linear part of the matrix.
-    virtual void assembleLinearPart();
+    virtual void makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false);
 
-    virtual void makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false)
-    {
-        Base::makeBlockUU(result, linPartOnly);
-        result += m_matRANSsymgrad;
-    }
-
-    virtual void makeRhsU(gsMatrix<T>& result, bool linPartOnly = false)
-    {
-        Base::makeRhsU(result, linPartOnly);
-        result += m_rhsRANS;
-    }
+    virtual void makeRhsU(gsMatrix<T>& result, bool linPartOnly = false);
 
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();

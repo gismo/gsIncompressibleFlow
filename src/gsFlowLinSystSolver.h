@@ -517,7 +517,7 @@ gsFlowLinSystSolver<T, MatOrder>* createLinSolver(typename gsFlowSolverParams<T>
         else
             GISMO_ERROR("Trying to use PETSc with ColMajor matrix ordering - currently not supported.");
     } 
-    else        
+    else
     {
         paramsPtr->logger() << "Invalid linear system solver type, using direct solver.\n";
         return new gsFlowLinSystSolver_direct<T, MatOrder>(paramsPtr);

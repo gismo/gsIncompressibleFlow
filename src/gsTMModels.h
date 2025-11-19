@@ -240,10 +240,6 @@ public: // *** Class functions ***
     /// @param[in] patchId          an index of the patch
     void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
     
-        
-public: // *** Getters/setters ***
-    
-    
 };
 
 // ========================================================================================================

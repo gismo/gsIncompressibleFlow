@@ -85,6 +85,15 @@ void gsTMAssemblerSST<T, MatOrder>::initMembers()
     m_visitorNonlinearSST_K.setCurrentSolution(m_solution);
     m_visitorNonlinearSST_O.setCurrentSolution(m_solution);
 
+    m_visitorSST_TCSD_time_K = gsTMVisitorSSTTCSDStabilization_time<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 2);
+    m_visitorSST_TCSD_time_K.initialize();
+    m_visitorSST_TCSD_advection_K = gsTMVisitorSSTTCSDStabilization_advection<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 2);
+    m_visitorSST_TCSD_advection_K.initialize();
+    m_visitorSST_TCSD_time_O = gsTMVisitorSSTTCSDStabilization_time<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 3);
+    m_visitorSST_TCSD_time_O.initialize();
+    m_visitorSST_TCSD_advection_O = gsTMVisitorSSTTCSDStabilization_advection<T, MatOrder>(m_paramsPtr, m_TMModelPtr, 3);
+    m_visitorSST_TCSD_advection_O.initialize();
+
 }
 
 
@@ -292,12 +301,27 @@ void gsTMAssemblerSST<T, MatOrder>::fillSystem()
     fillGlobalMat(m_matrix, m_blockTimeIterationK, 2);
     fillGlobalMat(m_matrix, m_blockTimeIterationO, 3);
 
+    if (m_paramsPtr->options().getSwitch("TCSD_TM"))
+    {
+        this->fillGlobalMat(m_matrix, m_matSST_TCSD_time_K, 2);
+        this->fillGlobalMat(m_matrix, m_matSST_TCSD_advection_K, 2);
+        this->fillGlobalMat(m_matrix, m_matSST_TCSD_time_O, 3);
+        this->fillGlobalMat(m_matrix, m_matSST_TCSD_advection_O, 3);
+    }
+
     if (!m_matrix.isCompressed())
         m_matrix.makeCompressed();
 
     m_rhs = m_baseRhs;
     m_rhs.topRows(m_kdofs[0]) += m_rhsLinearK + m_rhsNonlinearK + m_rhsTimeIterationK;
     m_rhs.bottomRows(m_kdofs[1]) += m_rhsLinearO + m_rhsNonlinearO + m_rhsTimeIterationO;
+
+    if (m_paramsPtr->options().getSwitch("TCSD_TM"))
+    {
+        m_rhs.topRows(m_kdofs[0]) += m_rhsSST_TCSD_time_K + m_rhsSST_TCSD_advection_K;
+        m_rhs.bottomRows(m_kdofs[1]) += m_rhsSST_TCSD_time_O + m_rhsSST_TCSD_advection_O;
+    }
+
 
     m_isSystemReady = true;
 }
@@ -339,15 +363,48 @@ void gsTMAssemblerSST<T, MatOrder>::update(const gsMatrix<T> & solVector, bool u
         m_blockTimeIterationK.reserve(gsVector<index_t>::Constant(m_blockTimeIterationK.outerSize(), m_nnzPerRowTM));
         m_blockTimeIterationO.reserve(gsVector<index_t>::Constant(m_blockTimeIterationO.outerSize(), m_nnzPerRowTM));
 
-        gsField<T> velocity = m_paramsPtr->getVelocitySolution();
-        m_visitorTimeIterationSST_K.setCurrentSolution(velocity);
-        m_visitorTimeIterationSST_O.setCurrentSolution(velocity);
-
         this->assembleBlock(m_visitorTimeIterationSST_K, 2, m_blockTimeIterationK, m_rhsTimeIterationK);
         this->assembleBlock(m_visitorTimeIterationSST_O, 3, m_blockTimeIterationO, m_rhsTimeIterationO);
 
         m_rhsLinearK = m_blockLinearK * m_solution.topRows(m_kdofs[0]);
         m_rhsLinearO = m_blockLinearO * m_solution.bottomRows(m_kdofs[1]);
+
+        if (m_paramsPtr->options().getSwitch("TCSD_TM"))
+        {
+            gsField<T> velocity = m_paramsPtr->getVelocitySolution();
+            m_visitorSST_TCSD_time_K.setCurrentSolution(velocity);
+            m_visitorSST_TCSD_time_K.setRANSsolution(velocity);
+            m_matSST_TCSD_time_K.resize(m_kdofs[0], m_kdofs[0]);
+            m_matSST_TCSD_time_K.reserve(gsVector<index_t>::Constant(m_matSST_TCSD_time_K.outerSize(), m_nnzPerRowTM));
+            m_rhsSST_TCSD_time_K.setZero(m_kdofs[0], 1);
+            this->assembleBlock(m_visitorSST_TCSD_time_K, 2, m_matSST_TCSD_time_K, m_rhsSST_TCSD_time_K);
+            m_rhsSST_TCSD_time_K = m_matSST_TCSD_time_K * m_solution.topRows(m_kdofs[0]);
+
+            m_visitorSST_TCSD_time_O.setCurrentSolution(velocity);
+            m_visitorSST_TCSD_time_O.setRANSsolution(velocity);
+            m_matSST_TCSD_time_O.resize(m_kdofs[1], m_kdofs[1]);
+            m_matSST_TCSD_time_O.reserve(gsVector<index_t>::Constant(m_matSST_TCSD_time_K.outerSize(), m_nnzPerRowTM));
+            m_rhsSST_TCSD_time_O.setZero(m_kdofs[1], 1);
+            this->assembleBlock(m_visitorSST_TCSD_time_O, 3, m_matSST_TCSD_time_O, m_rhsSST_TCSD_time_O);
+            m_rhsSST_TCSD_time_O = m_matSST_TCSD_time_O * m_solution.bottomRows(m_kdofs[1]);
+
+            m_visitorSST_TCSD_advection_K.setCurrentSolution(velocity);
+            m_visitorSST_TCSD_advection_K.setRANSsolution(velocity);
+            m_matSST_TCSD_advection_K.resize(m_kdofs[0], m_kdofs[0]);
+            m_matSST_TCSD_advection_K.reserve(gsVector<index_t>::Constant(m_matSST_TCSD_advection_K.outerSize(), m_nnzPerRowTM));
+            m_rhsSST_TCSD_advection_K.setZero(m_kdofs[0], 1);
+            this->assembleBlock(m_visitorSST_TCSD_advection_K, 2, m_matSST_TCSD_advection_K, m_rhsSST_TCSD_advection_K);
+            m_rhsSST_TCSD_advection_K = m_matSST_TCSD_advection_K * m_solution.topRows(m_kdofs[0]);
+
+            m_visitorSST_TCSD_advection_O.setCurrentSolution(velocity);
+            m_visitorSST_TCSD_advection_O.setRANSsolution(velocity);
+            m_matSST_TCSD_advection_O.resize(m_kdofs[1], m_kdofs[1]);
+            m_matSST_TCSD_advection_O.reserve(gsVector<index_t>::Constant(m_matSST_TCSD_advection_K.outerSize(), m_nnzPerRowTM));
+            m_rhsSST_TCSD_advection_O.setZero(m_kdofs[1], 1);
+            this->assembleBlock(m_visitorSST_TCSD_advection_O, 3, m_matSST_TCSD_advection_O, m_rhsSST_TCSD_advection_O);
+            m_rhsSST_TCSD_advection_O = m_matSST_TCSD_advection_O * m_solution.bottomRows(m_kdofs[1]);
+
+        }
     }
 
     fillSystem();
