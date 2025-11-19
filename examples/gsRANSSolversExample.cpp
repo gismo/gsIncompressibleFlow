@@ -79,6 +79,8 @@ int main(int argc, char *argv[])
     real_t picardTol = 1e-4;
     std::string matFormation = "EbE";
     bool stokesInit = false; // start unsteady problem from Stokes solution
+    bool TCSD_RANS_stab = false; // use T-CSD stabilization
+    bool TCSD_TM_stab = false; // use T-CSD stabilization
 
     // linear solver settings
     std::string itSolver = "iter"; // iter (= gismo solver) / petsc
@@ -140,6 +142,8 @@ int main(int argc, char *argv[])
     cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
+    cmd.addSwitch("TCSD_RANS", "Use T-CSD stabilization of numerical solution of RANS", TCSD_RANS_stab);
+    cmd.addSwitch("TCSD_TM", "Use T-CSD stabilization of numerical solution of TM", TCSD_TM_stab);
     cmd.addSwitch("petscOptFile", "Load PETSc options from file", petscOptFile);
     cmd.addString("", "petscOptPath", "Path to the file containing PETSc options", petscOptPath);
     cmd.addString("", "petscOptPathSP", "Path to the file containing saddle-point PETSc options", petscOptPathSP);
@@ -308,6 +312,8 @@ int main(int argc, char *argv[])
         paramsDir.options().setReal("nonlin.tol", picardTol);
         paramsDir.setBndParts(bndIn, bndOut, bndWall);
         paramsDir.options().setString("lin.solver", "direct");
+        paramsDir.options().setSwitch("TCSD_RANS", TCSD_RANS_stab);
+        paramsDir.options().setSwitch("TCSD_TM", TCSD_TM_stab);
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsDir);
         solveProblem(NSsolver, solveOpt, geo, logger);
@@ -333,6 +339,8 @@ int main(int argc, char *argv[])
         paramsIter.options().setInt("lin.maxIt", linIt);
         paramsIter.options().setReal("lin.tol", linTol);
         paramsIter.options().setString("lin.precType", precond);
+        paramsIter.options().setSwitch("TCSD_RANS", TCSD_RANS_stab);
+        paramsIter.options().setSwitch("TCSD_TM", TCSD_TM_stab);
         paramsIter.options().setSwitch("petsc.optFromFile", petscOptFile);
         paramsIter.options().setSwitch("petsc.optFromFileSP", petscOptFile);
         paramsIter.options().setString("petsc.optPath", petscOptPath);
