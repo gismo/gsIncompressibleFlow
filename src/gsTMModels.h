@@ -23,7 +23,7 @@ class gsTMModelData
     
 public: // *** Smart pointers ***
 
-    typedef memory::shared_ptr<gsTMModelData> tdPtr;
+    typedef memory::shared_ptr<gsTMModelData> Ptr;
 
 protected: // *** Class members ***
 
@@ -74,7 +74,7 @@ public: // *** Static functions ***
 
     /// @brief Returns a sharedpointer to a newly created instance.
     /// @param[in] paramsPtr a shared point to the instance of an object holding all parameters of the solver
-    static tdPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr);
+    static Ptr make(typename gsFlowSolverParams<T>::Ptr paramsPtr);
 
 
 public: // *** Class functions ***
@@ -139,7 +139,7 @@ public:
 
 public: // *** Smart pointers ***
 
-    typedef memory::shared_ptr<gsTMModelData_SST> tdPtr;    
+    typedef memory::shared_ptr<gsTMModelData_SST> Ptr;    
 
 protected: // *** Class members ***
 
@@ -204,7 +204,7 @@ public: // *** Static functions ***
 
     /// @brief Returns a shared pointer to a newly created instance.
     /// @param[in] paramsPtr a shared point to the instance of an object holding all parameters of the solver
-    static tdPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr)
+    static Ptr make(typename gsFlowSolverParams<T>::Ptr paramsPtr)
     {
         return memory::make_shared_not_owned(new gsTMModelData_SST<T>(paramsPtr));
     }

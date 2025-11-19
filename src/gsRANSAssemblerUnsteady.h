@@ -41,7 +41,7 @@ protected: // *** Class members ***
     gsSparseMatrix<T, MatOrder> m_matRANSsymgrad, m_matRANS_TCSD_time, m_matRANS_TCSD_advection;
     gsMatrix<T> m_rhsRANS, m_rhsRANS_TCSD_time, m_rhsRANS_TCSD_advection;
 
-    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
+    typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
     bool m_bComputeTMfirst;
     gsField<T> m_oldTimeFieldU, m_currentFieldU;
 
@@ -98,7 +98,7 @@ protected: // *** Member functions ***
 public: // Getter/setters
 
     /// @brief Set turbulence solver to the member function.
-    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
+    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::Ptr TMsolver) { m_TMsolverPtr = TMsolver;}
 
 }; //gsRANSAssemblerUnsteady
 

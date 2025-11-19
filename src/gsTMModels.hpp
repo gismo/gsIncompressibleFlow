@@ -16,7 +16,7 @@ namespace gismo
 {
 
 template <class T>
-typename gsTMModelData<T>::tdPtr gsTMModelData<T>::make(typename gsFlowSolverParams<T>::Ptr paramsPtr)
+typename gsTMModelData<T>::Ptr gsTMModelData<T>::make(typename gsFlowSolverParams<T>::Ptr paramsPtr)
 {
     std::string turbModel = paramsPtr->options().getString("TM");
     if (turbModel == "SST") 

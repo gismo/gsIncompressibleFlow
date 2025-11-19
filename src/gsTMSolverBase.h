@@ -34,11 +34,11 @@ public:
 
 public: // *** Smart pointers ***
 
-    typedef memory::shared_ptr<gsTMSolverBase> tmPtr;
+    typedef memory::shared_ptr<gsTMSolverBase> Ptr;
 
 public: // *** Class members ***
 
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;    
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;    
     gsVector<T> m_TurbulentViscosityVals;
     T m_TMtime, m_TMtimeStepSize;
     T m_TMinnerIter, m_TMavgPicardIter;
@@ -77,7 +77,7 @@ public: // *** Static functions ***
     /// @brief Returns a shared pointer to a newly created instance of the turbulence solver.
     /// @param[in] paramsPtr        a shared point to the instance of an object holding all parameters of the solver
     /// @param[in] TMModelPtr       a shared pointer to the chosen turbulence model
-    static tmPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr);
+    static Ptr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr);
 
 
 protected: // *** Member functions ***

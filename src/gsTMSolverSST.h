@@ -35,11 +35,11 @@ public:
 
 public: // *** Smart pointers ***
 
-    typedef memory::shared_ptr<gsTMSolverSST> tmPtr;
+    typedef memory::shared_ptr<gsTMSolverSST> Ptr;
 
 protected: // *** Class members ***
 
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;     
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;     
     bool m_isSSTModelSet;
 
 protected: // *** Base class members ***
@@ -54,12 +54,12 @@ protected: // *** Base class members ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsTMSolverSST(gsFlowSolverParams<T>& params, typename gsTMModelData<T>::tdPtr TMModelPtr):
+    gsTMSolverSST(gsFlowSolverParams<T>& params, typename gsTMModelData<T>::Ptr TMModelPtr):
     gsTMSolverSST(memory::make_shared_not_owned(&params), TMModelPtr)
     { }
 
     /// @brief Constructor.
-    gsTMSolverSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr):
+    gsTMSolverSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr):
     Base(paramsPtr), m_TMModelPtr(TMModelPtr)
     { 
         m_assemblerPtr = new gsTMAssemblerSST<T, MatOrder>(paramsPtr, TMModelPtr);
@@ -83,7 +83,7 @@ public: // *** Static functions ***
     /// @brief Returns a shared pointer to a newly created instance.
     /// @param[in] paramsPtr        a shared point to the instance of an object holding all parameters of the solver
     /// @param[in] TMModelPtr       a shared pointer to the chosen turbulence model
-    static tmPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr)
+    static Ptr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr)
     {
         return memory::make_shared_not_owned(new gsTMSolverSST<T, MatOrder>(paramsPtr, TMModelPtr));
     }
