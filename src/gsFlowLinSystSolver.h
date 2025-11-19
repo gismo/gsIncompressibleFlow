@@ -113,6 +113,7 @@ protected: // *** Class members ***
 protected: // *** Base class members ***
 
     using Base::m_paramsPtr;
+    using Base::m_clock;
     using Base::m_setupT;
     using Base::m_solveT;
 
@@ -165,6 +166,7 @@ protected: // *** Class members ***
 protected: // *** Base class members ***
 
     using Base::m_paramsPtr;
+    using Base::m_clock;
     using Base::m_setupT;
     using Base::m_solveT;
 
@@ -247,6 +249,7 @@ protected: // *** Base class members ***
     using Base::m_precPtr;
     using Base::m_linIterVector;
     using Base::m_paramsPtr;
+    using Base::m_clock;
     using Base::m_setupT;
     using Base::m_solveT;
 
