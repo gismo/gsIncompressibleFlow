@@ -163,13 +163,15 @@ public: // *** Static functions ***
         opt.addInt("TM.addRefsDF", "Number of additional uniform refinements of pressure basis for distance field computation", 2);
 
         // parallel
-        int maxThreads = 
+        int nThreads = 1;
         #ifdef _OPENMP
-        omp_get_max_threads();
-        #else
-        2;
+        int nt = omp_get_num_threads(); // currently set numbler of threads
+        if (nt > 1)
+            nThreads = nt;
+        else
+            nThreads = omp_get_max_threads() / 2;
         #endif
-        opt.addInt("numThreads", "Number of threads for OpenMP", maxThreads/2);
+        opt.addInt("numThreads", "Number of threads for OpenMP", nThreads);
 
         return opt;
     }
