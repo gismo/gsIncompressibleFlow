@@ -1,7 +1,16 @@
-// 4-patch rotating-square ALE example using the new gsINSSolverUnsteadyALE
-// - Rebuilds parameterization each time step and splits into 4 patches
-// - Uses gsBarrierPatch for parametrization quality when requested
+/** @file ale_square_4patch_gsINSALE.cpp 
+    4-patch rotating-square ALE example using the new gsINSSolverUnsteadyALE
+    Rebuilds parameterization each time step and splits into 4 patches
+    Uses gsBarrierPatch for parametrization quality when requested
 
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): H. Honnerova
+*/
 #include <gismo.h>
 #include <gsIncompressibleFlow/src/gsINSSolver.h>
 #include <gsIncompressibleFlow/src/gsINSSolverALE.h>
@@ -10,7 +19,8 @@ using namespace gismo;
 
 // Build a single patch annulus-like surface bounded by an outer square [-1,2]^2
 // and an inner unit square [0,1]^2 rotated around (0.5,0.5) by 'angle' (radians).
-static gsMultiPatch<> makeConnectedBoundarySinglePatch(real_t angleRad)
+template <typename T>
+static gsMultiPatch<> makeConnectedBoundarySinglePatch(T angleRad)
 {
     // Outer boundary: closed polyline square
     gsMatrix<> outerCoefs(5, 2);
@@ -40,7 +50,7 @@ static gsMultiPatch<> makeConnectedBoundarySinglePatch(real_t angleRad)
 
     // Fixed seam: do not rotate parameter start; keep u seam fixed across time
     // Ensure compatible knot vectors between outer and inner curves
-    std::vector<real_t> diff;
+    std::vector<T> diff;
     outerCurve.knots(0).difference(innerCurve.knots(0), diff); innerCurve.insertKnots(diff.begin(), diff.end());
     innerCurve.knots(0).difference(outerCurve.knots(0), diff); outerCurve.insertKnots(diff.begin(), diff.end());
 
@@ -62,16 +72,17 @@ static gsMultiPatch<> makeConnectedBoundarySinglePatch(real_t angleRad)
 }
 
 // Split the single patch (u in [0,4]) into 4 patches at u = 1,2,3
-static gsMultiPatch<> makeFourPatches(real_t angleRad)
+template <typename T>
+static gsMultiPatch<> makeFourPatches(T angleRad)
 {
     gsMultiPatch<> single = makeConnectedBoundarySinglePatch(angleRad);
-    gsTensorBSpline<2, real_t> surf = static_cast<gsTensorBSpline<2, real_t>&>(single.patch(0));
+    gsTensorBSpline<2, T> surf = static_cast<gsTensorBSpline<2, T>&>(single.patch(0));
 
-    gsTensorBSpline<2, real_t> p0, pRest;
+    gsTensorBSpline<2, T> p0, pRest;
     surf.splitAt(0, 1.0, p0, pRest);
-    gsTensorBSpline<2, real_t> p1, pRest2;
+    gsTensorBSpline<2, T> p1, pRest2;
     pRest.splitAt(0, 2.0, p1, pRest2);
-    gsTensorBSpline<2, real_t> p2, p3;
+    gsTensorBSpline<2, T> p2, p3;
     pRest2.splitAt(0, 3.0, p2, p3);
 
     gsMultiPatch<> mp;
@@ -128,8 +139,6 @@ static int classifyOuterSide(const gsGeometry<>& geo)
 
 int main(int argc, char* argv[])
 {
-    gsInfo << "4-patch rotating-square with gsINSALE (re-param every step)\n";
-
     // Physical and numerical parameters
     real_t meanVelocity = 2.0; // inlet mean speed
     real_t Re = 200.0;         // Reynolds number
