@@ -17,7 +17,7 @@
 namespace gismo
 {
 
-/// @brief ALE convection term for incompressible Navier-Stokes: ((u - u_mesh) · ∇φ_trial) * φ_test
+/// @brief ALE convection term for incompressible Navier-Stokes: ((u - u_mesh) · \grad \phi_trial) * \phi_test
 /// @tparam T coefficient type
 template <class T>
 class gsINSTerm_ALEConvection : public gsFlowTermNonlin<T>
@@ -118,7 +118,7 @@ public:
 
         // Get relative velocity (u - u_mesh)
         gsMatrix<T> relativeVel = m_solUVals - m_meshVelVals;
-        
+
         // Assemble using transformed gradients
         gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
         gsMatrix<T> trialFunPhysGrad;
