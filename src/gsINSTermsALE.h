@@ -98,7 +98,7 @@ public:
         // Initialize local matrix
         localMat.setZero(numTestActive, numActive);
 
-        //Calculate mesh velocity at quadrature points
+        // Calculate mesh velocity at quadrature points
         computeMeshVelocity(mapData);
 
         // Compute solution velocity values
@@ -118,56 +118,18 @@ public:
 
         // Get relative velocity (u - u_mesh)
         gsMatrix<T> relativeVel = m_solUVals - m_meshVelVals;
-
-        // Robust path: use helper to transform gradients and assemble; then return
+        
+        // Assemble using transformed gradients
+        gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
+        gsMatrix<T> trialFunPhysGrad;
+        const index_t nQuPoints = quWeights.rows();
+        for (index_t k = 0; k < nQuPoints; ++k)
         {
-            const index_t numTestActive = testFunData[0].rows();
-            const index_t numActive = trialFunData[0].rows();
-            if (trialFunData[1].size() == 0)
-                return;
-            localMat.setZero(numTestActive, numActive);
-
-            gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
-            gsMatrix<T> trialFunPhysGrad;
-            const index_t nQuPoints = quWeights.rows();
-            for (index_t k = 0; k < nQuPoints; ++k)
-            {
-                const T weight = quWeights(k) * coeffMeasure(k);
-                transformGradients(mapData, k, trialFunData[1], trialFunPhysGrad);
-                gsMatrix<T> convection = trialFunPhysGrad * relativeVel.col(k);
-                localMat.noalias() += weight * (testFunData[0].col(k) * convection.transpose());
-            }
-            return;
-        }
-
-        // Get physical gradients from mapData
-        // mapData.values[0] contains the inverse Jacobian matrices
-        const gsMatrix<T>& invJac = mapData.values[0];
-
-        // Safety check: ensure we have enough dimensions
-        const index_t effectiveDim = math::min(m_tarDim, relativeVel.rows());
-
-        // Transform gradients and compute convection term
-        for (index_t k = 0; k < quWeights.rows(); ++k)
-        {
-            // Get Jacobian for this quadrature point
-            gsMatrix<T> invJ = invJac.reshapeCol(k, mapData.dim.first, mapData.dim.second);
-
-            // Transform trial function gradients to physical space
-            gsMatrix<T> physGrad = trialFunData[1].reshapeCol(k, numActive, mapData.dim.first) * invJ.transpose();
-
-            // Compute (u_rel · \nabla \phi_trial)
-            gsMatrix<T> convection(numActive, 1);
-            convection.setZero();
-
-            for (index_t d = 0; d < effectiveDim; ++d)
-            {
-                convection += relativeVel(d, k) * physGrad.col(d);
-            }
-
-            // Add contribution: weight * (\phi_test * (u_rel · \nabla\phi_trial))
-            localMat.noalias() += quWeights[k] * mapData.measures(k) *
-                                  testFunData[0].col(k) * convection.transpose();
+            const T weight = quWeights(k) * coeffMeasure(k);
+            transformGradients(mapData, k, trialFunData[1], trialFunPhysGrad);
+            gsMatrix<T> convection = trialFunPhysGrad * relativeVel.col(k);
+            localMat.noalias() += weight * (testFunData[0].col(k) * convection.transpose());
+ 
         }
     }
 };
