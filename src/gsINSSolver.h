@@ -247,10 +247,10 @@ public: // *** Getters/setters ***
     {
         GISMO_ASSERT(unk < 2, "Unknown index out of range. Only 0 (velocity) and 1 (pressure) are valid.");
         
-        // 获取速度和压力的自由度数量
+        // Get the number of velocity DOFs 
         const index_t fullUdofs = this->getAssembler()->getUdofs();
-        // 获取目标维度 (通常是 2 或 3)
-        // 从PDE的几何信息中获取维度
+        // Get the target dimension (usually 2 or 3)
+        // Get the dimension from the PDE's geometric information
         const index_t tarDim = this->m_paramsPtr->getPde().domain().geoDim();
         const index_t pShift = tarDim * fullUdofs;
         
@@ -270,15 +270,14 @@ public: // *** Getters/setters ***
     virtual void setSolutionCoefs(const gsMatrix<T>& coefs, index_t unk) override
     {
         GISMO_ASSERT(unk < 2, "Unknown index out of range. Only 0 (velocity) and 1 (pressure) are valid.");
-        
-        // 获取速度和压力的自由度数量
+
+        // Get the number of velocity and pressure DOFs
         const index_t fullUdofs = this->getAssembler()->getUdofs();
-        // 获取目标维度 (通常是 2 或 3)
-        // 从PDE的几何信息中获取维度
+        // Get the dimension from the PDE's geometric information
         const index_t tarDim = this->m_paramsPtr->getPde().domain().geoDim();
         const index_t pShift = tarDim * fullUdofs;
-        
-        // 如果m_solution还没有初始化，先初始化它
+
+        // If m_solution has not been initialized yet, initialize it
         if (this->m_solution.size() == 0)
         {
             const index_t totalSize = pShift + (unk == 0 ? coefs.rows() : fullUdofs);
@@ -286,11 +285,11 @@ public: // *** Getters/setters ***
             this->m_solution.setZero();
         }
         
-        if (unk == 0) // 速度
+        if (unk == 0) // velocity
         {
             this->m_solution.topRows(pShift) = coefs;
         }
-        else // 压力
+        else // pressure
         {
             this->m_solution.bottomRows(this->m_solution.rows() - pShift) = coefs;
         }
