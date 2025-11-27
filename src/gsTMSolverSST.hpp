@@ -34,8 +34,8 @@ void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes, in
     }
     else
     {
-        m_TMModelPtr->updateModel(quNodes, patchId);
-        m_TMModelPtr->evalTurbulentViscosity(quNodes, patchId);
+        m_TMModelPtr->updateModel(quNodes, numNodesPerElem, patchId);
+        m_TMModelPtr->evalTurbulentViscosity(quNodes, numNodesPerElem, patchId);
         m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
     }
     

@@ -63,7 +63,7 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolverPtr): 
+    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMSolverBase<T, MatOrder>::Ptr TMsolverPtr): 
     Base(paramsPtr), m_TMsolverPtr(TMsolverPtr)
     { 
         initMembers();

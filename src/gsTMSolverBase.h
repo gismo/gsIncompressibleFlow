@@ -60,12 +60,12 @@ protected: // *** Base class function ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsTMSolverBase(gsFlowSolverParams<T>& params, typename gsTMModelData<T>::tdPtr TMModelPtr):
+    gsTMSolverBase(gsFlowSolverParams<T>& params, typename gsTMModelData<T>::Ptr TMModelPtr):
     Base(params), m_TMModelPtr(TMModelPtr)
     { }
 
     /// @brief Constructor.
-    gsTMSolverBase(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr):
+    gsTMSolverBase(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr):
     Base(paramsPtr), m_TMModelPtr(TMModelPtr)
     { }
 
@@ -117,8 +117,8 @@ public: // *** Getters/setters ***
     virtual gsTMAssemblerBase<T, MatOrder>* getAssembler() const
     { return dynamic_cast<gsTMAssemblerBase<T, MatOrder>*>(m_assemblerPtr); }
 
-    void setTMModel(typename gsTMModelData<T>::tdPtr TMModel) { m_TMModelPtr = TMModel; }
-    typename gsTMModelData<T>::tdPtr getTMModel() { return m_TMModelPtr; }
+    void setTMModel(typename gsTMModelData<T>::Ptr TMModel) { m_TMModelPtr = TMModel; }
+    typename gsTMModelData<T>::Ptr getTMModel() { return m_TMModelPtr; }
 
 };
 

@@ -77,7 +77,7 @@ public: // *** Constructor/destructor ***
 
         // deep copy of TM model
         if (other.m_TMModelPtr)
-            m_TMModelPtr = typename gsTMModelData<T>::tdPtr(other.m_TMModelPtr->clone().release());
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
 
         // create new terms
         // terms cannot be cloned here, because they store m_TMModelPtr
@@ -211,7 +211,7 @@ public:
     gsField<T> m_solution;
     real_t m_viscosity;
     typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
-    typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
     gsMatrix<T> m_tauS;
     gsMatrix<T> m_USolVals;
@@ -251,7 +251,7 @@ public: // *** Constructor/destructor ***
 
         // deep copy of TM model
         if (other.m_TMModelPtr)
-            m_TMModelPtr = typename gsTMModelData<T>::tdPtr(other.m_TMModelPtr->clone().release());
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
 
         // create new terms
         // terms cannot be cloned here, because they store m_TMModelPtr
@@ -302,8 +302,8 @@ public:
 public:
     gsField<T> m_solution;
     real_t m_viscosity;
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;
-    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
+    typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
     gsMatrix<T> m_tauS;
     gsMatrix<T> m_USolVals;
@@ -341,7 +341,7 @@ public: // *** Constructor/destructor ***
 
         // deep copy of TM model
         if (other.m_TMModelPtr)
-            m_TMModelPtr = typename gsTMModelData<T>::tdPtr(other.m_TMModelPtr->clone().release());
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
 
         // create new terms
         // terms cannot be cloned here, because they store m_TMModelPtr
@@ -367,9 +367,9 @@ public: // *** Member functions ***
 
 public: // *** Getters/setters ***
 
-    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
+    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::Ptr TMsolver) { m_TMsolverPtr = TMsolver;}
 
-    void setTurbulenceModel(typename gsTMModelData<T>::tdPtr TMModelPtr) { m_TMModelPtr = TMModelPtr;}
+    void setTurbulenceModel(typename gsTMModelData<T>::Ptr TMModelPtr) { m_TMModelPtr = TMModelPtr;}
 
     void setRANSsolution(gsField<T>& solution) { m_solution = solution;}    
 

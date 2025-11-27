@@ -60,7 +60,7 @@ public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
     gsTMSolverSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr):
-    Base(paramsPtr), m_TMModelPtr(TMModelPtr)
+    Base(paramsPtr, TMModelPtr)//, m_TMModelPtr(TMModelPtr)
     { 
         m_assemblerPtr = new gsTMAssemblerSST<T, MatOrder>(paramsPtr, TMModelPtr);
 
