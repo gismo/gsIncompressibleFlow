@@ -26,8 +26,8 @@ void gsRANSVisitorUU<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
-    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
 
     gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());
 
@@ -43,8 +43,8 @@ void gsRANSVisitorUU<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     Base::evaluate(domIt);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
-    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
 
     gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());
 
@@ -594,8 +594,8 @@ void gsRANSVisitorTCSDStabilization_time<T, MatOrder>::evaluate(index_t testFunI
 {
     Base::evaluate(testFunID);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
-    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
 
     const index_t nQuPoints = m_quNodes.cols();
     gsMatrix<T> physPoints = m_mapData.values[0];
@@ -607,7 +607,10 @@ void gsRANSVisitorTCSDStabilization_time<T, MatOrder>::evaluate(index_t testFunI
 
     gsFlowTerm_TCSDStabilization_time<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_time<T>* > (m_terms.back());
     if (termPtr)
+    {
         termPtr->setTauS(m_tauS);
+        termPtr->setUSolVals(velocities);
+    }
 }
 
 template <class T, int MatOrder>
@@ -615,8 +618,8 @@ void gsRANSVisitorTCSDStabilization_time<T, MatOrder>::evaluate(const gsDomainIt
 {
     Base::evaluate(domIt);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
-    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
 
     const index_t nQuPoints = m_quNodes.cols();
     gsMatrix<T> physPoints = m_mapData.values[0];
@@ -628,7 +631,10 @@ void gsRANSVisitorTCSDStabilization_time<T, MatOrder>::evaluate(const gsDomainIt
 
     gsFlowTerm_TCSDStabilization_time<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_time<T>* > (m_terms.back());
     if (termPtr)
+    {
         termPtr->setTauS(m_tauS);
+        termPtr->setUSolVals(velocities);
+    }
 }
 
 // ================================================================================================================
@@ -638,9 +644,23 @@ void gsRANSVisitorTCSDStabilization_advection<T, MatOrder>::evaluate(index_t tes
 {
     Base::evaluate(testFunID);
 
+    m_TMModelPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
+
+    const index_t nQuPoints = m_quNodes.cols();
+    gsMatrix<T> physPoints = m_mapData.values[0];
+    real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
+    gsMatrix<T> velocities = m_solution.value(m_quNodes);
+    m_tauS.resize(1, nQuPoints);
+    for (index_t i = 0; i < nQuPoints; i++)
+        m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+
     gsFlowTerm_TCSDStabilization_advection<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_advection<T>* > (m_terms.back());
     if (termPtr)
+    {
         termPtr->setTauS(m_tauS);
+        termPtr->setUSolVals(velocities);
+    }
 }
 
 template <class T, int MatOrder>
@@ -648,9 +668,23 @@ void gsRANSVisitorTCSDStabilization_advection<T, MatOrder>::evaluate(const gsDom
 {
     Base::evaluate(domIt);
 
+    m_TMModelPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
+
+    const index_t nQuPoints = m_quNodes.cols();
+    gsMatrix<T> physPoints = m_mapData.values[0];
+    real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
+    gsMatrix<T> velocities = m_solution.value(m_quNodes);
+    m_tauS.resize(1, nQuPoints);
+    for (index_t i = 0; i < nQuPoints; i++)
+        m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+
     gsFlowTerm_TCSDStabilization_advection<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_advection<T>* > (m_terms.back());
     if (termPtr)
+    {
         termPtr->setTauS(m_tauS);
+        termPtr->setUSolVals(velocities);
+    }
 }
 
 }

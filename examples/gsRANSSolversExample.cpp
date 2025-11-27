@@ -267,6 +267,11 @@ int main(int argc, char *argv[])
     logger << "domain: " << patches;
     logger << "viscosity = " << viscosity << "\n";
     logger << "source function = " << f << "\n";
+    #ifdef _OPENMP
+        logger << "OpenMP = 1\n";
+    #else
+        logger << "OpenMP = 0\n";
+    #endif
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     

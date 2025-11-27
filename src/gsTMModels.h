@@ -41,6 +41,7 @@ protected: // *** Class members ***
     real_t m_kappa;
     real_t m_visc;
     
+    gsMatrix<T> m_USolVals;
     gsMatrix<T> m_KSolVals;
     gsMatrix<T> m_OSolVals;
     std::vector< gsMatrix<T> > m_KSolDers;
@@ -52,7 +53,7 @@ protected: // *** Class members ***
     std::vector< gsMatrix<T> > m_StrainRateTensor;
     gsVector<T> m_turbulentViscosityVals;
 
-    bool m_average = true;
+    bool m_average = false;
     bool m_isInitialized = false;
 
 
@@ -110,6 +111,7 @@ public: // *** Getters/setters ***
     real_t get_beta2() { return m_beta2; }
     real_t get_kappa() { return m_kappa; }
 
+    gsMatrix<T> getUSolVals() { return m_USolVals; }
     gsMatrix<T> getKSolVals() { return m_KSolVals; }
     gsMatrix<T> getOSolVals() { return m_OSolVals; }
     std::vector< gsMatrix<T> > getKSolDers() { return m_KSolDers; }
@@ -161,6 +163,7 @@ protected: // *** Base class members ***
     using Base::m_kappa;
     using Base::m_visc;
 
+    using Base::m_USolVals;
     using Base::m_KSolVals;
     using Base::m_OSolVals;
     using Base::m_KSolDers;

@@ -328,6 +328,8 @@ public: // *** Getters/setters ***
     void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
 
     gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
 };
 
 // ===================================================================================================================
@@ -373,6 +375,8 @@ public: // *** Getters/setters ***
     void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
 
     gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
 };
 
 // ===================================================================================================================

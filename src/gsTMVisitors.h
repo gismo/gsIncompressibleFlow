@@ -331,8 +331,6 @@ public: // *** Constructor/destructor ***
         m_terms.clear();
         defineTerms();
 
-        gsField<T> velocity = m_paramsPtr->getVelocitySolution();
-        this->setCurrentSolution(velocity);
     }
 
 
@@ -424,8 +422,6 @@ public: // *** Constructor/destructor ***
         m_terms.clear();
         defineTerms();
 
-        gsField<T> velocity = m_paramsPtr->getVelocitySolution();
-        this->setCurrentSolution(velocity);
     }
 
 

@@ -39,11 +39,11 @@ public: // *** Smart pointers ***
 
 protected: // *** Class members ***
 
-    typename gsTMModelData<T>::Ptr m_TMModelPtr;     
     bool m_isSSTModelSet;
 
 protected: // *** Base class members ***
 
+    using Base::m_TMModelPtr;
     using Base::m_assemblerPtr;
     using Base::m_paramsPtr;
     using Base::m_solution;

@@ -71,13 +71,13 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr, false)
     { 
         // create turbulence model
-        m_TMModelPtr = gsTMModelData<T>::make(paramsPtr);
+        m_TMModelPtr = gsTMModelData<T>::make(m_paramsPtr);
 
         // create turbulence solver
-        m_TMsolverPtr = gsTMSolverBase<T, MatOrder>::make(paramsPtr, m_TMModelPtr);
+        m_TMsolverPtr = gsTMSolverBase<T, MatOrder>::make(m_paramsPtr, m_TMModelPtr);
         
         // create assembler
-        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr);
+        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr, m_TMsolverPtr);
                         
         initMembers();
 
