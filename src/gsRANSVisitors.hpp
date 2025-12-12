@@ -621,13 +621,21 @@ void gsRANSVisitorTCSDStabilization_time<T, MatOrder>::evaluate(const gsDomainIt
     m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
 
+    real_t timeStep = m_paramsPtr->options().getReal("timeStep");
+    short_t deg = m_paramsPtr->getBasis(m_trialUnkID).piece(m_patchID).maxDegree();
     const index_t nQuPoints = m_quNodes.cols();
     gsMatrix<T> physPoints = m_mapData.values[0];
     real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
     gsMatrix<T> velocities = m_solution.value(m_quNodes);
     m_tauS.resize(1, nQuPoints);
     for (index_t i = 0; i < nQuPoints; i++)
-        m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+        //m_tauS(0, i) = 1. / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+        //m_tauS(0, i) = h / (2 * deg * velocities.col(i).norm());
+        // lepsi nez predchozi
+        m_tauS(0, i) = 1. / math::sqrt(math::pow(2. / timeStep, 2) + math::pow(2 * deg * velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+        // jina varianta - Codina - nepatrne lepsi nez prechozi
+        //m_tauS(0, i) = 1. / (2. * deg * velocities.col(i).norm() / h + 4. * math::abs(m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2) + math::abs(2. / timeStep));
+        
 
     gsFlowTerm_TCSDStabilization_time<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_time<T>* > (m_terms.back());
     if (termPtr)
@@ -671,13 +679,20 @@ void gsRANSVisitorTCSDStabilization_advection<T, MatOrder>::evaluate(const gsDom
     m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
     m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
 
+    real_t timeStep = m_paramsPtr->options().getReal("timeStep");
+    short_t deg = m_paramsPtr->getBasis(m_trialUnkID).piece(m_patchID).maxDegree();
     const index_t nQuPoints = m_quNodes.cols();
     gsMatrix<T> physPoints = m_mapData.values[0];
     real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
     gsMatrix<T> velocities = m_solution.value(m_quNodes);
     m_tauS.resize(1, nQuPoints);
     for (index_t i = 0; i < nQuPoints; i++)
-        m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+        //m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+        //m_tauS(0, i) = h / (2 * deg * velocities.col(i).norm());
+        // lepsi nez predchozi
+        m_tauS(0, i) = 1. / math::sqrt(math::pow(2. / timeStep, 2) + math::pow(2 * deg * velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+        // jina varianta - Codina - nepatrne lepsi nez prechozi
+        //m_tauS(0, i) = 1. / (2. * deg * velocities.col(i).norm() / h + 4. * math::abs(m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2) + math::abs(2. / timeStep));
 
     gsFlowTerm_TCSDStabilization_advection<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_advection<T>* > (m_terms.back());
     if (termPtr)

@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
     bool stokesInit = false; // start unsteady problem from Stokes solution
     bool TCSD_RANS_stab = false; // use T-CSD stabilization
     bool TCSD_TM_stab = false; // use T-CSD stabilization
+    bool TMaveraging = false;
 
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
@@ -308,6 +309,7 @@ int main(int argc, char *argv[])
         paramsDir.options().setInt("numThreads", numThreads);
         paramsDir.options().setSwitch("TCSD_RANS", TCSD_RANS_stab);
         paramsDir.options().setSwitch("TCSD_TM", TCSD_TM_stab);
+        paramsDir.options().setSwitch("TM.averaging", TMaveraging);
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsDir);
         solveProblem(NSsolver, solveOpt, geo, logger);
@@ -335,6 +337,7 @@ int main(int argc, char *argv[])
         paramsIter.options().setInt("numThreads", numThreads);
         paramsIter.options().setSwitch("TCSD_RANS", TCSD_RANS_stab);
         paramsIter.options().setSwitch("TCSD_TM", TCSD_TM_stab);
+        paramsIter.options().setSwitch("TM.averaging", TMaveraging);
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsIter);
         solveProblem(NSsolver, solveOpt, geo, logger);

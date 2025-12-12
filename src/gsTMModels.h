@@ -64,6 +64,7 @@ public: // *** Constructor/destructor ***
     m_paramsPtr(paramsPtr)
     { 
         m_visc = m_paramsPtr->getPde().viscosity();
+        m_average = m_paramsPtr->options().getSwitch("TM.averaging");
     }
     
     ~gsTMModelData() {}

@@ -268,7 +268,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTerm_TCSDStabilization_time<T>() );
+        m_terms.push_back( new gsFlowTerm_TCSDStabilization_time<T>(m_paramsPtr->options().getReal("timeStep")) );
     }
 
 public: // *** Member functions *** 

@@ -291,25 +291,25 @@ protected: // *** Member functions ***
 /// @tparam T   real number type
 /// @ingroup IncompressibleFlow
 template <class T>
-class gsFlowTerm_TCSDStabilization_time : public gsFlowTermNonlin<T>
+class gsFlowTerm_TCSDStabilization_time : public gsFlowTerm_TimeDiscr<T>
 {
 
 public:
-    typedef gsFlowTermNonlin<T> Base;
+    typedef gsFlowTerm_TimeDiscr<T> Base;
 
 protected: // *** Base class members ***
     
-    using Base::m_currentSolU;
-    using Base::m_isCurrentSolSet;
-    using Base::m_solUVals;
+    using Base::m_timeStep;
 
 protected: // *** Class members ***
 
     gsMatrix<T> m_tauS;
+    gsMatrix<T> m_solUVals;
 
 public: // *** Constructor/destructor ***
 
-    gsFlowTerm_TCSDStabilization_time()
+    gsFlowTerm_TCSDStabilization_time(real_t timeStep) :
+    Base(timeStep)
     { 
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
         this->m_testFunFlags = NEED_DERIV;

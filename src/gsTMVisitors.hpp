@@ -316,7 +316,7 @@ void gsTMVisitorSSTTCSDStabilization_time<T, MatOrder>::evaluate(const gsDomainI
         if (m_unknown == 2)
             m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaK1 + (1 - F1(i)) * sigmaK2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max(betaStar * OSolVals(0, i), eps));
         else if (m_unknown == 3)
-            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaO1 + (1 - F1(i)) * sigmaO2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max((F1(i) * beta1 + (1 - F1(i)) * beta2) * OSolVals(0, i), eps));
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaO1 + (1 - F1(i)) * sigmaO2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2)/* + math::max((F1(i) * beta1 + (1 - F1(i)) * beta2) * OSolVals(0, i), eps)*/);
         else
             gsWarn << "Wrong unknown identification!\n";
 
@@ -409,7 +409,7 @@ void gsTMVisitorSSTTCSDStabilization_advection<T, MatOrder>::evaluate(const gsDo
         if (m_unknown == 2)
             m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaK1 + (1 - F1(i)) * sigmaK2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max(betaStar * OSolVals(0, i), eps));
         else if (m_unknown == 3)
-            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaO1 + (1 - F1(i)) * sigmaO2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2) + math::max((F1(i) * beta1 + (1 - F1(i)) * beta2) * OSolVals(0, i), eps));
+            m_tauS(0, i) = 1 / math::sqrt(math::pow(2 * velocities.col(i).norm() / h, 2) + 9 * math::pow(4 * (m_viscosity + (F1(i) * sigmaO1 + (1 - F1(i)) * sigmaO2) * m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2)/* + math::max((F1(i) * beta1 + (1 - F1(i)) * beta2) * OSolVals(0, i), eps)*/);
         else
             gsWarn << "Wrong unknown identification!\n";
 
