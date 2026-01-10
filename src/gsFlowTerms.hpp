@@ -81,7 +81,7 @@ void gsFlowTerm_TCSDStabilization_time<T>::assemble(const gsMapData<T>& mapData,
 {
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
 
-    this->computeCoeffSolU(mapData);
+    //this->computeCoeffSolU(mapData);
 
     const gsMatrix<T>& testFunGrads = testFunData[1];
     const gsMatrix<T>& trialFunVals = trialFunData[0];
@@ -106,7 +106,7 @@ void gsFlowTerm_TCSDStabilization_advection<T>::assemble(const gsMapData<T>& map
 {
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
 
-    this->computeCoeffSolU(mapData);
+    //this->computeCoeffSolU(mapData);
 
     const gsMatrix<T>& testFunGrads = testFunData[1];
     const gsMatrix<T>& trialFunGrads = trialFunData[1];

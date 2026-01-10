@@ -331,8 +331,6 @@ public: // *** Constructor/destructor ***
         m_terms.clear();
         defineTerms();
 
-        gsField<T> velocity = m_paramsPtr->getVelocitySolution();
-        this->setCurrentSolution(velocity);
     }
 
 
@@ -343,7 +341,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTerm_TCSDStabilization_time<T>() );
+        m_terms.push_back( new gsFlowTerm_TCSDStabilization_time<T>(m_paramsPtr->options().getReal("timeStep")) );
     }
 
     virtual void defineTestTrialUnknowns()
@@ -424,8 +422,6 @@ public: // *** Constructor/destructor ***
         m_terms.clear();
         defineTerms();
 
-        gsField<T> velocity = m_paramsPtr->getVelocitySolution();
-        this->setCurrentSolution(velocity);
     }
 
 

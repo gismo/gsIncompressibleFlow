@@ -40,6 +40,7 @@ protected:  // *** Class members ***
     gsMatrix<T> m_solution;
     real_t m_viscosity;
     typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
 
 protected: // *** Base class members ***
@@ -67,6 +68,23 @@ public: // *** Constructor/destructor ***
         initMembers();
     }
 
+    /// @brief Copy constructor.
+    gsRANSVisitorUU(gsRANSVisitorUU<T, MatOrder> const & other) :
+    gsRANSVisitorUU()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of TM model
+        if (other.m_TMModelPtr)
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
+
+        // create new terms
+        // terms cannot be cloned here, because they store m_TMModelPtr
+        m_terms.clear();
+        defineTerms();
+
+    }
 
 public: // *** Member functions *** 
 
@@ -109,6 +127,8 @@ protected: // *** Member functions ***
 public: // *** Getters/setters ***
 
     void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::Ptr TMsolver) { m_TMsolverPtr = TMsolver;}
+
+    void setTurbulenceModel(typename gsTMModelData<T>::Ptr TMModelPtr) { m_TMModelPtr = TMModelPtr;}
 
     void setRANSsolution(gsMatrix<T> sol) { m_solution = sol;}
 
@@ -191,8 +211,10 @@ public:
     gsField<T> m_solution;
     real_t m_viscosity;
     typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
     gsVector<T> m_TurbulentViscosityVals;
     gsMatrix<T> m_tauS;
+    gsMatrix<T> m_USolVals;
 
 protected: // *** Base class members ***
 
@@ -220,6 +242,23 @@ public: // *** Constructor/destructor ***
         initMembers();
     }
 
+    /// @brief Copy constructor.
+    gsRANSVisitorTCSDStabilization_time(gsRANSVisitorTCSDStabilization_time<T, MatOrder> const & other) :
+    gsRANSVisitorTCSDStabilization_time()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of TM model
+        if (other.m_TMModelPtr)
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
+
+        // create new terms
+        // terms cannot be cloned here, because they store m_TMModelPtr
+        m_terms.clear();
+        defineTerms();
+
+    }
 
 protected: // *** Member functions ***
 
@@ -229,7 +268,7 @@ protected: // *** Member functions ***
 
     virtual void defineTerms()
     {
-        m_terms.push_back( new gsFlowTerm_TCSDStabilization_time<T>() );
+        m_terms.push_back( new gsFlowTerm_TCSDStabilization_time<T>(m_paramsPtr->options().getReal("timeStep")) );
     }
 
 public: // *** Member functions *** 
@@ -247,20 +286,30 @@ public: // *** Getters/setters ***
 
     void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::Ptr TMsolver) { m_TMsolverPtr = TMsolver;}
 
+    void setTurbulenceModel(typename gsTMModelData<T>::Ptr TMModelPtr) { m_TMModelPtr = TMModelPtr;}
+
     void setRANSsolution(gsField<T>& solution) { m_solution = solution;}
 
 };
 
 template <class T, int MatOrder>
-class gsRANSVisitorTCSDStabilization_advection : public gsRANSVisitorTCSDStabilization_time<T, MatOrder>
+class gsRANSVisitorTCSDStabilization_advection : public gsINSVisitorUU<T, MatOrder>
 {
 
 public:
-    typedef gsRANSVisitorTCSDStabilization_time<T, MatOrder> Base;
+    typedef gsINSVisitorUU<T, MatOrder> Base;
+
+public:
+    gsField<T> m_solution;
+    real_t m_viscosity;
+    typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
+    gsVector<T> m_TurbulentViscosityVals;
+    gsMatrix<T> m_tauS;
+    gsMatrix<T> m_USolVals;
 
 protected: // *** Base class members ***
 
-    using Base::m_tauS;
     using Base::m_localMat;
     using Base::m_paramsPtr;
     using Base::m_patchID;
@@ -270,6 +319,7 @@ protected: // *** Base class members ***
     using Base::m_trialFunActives;
     using Base::m_terms;
     using Base::m_quNodes;
+    using Base::m_mapData;
     using Base::m_hasPeriodicBC;
     using Base::m_periodicTransformMat;
     
@@ -282,6 +332,23 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr)
     {   }
 
+    /// @brief Copy constructor.
+    gsRANSVisitorTCSDStabilization_advection(gsRANSVisitorTCSDStabilization_advection<T, MatOrder> const & other) :
+    gsRANSVisitorTCSDStabilization_advection()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of TM model
+        if (other.m_TMModelPtr)
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
+
+        // create new terms
+        // terms cannot be cloned here, because they store m_TMModelPtr
+        m_terms.clear();
+        defineTerms();
+
+    }
 
 protected: // *** Member functions ***
 
@@ -297,6 +364,14 @@ public: // *** Member functions ***
 
     /// @brief Evaluates turbulent viscosity.
     void evaluate(const gsDomainIterator<T>* domIt);
+
+public: // *** Getters/setters ***
+
+    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::Ptr TMsolver) { m_TMsolverPtr = TMsolver;}
+
+    void setTurbulenceModel(typename gsTMModelData<T>::Ptr TMModelPtr) { m_TMModelPtr = TMModelPtr;}
+
+    void setRANSsolution(gsField<T>& solution) { m_solution = solution;}    
 
 };
 

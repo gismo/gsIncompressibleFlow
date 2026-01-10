@@ -42,6 +42,7 @@ protected: // *** Class members ***
     gsMatrix<T> m_rhsRANS, m_rhsRANS_TCSD_time, m_rhsRANS_TCSD_advection;
 
     typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
     bool m_bComputeTMfirst;
     gsField<T> m_oldTimeFieldU, m_currentFieldU;
 
@@ -62,8 +63,8 @@ protected: // *** Base class members ***
 
 public: // *** Constructor/destructor ***
 
-    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
-    Base(paramsPtr)
+    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMSolverBase<T, MatOrder>::Ptr TMsolverPtr): 
+    Base(paramsPtr), m_TMsolverPtr(TMsolverPtr)
     { 
         initMembers();
     }
@@ -91,14 +92,6 @@ protected: // *** Member functions ***
     /// @param solVector 
     /// @param[in] updateSol    true - save solVector into m_solution (false is used in the inner Picard iteration for unsteady problem)
     virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
-
-
-//public: // *** Member functions ***
-
-public: // Getter/setters
-
-    /// @brief Set turbulence solver to the member function.
-    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::Ptr TMsolver) { m_TMsolverPtr = TMsolver;}
 
 }; //gsRANSAssemblerUnsteady
 

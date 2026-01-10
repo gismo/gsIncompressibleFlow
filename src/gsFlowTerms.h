@@ -224,7 +224,7 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
-    virtual void evalCoeff(const gsMapData<T>& mapData0)
+    virtual void evalCoeff(const gsMapData<T>& mapData)
     { this->setConstCoeff(1./m_timeStep); }
 
 };
@@ -267,11 +267,11 @@ class gsFlowTerm_Diffusion : public gsFlowTerm_GradGrad<T>
 
 protected: // *** Class members ***
 
-    real_t m_viscosity;
+    T m_viscosity;
 
 public: // *** Constructor/destructor ***
 
-    gsFlowTerm_Diffusion(real_t viscosity) :
+    gsFlowTerm_Diffusion(T viscosity) :
     m_viscosity(viscosity)
     { }
 
@@ -291,25 +291,25 @@ protected: // *** Member functions ***
 /// @tparam T   real number type
 /// @ingroup IncompressibleFlow
 template <class T>
-class gsFlowTerm_TCSDStabilization_time : public gsFlowTermNonlin<T>
+class gsFlowTerm_TCSDStabilization_time : public gsFlowTerm_TimeDiscr<T>
 {
 
 public:
-    typedef gsFlowTermNonlin<T> Base;
+    typedef gsFlowTerm_TimeDiscr<T> Base;
 
 protected: // *** Base class members ***
     
-    using Base::m_currentSolU;
-    using Base::m_isCurrentSolSet;
-    using Base::m_solUVals;
+    using Base::m_timeStep;
 
 protected: // *** Class members ***
 
     gsMatrix<T> m_tauS;
+    gsMatrix<T> m_solUVals;
 
 public: // *** Constructor/destructor ***
 
-    gsFlowTerm_TCSDStabilization_time()
+    gsFlowTerm_TCSDStabilization_time(real_t timeStep) :
+    Base(timeStep)
     { 
         this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
         this->m_testFunFlags = NEED_DERIV;
@@ -328,6 +328,8 @@ public: // *** Getters/setters ***
     void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
 
     gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
 };
 
 // ===================================================================================================================
@@ -373,6 +375,8 @@ public: // *** Getters/setters ***
     void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
 
     gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
 };
 
 // ===================================================================================================================

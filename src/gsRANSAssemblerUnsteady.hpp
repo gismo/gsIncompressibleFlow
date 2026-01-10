@@ -21,17 +21,23 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers()
     Base::initMembers();
     updateSizes();
 
+    m_TMModelPtr = m_TMsolverPtr->getTMModel();
+
     if (m_paramsPtr->options().getString("assemb.loop") == "EbE")
         m_visitorRANSsymgradPtr = std::make_unique< gsRANSVisitorUU<T, MatOrder> >(m_paramsPtr);
     else
         m_visitorRANSsymgradPtr = std::make_unique< gsRANSVisitorUU_full<T, MatOrder> >(m_paramsPtr);
 
     m_visitorRANSsymgradPtr->initialize();
+    m_visitorRANSsymgradPtr->setTurbulenceModel(m_TMModelPtr);
 
     m_visitorRANS_TCSD_time = gsRANSVisitorTCSDStabilization_time<T, MatOrder>(m_paramsPtr);
     m_visitorRANS_TCSD_time.initialize();
+    m_visitorRANS_TCSD_time.setTurbulenceModel(m_TMModelPtr);
     m_visitorRANS_TCSD_advection = gsRANSVisitorTCSDStabilization_advection<T, MatOrder>(m_paramsPtr);
     m_visitorRANS_TCSD_advection.initialize();
+    m_visitorRANS_TCSD_advection.setTurbulenceModel(m_TMModelPtr);
+
 }
 
 template<class T, int MatOrder>
@@ -100,7 +106,6 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
     {
         m_rhsTimeDiscr = m_blockTimeDiscr * m_solution.topRows(m_pshift);
 
-        m_visitorRANSsymgradPtr->setTurbulenceSolver(m_TMsolverPtr);
         m_visitorRANSsymgradPtr->setRANSsolution(solVector);
         m_matRANSsymgrad.resize(m_pshift, m_pshift);
         m_matRANSsymgrad.reserve(gsVector<index_t>::Constant(m_matRANSsymgrad.outerSize(), m_tarDim * m_nnzPerOuterU));
@@ -109,7 +114,6 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
 
         if (m_paramsPtr->options().getSwitch("TCSD_RANS"))
         {
-            m_visitorRANS_TCSD_time.setTurbulenceSolver(m_TMsolverPtr);
             gsField<T> velocityField = this->constructSolution(solVector, 0);
             m_visitorRANS_TCSD_time.setCurrentSolution(velocityField);
             m_visitorRANS_TCSD_time.setRANSsolution(velocityField);
@@ -119,7 +123,6 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
             this->assembleBlock(m_visitorRANS_TCSD_time, 0, m_matRANS_TCSD_time, m_rhsRANS_TCSD_time);
             m_rhsRANS_TCSD_time = m_matRANS_TCSD_time * m_solution.topRows(m_pshift);
 
-            m_visitorRANS_TCSD_advection.setTurbulenceSolver(m_TMsolverPtr);
             m_visitorRANS_TCSD_advection.setCurrentSolution(velocityField);
             m_visitorRANS_TCSD_advection.setRANSsolution(velocityField);
             m_matRANS_TCSD_advection.resize(m_pshift, m_pshift);

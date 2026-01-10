@@ -38,12 +38,12 @@ public: // *** Smart pointers ***
     typedef memory::shared_ptr<gsTMSolverSST> Ptr;
 
 protected: // *** Class members ***
-
-    typename gsTMModelData<T>::Ptr m_TMModelPtr;     
+    
     bool m_isSSTModelSet;
 
 protected: // *** Base class members ***
 
+    using Base::m_TMModelPtr;
     using Base::m_assemblerPtr;
     using Base::m_paramsPtr;
     using Base::m_solution;
@@ -60,7 +60,7 @@ public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
     gsTMSolverSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr):
-    Base(paramsPtr), m_TMModelPtr(TMModelPtr)
+    Base(paramsPtr, TMModelPtr)
     { 
         m_assemblerPtr = new gsTMAssemblerSST<T, MatOrder>(paramsPtr, TMModelPtr);
 

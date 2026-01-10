@@ -175,6 +175,7 @@ public: // *** Static functions ***
         opt.addReal("TM.turbIntensity", "Turbulent intensity", 0.05);
         opt.addReal("TM.viscosityRatio", "Specifies approximate ratio of turbulent viscosity to kinematic viscosity", 50.0);
         opt.addInt("TM.addRefsDF", "Number of additional uniform refinements of pressure basis for distance field computation", 2);
+        opt.addSwitch("TM.averaging", "Averaging of turbulent viscosity values on elements", true);
 
         return opt;
     }

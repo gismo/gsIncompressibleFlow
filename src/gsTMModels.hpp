@@ -97,6 +97,9 @@ void gsTMModelData_SST<T>::evalVelocityQuantities(gsMatrix<T>& quNodes, index_t 
     mapData.points = quNodes;
     m_paramsPtr->getPde().patches().patch(patchId).computeMap(mapData);
 
+    gsMatrix<T> USolVals;
+    USolVals = USolField.value(quNodes);
+
     gsMatrix<index_t> actives;
     gsMatrix<T> parGrads, physGrad;
     basis.piece(patchId).deriv_into(quNodes, parGrads);
@@ -136,6 +139,7 @@ void gsTMModelData_SST<T>::evalVelocityQuantities(gsMatrix<T>& quNodes, index_t 
         StrainRateTensor[k] = SS;
         StrainRateMag(k) = math::sqrt(StrainRateMag(k));
     }
+    m_USolVals = USolVals;
     m_USolDers = USolDers;
     m_StrainRateMag = StrainRateMag;
     m_StrainRateTensor = StrainRateTensor;
