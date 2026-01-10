@@ -224,7 +224,7 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
-    virtual void evalCoeff(const gsMapData<T>& mapData0)
+    virtual void evalCoeff(const gsMapData<T>& mapData)
     { this->setConstCoeff(1./m_timeStep); }
 
 };
@@ -267,11 +267,11 @@ class gsFlowTerm_Diffusion : public gsFlowTerm_GradGrad<T>
 
 protected: // *** Class members ***
 
-    real_t m_viscosity;
+    T m_viscosity;
 
 public: // *** Constructor/destructor ***
 
-    gsFlowTerm_Diffusion(real_t viscosity) :
+    gsFlowTerm_Diffusion(T viscosity) :
     m_viscosity(viscosity)
     { }
 
