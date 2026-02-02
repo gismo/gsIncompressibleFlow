@@ -380,6 +380,58 @@ public: // *** Getters/setters ***
 };
 
 // ===================================================================================================================
+
+/// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
+/// @tparam T   real number type
+/// @ingroup IncompressibleFlow
+template <class T>
+class gsFlowTerm_SUPGStabilization_diffusion : public gsFlowTermNonlin<T>
+{
+
+public:
+    typedef gsFlowTermNonlin<T> Base;
+    
+protected: // *** Class members ***
+
+    real_t m_viscosity;
+    gsMatrix<T> m_tauS;
+    gsVector<T> m_TurbulentViscosityVals;
+
+protected: // *** Base class members ***
+    
+    using Base::m_currentSolU;
+    using Base::m_isCurrentSolSet;
+    using Base::m_solUVals;
+
+public: // *** Constructor/destructor ***
+
+    gsFlowTerm_SUPGStabilization_diffusion(real_t viscosity) :
+    m_viscosity(viscosity)
+    { 
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_HESSIAN | NEED_VALUE;
+        this->m_testFunFlags = NEED_DERIV | NEED_DERIV2;
+        this->m_trialFunFlags = NEED_DERIV | NEED_DERIV2;
+    }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_SUPGStabilization_diffusion)
+
+
+protected: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat);
+
+public: // *** Getters/setters ***
+
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
+
+    gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
+
+    void setTurbulentViscosityVals(gsVector<T> mat) { m_TurbulentViscosityVals = mat; }
+};
+
+// ===================================================================================================================
 // ===================================================================================================================
 
 /// @brief      A class for integrals of the form: test function value * rhs function value.

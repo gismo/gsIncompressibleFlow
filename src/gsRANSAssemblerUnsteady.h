@@ -37,10 +37,12 @@ protected: // *** Class members ***
     typename gsRANSVisitorUU<T, MatOrder>::uPtr m_visitorRANSsymgradPtr;
     gsRANSVisitorTCSDStabilization_time<T, MatOrder> m_visitorRANS_TCSD_time;
     gsRANSVisitorTCSDStabilization_advection<T, MatOrder> m_visitorRANS_TCSD_advection;
-
-    gsSparseMatrix<T, MatOrder> m_matRANSsymgrad, m_matRANS_TCSD_time, m_matRANS_TCSD_advection;
-    gsMatrix<T> m_rhsRANS, m_rhsRANS_TCSD_time, m_rhsRANS_TCSD_advection;
-
+    gsRANSVisitorSUPGStabilization_diffusion<T, MatOrder> m_visitorRANS_SUPG_diffusion;
+    gsRANSVisitorSUPGStabilization_presssure<T, MatOrder> m_visitorRANS_SUPG_pressure;
+    
+    gsSparseMatrix<T, MatOrder> m_matRANSsymgrad, m_matRANS_TCSD_time, m_matRANS_TCSD_advection, m_matRANS_SUPG_diffusion, m_matRANS_SUPG_pressure, m_matRANS_TCSD_velocity_full;
+    gsMatrix<T> m_rhsRANS, m_rhsRANS_TCSD_time, m_rhsRANS_TCSD_advection, m_rhsRANS_SUPG_diffusion, m_rhsRANS_SUPG_pressure, m_rhsRANS_TCSD_velocity_full;
+    
     typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
     typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
     bool m_bComputeTMfirst;
@@ -51,6 +53,7 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_pshift;
     using Base::m_udofs;
+    using Base::m_pdofs;
     using Base::m_tarDim;
     using Base::m_nnzPerOuterU;
     using Base::m_solution;

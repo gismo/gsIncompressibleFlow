@@ -37,8 +37,8 @@ void gsFlowVisitor<T, MatOrder>::evalSingleFunData(const unsigned& basisFlags, c
         basisPtr->derivSingle_into(funID, m_quNodes, basisData[1]);
 
     // currently not needed
-    // if(basisFlags & NEED_DERIV2)
-    //     basisPtr->deriv2Single_into(funID, m_quNodes, basisData[2]);
+    if(basisFlags & NEED_DERIV2)
+        basisPtr->deriv2Single_into(funID, m_quNodes, basisData[2]);
 }
 
 
@@ -105,30 +105,30 @@ void gsFlowVisitor<T, MatOrder>::evalBasisData(const unsigned& basisFlags, const
     }
 
     // currently not needed
-    // if(basisFlags & NEED_DERIV2)
-    // {
-    //     gsMatrix<real_t> basisDers2;
-    //     basisPtr->deriv2_into(m_quNodes, basisDers2);
+    if(basisFlags & NEED_DERIV2)
+    {
+        gsMatrix<real_t> basisDers2;
+        basisPtr->deriv2_into(m_quNodes, basisDers2);
 
-    //     if (multipleElem)
-    //     {
-    //         index_t dimSq = dim*dim;
-    //         basisData[2].setZero(dimSq*numAct, m_quNodes.cols());
+        if (multipleElem)
+        {
+            index_t dimSq = dim*dim;
+            basisData[2].setZero(dimSq*numAct, m_quNodes.cols());
 
-    //         for (index_t i = 0; i < actives.rows(); i++)
-    //         {
-    //             for (index_t j = 0; j < actives.cols(); j++)
-    //             {
-    //                 index_t ii = activesUnique_val_to_ID[actives(i, j)];
-    //                 basisData[2].block(dimSq*ii, j, dimSq, 1) = basisDers2.block(dimSq*i, dimSq ,j, 1);
-    //             }
-    //         }
-    //     }
-    //     else
-    //     {
-    //         basisData[2] = basisDers2;
-    //     }
-    // }
+            for (index_t i = 0; i < actives.rows(); i++)
+            {
+                for (index_t j = 0; j < actives.cols(); j++)
+                {
+                    index_t ii = activesUnique_val_to_ID[actives(i, j)];
+                    basisData[2].block(dimSq*ii, j, dimSq, 1) = basisDers2.block(dimSq*i, dimSq ,j, 1);
+                }
+            }
+        }
+        else
+        {
+            basisData[2] = basisDers2;
+        }
+    }
     
 }
 
@@ -153,8 +153,8 @@ void gsFlowVisitor<T, MatOrder>::initOnPatch(index_t patchID)
     setupQuadrature();          
 
     m_testFunData.clear(); m_trialFunData.clear();
-    m_testFunData.resize(2); // 0 - value, 1 - deriv (2nd derivative not needed at the moment)
-    m_trialFunData.resize(2); // 0 - value, 1 - deriv
+    m_testFunData.resize(3); // 0 - value, 1 - deriv (2nd derivative not needed at the moment)
+    m_trialFunData.resize(3); // 0 - value, 1 - deriv
 }
 
 

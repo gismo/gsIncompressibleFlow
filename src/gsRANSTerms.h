@@ -94,6 +94,99 @@ public: // *** Member functions ***
 
 }; // gsRANSTerm_SymmetricGradient_full
 
+// ===================================================================================
+// For SUPG stabilization
+
+template <class T>
+class gsRANSTerm_SG_SUPGstabilization_diffusion : public gsRANSTerm_SymmetricGradient<T>
+{
+
+public:
+    typedef gsRANSTerm_SymmetricGradient<T> Base;
+
+protected: // *** Class members ***
+
+    std::vector< gsMatrix<T> > m_turbViscosityGrads;
+    gsMatrix<T> m_tauS;
+    gsMatrix<T> m_solUVals;
+
+protected: // *** Base class members ***
+
+    using Base::m_viscosity;
+    using Base::m_turbViscosityVals;
+
+public: // *** Constructor/destructor ***
+
+    gsRANSTerm_SG_SUPGstabilization_diffusion() :
+    Base()
+    {  }
+
+    GISMO_CLONE_FUNCTION(gsRANSTerm_SG_SUPGstabilization_diffusion)
+
+
+public: // *** Member functions ***
+
+    void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat);
+
+public: // *** Getter/setters
+
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
+
+    gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
+
+    void setTurbulentViscosityGrads(std::vector< gsMatrix<T> > turbViscosityGrads) { m_turbViscosityGrads = turbViscosityGrads; }
+
+};
+
+// ===================================================================================================================
+
+/// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
+/// @tparam T   real number type
+/// @ingroup IncompressibleFlow
+template <class T>
+class gsRANSTerm_SUPGstabilization_pressure : public gsFlowTermNonlin<T>
+{
+
+public:
+    typedef gsFlowTermNonlin<T> Base;    
+
+protected: // *** Base class members ***
+    
+    using Base::m_currentSolU;
+    using Base::m_isCurrentSolSet;
+    using Base::m_solUVals;
+
+protected: // *** Class members ***
+
+    gsMatrix<T> m_tauS;
+
+public: // *** Constructor/destructor ***
+
+    gsRANSTerm_SUPGstabilization_pressure()
+    { 
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
+        this->m_testFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
+    }
+
+    GISMO_CLONE_FUNCTION(gsRANSTerm_SUPGstabilization_pressure)
+
+
+protected: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat);
+
+public: // *** Getters/setters ***
+
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
+
+    gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
+};
+
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

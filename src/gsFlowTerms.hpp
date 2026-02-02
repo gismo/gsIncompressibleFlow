@@ -124,6 +124,33 @@ void gsFlowTerm_TCSDStabilization_advection<T>::assemble(const gsMapData<T>& map
 // ===================================================================================================================
 
 template<class T>
+void gsFlowTerm_SUPGStabilization_diffusion<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat)
+{
+    gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
+
+    const gsMatrix<T>& testFunGrads = testFunData[1];
+    const gsMatrix<T>& trialFunGrads = trialFunData[1];
+    const gsMatrix<T>& trialFunHessians = trialFunData[2];
+
+    const index_t nQuPoints = quWeights.rows();
+    gsMatrix<T> testFunPhysGrad, trialFunPhysGrad, trialFunPhysHess;
+
+    for (index_t k = 0; k < nQuPoints; k++)
+    {
+        const T weight = quWeights(k) * coeffMeasure(k);
+
+        transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
+        transformGradients(mapData, k, trialFunGrads, trialFunPhysGrad);
+        transformLaplaceHgrad(mapData, k, trialFunGrads, trialFunHessians, trialFunPhysHess);
+
+        // TODO: doplnit druhy clen s derivaci turbulentni viskozity
+        localMat[0].noalias() -= weight * m_tauS(0, k) * (m_viscosity + m_TurbulentViscosityVals(k)) * (trialFunPhysHess.transpose() * (this->m_solUVals.col(k).transpose() * testFunPhysGrad));
+    }
+}
+
+// ===================================================================================================================
+
+template<class T>
 void gsFlowTerm_rhs<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat)
 { 
     m_pRhsFun->eval_into(mapData.values[0], m_rhsVals);

@@ -297,6 +297,40 @@ void gsTMModelData_SST<T>::evalTurbViscFromData(gsMatrix<T>& quNodes, index_t nu
 }
 
 template <class T>
+void gsTMModelData_SST<T>::updateTurbulentViscosityField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
+{
+    gsMultiPatch<T> patches = paramsPtr->getPde().patches();    // multipatch representing the computational domain
+    gsMultiBasis<T> basis = paramsPtr->getBasis(1);
+    
+    size_t np = patches.nPatches();
+    gsMultiPatch<T>* turbViscMP = new gsMultiPatch<T>;
+    for (size_t i = 0; i < np; i++)
+    {
+        index_t patchId = i;
+        const gsBasis<T> & basisp = basis.piece(patchId);
+
+        std::vector< gsVector<T> > rr;
+        rr.reserve(patches.parDim());
+
+        for (short_t j = 0; j < patches.parDim(); ++j)            // computing grid of point
+        {
+            rr.push_back(basisp.component(j).anchors().transpose());
+        }
+        gsMatrix<T> gridPts = gsPointGrid<T>(rr);
+
+        evalTurbulentViscosity(gridPts, 1, patchId);
+        gsVector<T> turbViscVals = this->getTurbulentViscosityVals();
+
+        typename gsGeometry<T>::uPtr geo = basisp.interpolateAtAnchors(turbViscVals.transpose());    // interpolating distances at grid points 
+        const gsMatrix<T> & turbViscCoeffs = geo->coefs();
+        turbViscMP->addPatch(basisp.makeGeometry(turbViscCoeffs));
+    }
+
+    gsField<T> result = gsField<T>(paramsPtr->getPde().patches(), typename gsFunctionSet<T>::Ptr(turbViscMP), true);
+    paramsPtr->setTurbulentViscosityField(result);
+}
+
+template <class T>
 void gsTMModelData_SST<T>::updateModel(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
 {
     // evaluate k, omega, grad(k), grad(omega)
@@ -340,6 +374,48 @@ void gsTMModelData_SST<T>::evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t 
     // evaluate turbulent viscosity
     evalTurbViscFromData(quNodes, numNodesPerElem, patchId);
 
+}
+
+template <class T>
+void gsTMModelData_SST<T>::evalTurbulentViscosityGrads(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
+{
+    //if (!isTurbViscFieldReady())
+    //{
+    //    updateTurbulentViscosityField(m_paramsPtr);
+    //    m_isTurbViscFieldReady = true;
+    //}
+    
+    index_t nQuPoints = quNodes.cols();
+    index_t dim = quNodes.rows();
+    gsMultiBasis<T> basis = m_paramsPtr->getBasis(1);
+    gsField<T> TurbulentViscosityField = m_paramsPtr->getTurbulentViscosityField();
+    
+    gsMapData<T> mapData;
+    unsigned geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM;
+    mapData.flags = geoFlags;
+    mapData.patchId = patchId;
+    mapData.points = quNodes;
+    m_paramsPtr->getPde().patches().patch(patchId).computeMap(mapData);
+
+    gsMatrix<index_t> actives;
+    gsMatrix<T> parGrads, physGrad;
+    basis.piece(patchId).deriv_into(quNodes, parGrads);
+        
+    gsMatrix<T> TurbViscCoeffVec = TurbulentViscosityField.coefficientVector(patchId);
+    std::vector<gsMatrix<T> > TurbViscGrads(nQuPoints);
+    for (index_t k = 0; k < nQuPoints; k++)
+    {
+        basis.piece(patchId).active_into(quNodes.col(k), actives);
+        int numAct = actives.rows();
+        gsMatrix<T> TurbViscActCoeffs(1, numAct);
+        for (int j = 0; j < numAct; j++)
+            TurbViscActCoeffs.col(j) = TurbViscCoeffVec.row(actives(j, 0)).transpose();
+
+        transformGradients(mapData, k, parGrads, physGrad);
+        TurbViscGrads[k].noalias() = TurbViscActCoeffs * physGrad.transpose();
+    }
+
+    m_turbulentViscosityGrads = TurbViscGrads;
 }
 
 } // namespace gismo

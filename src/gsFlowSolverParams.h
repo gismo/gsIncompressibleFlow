@@ -59,6 +59,7 @@ protected: // *** Class members ***
     gsField<T> m_KSolField;
     gsField<T> m_OSolField;
     gsField<T> m_distanceField;
+    gsField<T> m_TurbulentViscosityField;
     
     bool m_hasPeriodicBC;
     typename gsFlowPeriodicHelper<T>::Ptr m_periodicHelperPtr;
@@ -145,6 +146,8 @@ public: // *** Static functions ***
         opt.addReal("omega", "Angular velocity (for rotating frame of reference)", 0.0);
         opt.addSwitch("TCSD_RANS", "Use T-CSD stabilization of numerical solution for RANS", false);
         opt.addSwitch("TCSD_TM", "Use T-CSD stabilization of numerical solution for TM", false);
+        opt.addSwitch("SUPG_RANS", "Use SUPG stabilization of numerical solution for RANS", false);
+        opt.addSwitch("SUPG_TM", "Use SUPG stabilization of numerical solution for TM", false);
         
         // geometry jacobian evaluation
         opt.addInt("jac.npts", "Number of points along a patch side (in each direction) for geometry jacobian check", 100);
@@ -388,6 +391,9 @@ public: // *** Getters/setters ***
 
     void setDistanceField(gsField<T>& dfield) { m_distanceField = dfield; }
     gsField<T>& getDistanceField() { return m_distanceField; }
+
+    void setTurbulentViscosityField(gsField<T>& tvfield) { m_TurbulentViscosityField = tvfield; }
+    gsField<T>& getTurbulentViscosityField() { return m_TurbulentViscosityField; }
 
     gsFlowLogger& logger() { return *m_logger; }
     void setOutputMode(typename gsFlowLogger::mode mode) { m_logger->setMode(mode); }

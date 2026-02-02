@@ -52,9 +52,11 @@ protected: // *** Class members ***
     gsVector<T> m_StrainRateMag;
     std::vector< gsMatrix<T> > m_StrainRateTensor;
     gsVector<T> m_turbulentViscosityVals;
+    std::vector< gsMatrix<T> > m_turbulentViscosityGrads;
 
     bool m_average = false;
     bool m_isInitialized = false;
+    bool m_isTurbViscFieldReady = false;
 
 
 public: // *** Constructor/destructor ***
@@ -88,8 +90,18 @@ public: // *** Class functions ***
     virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
 
+    /// @brief Evaluates the turbulent viscosity.
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
+    /// @param[in] patchId          an index of the patch   
+    virtual void evalTurbulentViscosityGrads(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
+    { GISMO_NO_IMPLEMENTATION }
+
     /// @brief Plots the turbulent viscosity.
     virtual void plotTurbulentViscosity(typename gsFlowSolverParams<T>::Ptr paramsPtr, std::string str = "turbVisc");
+
+    virtual void updateTurbulentViscosityField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
+    { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Update the current turbuelnce model quantities for the given quNodes
     /// @param[in] quNodes          a matrix holding evaluation points
@@ -123,7 +135,10 @@ public: // *** Getters/setters ***
     gsVector<T> getStrainRateMagVals() { return m_StrainRateMag; }
     std::vector< gsMatrix<T> > getStrainRateTensor() { return m_StrainRateTensor; }    
     gsVector<T> getTurbulentViscosityVals() { return m_turbulentViscosityVals; }
+    std::vector< gsMatrix<T> > getTurbulentViscosityGrads() { return m_turbulentViscosityGrads; }
     bool isInitialized() { return m_isInitialized; }
+    bool isTurbViscFieldReady() { return m_isTurbViscFieldReady; }
+    void setTurbViscFieldReady(bool b) { m_isTurbViscFieldReady = b; }
 };
 
 
@@ -175,9 +190,12 @@ protected: // *** Base class members ***
     using Base::m_StrainRateMag;
     using Base::m_StrainRateTensor;    
     using Base::m_turbulentViscosityVals;
+    using Base::m_turbulentViscosityGrads;
     using Base::m_isInitialized;
     using Base::m_average;
+    using Base::m_isTurbViscFieldReady;
 
+    using Base::isTurbViscFieldReady;
 
 public: // *** Constructor/destructor ***
     
@@ -243,6 +261,14 @@ public: // *** Class functions ***
     /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch
     void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
+
+    /// @brief Evaluates the turbulent viscosity.
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
+    /// @param[in] patchId          an index of the patch
+    void evalTurbulentViscosityGrads(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
+
+    void updateTurbulentViscosityField(typename gsFlowSolverParams<T>::Ptr paramsPtr);
     
 };
 
