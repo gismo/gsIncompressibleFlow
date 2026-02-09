@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     // ========================================= Settings ========================================= 
 
     // solvers
-    bool steady = true;
+    bool steady = false;
     bool steadyIt = false;
     bool unsteady = false;
     bool unsteadyIt = false;
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     // domain definition
     int geo = 1; // 1 - step, 2 - cavity, 3 - blade profile 2D
     int dim = 2;
-    real_t a = 16;   // length of backward facing step domain behind step
+    real_t a = 8;   // length of backward facing step domain behind step
     real_t b = 2;   // height of backward facing step domain
     real_t c = 2;   // depth of backward facing step domain (3D)
     real_t h = 1;   // height of the backward facing step
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     real_t inVelY = 0.53; // inlet y-velocity for profile2D
     
     // solver settings
-    int maxIt = 100;
+    int maxIt = 10;
     int picardIt = 5;
     int linIt = 50;
     real_t timeStep = 0.1;
@@ -79,14 +79,14 @@ int main(int argc, char *argv[])
 
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
-    bool plot = true;
+    bool plot = false;
     bool plotMesh = false;
     int plotPts = 10000;
     bool animation = false;
     int animStep = 5;
 
     // OpenMP parallelization
-    int numThreads = 12;
+    int numThreads = 1;
 
     // ---------------------------------------------------------------------------------
 
