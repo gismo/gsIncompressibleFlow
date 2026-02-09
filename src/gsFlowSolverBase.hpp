@@ -68,12 +68,12 @@ void gsFlowSolverBase<T, MatOrder>::solve(const int maxIterations, const T epsil
 
     while ((iter < minIterations) || ((m_relNorm > epsilon) && (iter < maxIterations)))
     {
-        m_paramsPtr->logger() << "Iteration number " << m_iterationNumber + 1 << "...";
+        m_paramsPtr->logger() << "Iteration number " << m_iterationNumber + 1 << "...\n";
 
         nextIteration();
         m_relNorm = solutionChangeRelNorm();
 
-        m_paramsPtr->logger() << " Solution change relative norm: " << m_relNorm << "\n";
+        m_paramsPtr->logger() << "    Solution change relative norm: " << m_relNorm << "\n";
 
         iter++;
     }
@@ -116,7 +116,7 @@ T gsFlowSolverBase<T, MatOrder>::solutionChangeRelNorm(gsMatrix<T> solOld, gsMat
 template<class T, int MatOrder>
 void gsFlowSolverBase<T, MatOrder>::writeSolChangeRelNorm(gsMatrix<T> solOld, gsMatrix<T> solNew, std::string solstr)
 {
-    m_paramsPtr->logger() << "     " << solstr << " solution change relative norm: ";
+    m_paramsPtr->logger() << "    " << solstr << " solution change relative norm: ";
 
     for (int i = 0; i < solOld.cols(); i++)
         m_paramsPtr->logger() << solutionChangeRelNorm(solOld.col(i), solNew.col(i)) << ", ";

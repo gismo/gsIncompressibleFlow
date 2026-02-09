@@ -123,7 +123,6 @@ public: // *** Member functions ***
 
     /// @brief Construct solution from computed solution vector for unknown \a unk.
     /// @param[in]  solVector    the solution vector obtained from the linear system
-    /// @param[out] result       the resulting solution as a gsMultiPatch object
     /// @param[in]  unk          the considered unknown
     /// @param[in]  customSwitch a switch to be used for any purpose by derived classes
     virtual gsField<T> constructSolution(const gsMatrix<T>& solVector, index_t unk, bool customSwitch = false) const
