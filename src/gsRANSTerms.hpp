@@ -98,7 +98,7 @@ void gsRANSTerm_SymmetricGradient_full<T>::assemble(const gsMapData<T>& mapData,
 // ===================================================================================
 // For SUPG stabilization
 
-template<class T>
+/*template<class T>
 void gsRANSTerm_SG_SUPGstabilization_diffusion<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, std::vector< gsMatrix<T> >& localMat)
 { 
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
@@ -143,34 +143,6 @@ void gsRANSTerm_SG_SUPGstabilization_diffusion<T>::assemble(const gsMapData<T>& 
             localMat[dim+3].noalias() -= weight * (((m_turbViscosityGrads[k].col(1) * shapeFunPhysGrad.row(1)).transpose()) * (this->m_solUVals(2, k) * testFunPhysGrad.row(2)));
         }
     }
-}
-
-// ===================================================================================================================
-
-template<class T>
-void gsRANSTerm_SUPGstabilization_pressure<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat)
-{
-    gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
-
-    const gsMatrix<T>& testFunGrads = testFunData[1];
-    const gsMatrix<T>& trialFunGrads = trialFunData[1];
-
-    const index_t nQuPoints = quWeights.rows();
-    gsMatrix<T> testFunPhysGrad, trialFunPhysGrad;
-
-    for (index_t k = 0; k < nQuPoints; k++)
-    {
-        const T weight = quWeights(k) * coeffMeasure(k);
-
-        transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
-        transformGradients(mapData, k, trialFunGrads, trialFunPhysGrad);
-
-        //localMat.noalias() += weight * m_tauS(0, k) * (trialFunPhysGrad.transpose() * (this->m_solUVals.col(k).transpose() * testFunPhysGrad));
-
-        for (size_t i = 0; i != localMat.size(); ++i)
-            //localMat[i].noalias() += weight * (trialFunVals.col(k) * testFunPhysGrad.row(i)).transpose();
-            localMat[i].noalias() += weight * m_tauS(0, k) * this->m_solUVals(i, k) * (testFunPhysGrad.transpose() * trialFunPhysGrad);
-    }
-}
+}*/
 
 } // namespace gismo

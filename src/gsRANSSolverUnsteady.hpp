@@ -88,7 +88,8 @@ void gsRANSSolverUnsteady<T, MatOrder>::initialize()
     T viscSteady = 0.1;
     gsNavStokesPde<T> NSSteadyPde(m_paramsPtr->getPde().patches(), m_paramsPtr->getPde().bc(), m_paramsPtr->getPde().force(), viscSteady);
     gsFlowSolverParams<T> paramsSteady(NSSteadyPde, m_paramsPtr->getBases());
-    paramsSteady.copyAllOptionsFrom(*m_paramsPtr);
+    //paramsSteady.copyAllOptionsFrom(*m_paramsPtr);
+    paramsSteady.defaultOptions();
     gsINSSolverSteady<T, MatOrder> NSSteadySolver(paramsSteady);
 
     m_paramsPtr->logger() << "\n--------------------------\n";

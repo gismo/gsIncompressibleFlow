@@ -15,6 +15,7 @@
 
 #include <gsIncompressibleFlow/src/gsFlowVisitors.h>
 #include <gsIncompressibleFlow/src/gsINSTerms.h>
+#include <gsIncompressibleFlow/src/gsTMModels.h> 
 
 namespace gismo
 {
@@ -134,11 +135,23 @@ public:
     typedef gsINSVisitorUU<T, MatOrder> Base;
 
 
+public:
+     std::vector< gsMatrix<T> > m_TurbulentViscosityGrads;
+
 protected: // *** Base class members ***
 
-    using Base::m_paramsPtr;
-    using Base::m_terms;
+    using Base::m_solField;
+    using Base::m_viscosity;
+    using Base::m_TMModelPtr;
+    using Base::m_TurbulentViscosityVals;
+    using Base::m_tauS;
+    using Base::m_USolVals;
+    using Base::m_velocities;
 
+    using Base::m_paramsPtr;
+    using Base::m_patchID;
+    using Base::m_terms;
+    using Base::m_quNodes;   
 
 public: // *** Constructor/destructor ***
 
@@ -148,8 +161,29 @@ public: // *** Constructor/destructor ***
     /// @param[in] paramsPtr a shared pointer to the container of input parameters
     gsINSVisitorUUnonlin(typename gsFlowSolverParams<T>::Ptr paramsPtr):
     Base(paramsPtr)
-    { }
+    { 
+        m_viscosity = m_paramsPtr->getPde().viscosity();
+    }
 
+    /// @brief Copy constructor.
+    gsINSVisitorUUnonlin(gsINSVisitorUUnonlin<T, MatOrder> const & other) :
+    gsINSVisitorUUnonlin()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of TM model
+        if (other.m_TMModelPtr)
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
+
+        // create new terms
+        // terms cannot be cloned here, because they store m_TMModelPtr
+        m_terms.clear();
+        defineTerms();
+
+        //setting current velocity field in the terms
+        this->setCurrentSolution(m_solField);
+    }
 
 protected: // *** Member functions ***
 
@@ -158,7 +192,28 @@ protected: // *** Member functions ***
         m_terms.push_back( new typename gsFlowVisitor<T, MatOrder>::ConvectionTerm() );
 
         // ... other terms, e.g. from stabilizations
+        if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+        {
+            m_terms.push_back( new gsFlowTerm_TCSDStabilization_advection<T>() );
+        }
+
+        if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+        {
+            m_terms.push_back( new gsFlowTerm_SUPGStabilization_diffusion<T>(m_viscosity) );
+        }
     }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(index_t testFunID);
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(const gsDomainIterator<T>* domIt);
+
+public: // *** Getters/setters ***
+
+    void setTurbulenceModel(typename gsTMModelData<T>::Ptr TMModelPtr) { m_TMModelPtr = TMModelPtr;}
 
 };
 
@@ -299,6 +354,88 @@ protected: // *** Member functions ***
 
 };
 
+// ===================================================================================================================
+
+/// @brief Visitor for the time discretization term.
+/// @tparam T           real number type
+/// @tparam MatOrder    sparse matrix storage order (ColMajor/RowMajor)
+/// @ingroup IncompressibleFlow
+template <class T, int MatOrder>
+class gsINSVisitorUU_TCSD_time : public gsINSVisitorUUnonlin<T, MatOrder>
+{
+
+public:
+    typedef gsINSVisitorUUnonlin<T, MatOrder> Base;
+
+protected: // *** Base class members ***
+
+    using Base::m_solField;
+    using Base::m_viscosity;
+    using Base::m_TMModelPtr;
+    using Base::m_TurbulentViscosityVals;
+    using Base::m_tauS;
+    using Base::m_USolVals;
+    using Base::m_velocities;
+
+    using Base::m_paramsPtr;
+    using Base::m_terms;
+    using Base::m_quNodes;
+
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorUU_TCSD_time() {}
+
+    /// @brief Constructor.
+    /// @param[in] paramsPtr a shared pointer to the container of input parameters
+    gsINSVisitorUU_TCSD_time(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    { }
+
+    /// @brief Copy constructor.
+    gsINSVisitorUU_TCSD_time(gsINSVisitorUU_TCSD_time<T, MatOrder> const & other) :
+    gsINSVisitorUU_TCSD_time()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of TM model
+        if (other.m_TMModelPtr)
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
+
+        // create new terms
+        // terms cannot be cloned here, because they store m_TMModelPtr
+        m_terms.clear();
+        defineTerms();
+
+        //setting current velocity field in the terms
+        this->setCurrentSolution(m_solField);
+
+    }
+
+
+protected: // *** Member functions ***
+
+    /// @brief Initialize all members.
+    void initMembers();
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsFlowTerm_TCSDStabilization_time<T>(m_paramsPtr->options().getReal("timeStep")) );
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(index_t testFunID);
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(const gsDomainIterator<T>* domIt);
+
+public: // *** Getters/setters ***
+
+    void setTurbulenceModel(typename gsTMModelData<T>::Ptr TMModelPtr) { m_TMModelPtr = TMModelPtr;}
+
+};
 
 // ===================================================================================================================
 // ===================================================================================================================
@@ -417,6 +554,97 @@ protected: // *** Member functions ***
     virtual void localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs);
 
 };
+
+// ===================================================================================================================
+/**
+ * @brief Visitor for the velocity-pressure part of the RANS equations with SUPG stabilization.
+ * 
+ * This visitor assembles for the terms with velocity test functions and pressure trial functions.
+ * 
+ * @tparam T            real number type
+ * @tparam MatOrder     sparse matrix storage order (ColMajor/RowMajor)
+ * 
+ * @ingroup IncompressibleFlow
+ */
+/*template <class T, int MatOrder>
+class gsINSVisitorPU_SUPG_presssure : public gsINSVisitorPU<T, MatOrder>
+{
+
+public:
+    typedef gsINSVisitorPU<T, MatOrder> Base;
+
+protected: // *** Base class members ***
+
+    using Base::m_solField;
+    using Base::m_viscosity;
+    using Base::m_TMModelPtr;
+    using Base::m_TurbulentViscosityVals;
+    using Base::m_tauS;
+    using Base::m_USolVals;
+    using Base::m_velocities;
+
+    using Base::m_paramsPtr;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_terms;
+    using Base::m_quNodes;
+    
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorPU_SUPG_presssure() {}
+
+    gsINSVisitorPU_SUPG_presssure(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    {   }
+
+    /// @brief Copy constructor.
+    gsINSVisitorPU_SUPG_presssure(gsINSVisitorPU_SUPG_presssure<T, MatOrder> const & other) :
+    gsINSVisitorPU_SUPG_presssure()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of TM model
+        if (other.m_TMModelPtr)
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
+
+        // create new terms
+        // terms cannot be cloned here, because they store m_TMModelPtr
+        m_terms.clear();
+        defineTerms();
+
+        //setting current velocity field in the terms
+        this->setCurrentSolution(m_solField);
+
+    }
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsFlowTerm_SUPGStabilization_pressure<T>() );
+    }
+
+    virtual void defineTestTrialUnknowns()
+    {
+        m_testUnkID = 0;    // velocity
+        m_trialUnkID = 1;   // pressure
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(index_t testFunID);
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(const gsDomainIterator<T>* domIt);
+
+public: // *** Getters/setters ***
+
+    void setTurbulenceModel(typename gsTMModelData<T>::Ptr TMModelPtr) { m_TMModelPtr = TMModelPtr;} 
+
+};
+*/
 
 // ===================================================================================================================
 // ===================================================================================================================
@@ -741,6 +969,91 @@ protected: // *** Member functions ***
     }
 
 };
+
+// ===================================================================================================================
+/**
+ * @brief Visitor for the pressure-pressure stabilization term.
+ * 
+ * This visitor assembles for the residual-based stabilization term in the continuity equation.
+ * 
+ * @tparam T            real number type
+ * @tparam MatOrder     sparse matrix storage order (ColMajor/RowMajor)
+ * 
+ * @ingroup IncompressibleFlow
+ */
+/*template <class T, int MatOrder>
+class gsINSVisitorPP_ResidualStabilization_continuity : public gsINSVisitorPP<T, MatOrder>
+{
+
+public:
+    typedef gsINSVisitorPP<T, MatOrder> Base;
+
+protected: // *** Base class members ***
+
+    using Base::m_solField;
+    using Base::m_viscosity;
+    using Base::m_TMModelPtr;
+    using Base::m_TurbulentViscosityVals;
+    using Base::m_tauS;
+    using Base::m_USolVals;
+    using Base::m_velocities;
+
+    using Base::m_paramsPtr;
+    using Base::m_testUnkID;
+    using Base::m_trialUnkID;
+    using Base::m_terms;
+    using Base::m_quNodes;
+    
+public: // *** Constructor/destructor ***
+
+    gsINSVisitorPP_ResidualStabilization_continuity() {}
+
+    gsINSVisitorPP_ResidualStabilization_continuity(typename gsFlowSolverParams<T>::Ptr paramsPtr) :
+    Base(paramsPtr)
+    {   }
+
+    /// @brief Copy constructor.
+    gsINSVisitorPP_ResidualStabilization_continuity(gsINSVisitorPP_ResidualStabilization_continuity<T, MatOrder> const & other) :
+    gsINSVisitorPP_ResidualStabilization_continuity()
+    {
+        // shallow copy of all members
+        *this = other;
+
+        // deep copy of TM model
+        if (other.m_TMModelPtr)
+            m_TMModelPtr = typename gsTMModelData<T>::Ptr(other.m_TMModelPtr->clone().release());
+
+        // create new terms
+        // terms cannot be cloned here, because they store m_TMModelPtr
+        m_terms.clear();
+        defineTerms();
+
+        //setting current velocity field in the terms
+        this->setCurrentSolution(m_solField);
+
+    }
+
+protected: // *** Member functions ***
+
+    virtual void defineTerms()
+    {
+        m_terms.push_back( new gsFlowTerm_ResidualStabilization_continuity<T>() );
+    }
+
+public: // *** Member functions *** 
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(index_t testFunID);
+
+    /// @brief Evaluates turbulent viscosity.
+    void evaluate(const gsDomainIterator<T>* domIt);
+
+public: // *** Getters/setters ***
+
+    void setTurbulenceModel(typename gsTMModelData<T>::Ptr TMModelPtr) { m_TMModelPtr = TMModelPtr;}
+
+};
+*/
 
 // ===================================================================================================================
 

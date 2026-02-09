@@ -144,8 +144,10 @@ public: // *** Static functions ***
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
         opt.addReal("timeStep", "Time step size", 0.1);
         opt.addReal("omega", "Angular velocity (for rotating frame of reference)", 0.0);
+        opt.addSwitch("TCSD_NS", "Use T-CSD stabilization of numerical solution for NS", false);
         opt.addSwitch("TCSD_RANS", "Use T-CSD stabilization of numerical solution for RANS", false);
         opt.addSwitch("TCSD_TM", "Use T-CSD stabilization of numerical solution for TM", false);
+        opt.addSwitch("SUPG_NS", "Use SUPG stabilization of numerical solution for NS", false);
         opt.addSwitch("SUPG_RANS", "Use SUPG stabilization of numerical solution for RANS", false);
         opt.addSwitch("SUPG_TM", "Use SUPG stabilization of numerical solution for TM", false);
         

@@ -19,6 +19,7 @@
 #include <gsIncompressibleFlow/src/gsFlowSolverParams.h>
 #include <gsIncompressibleFlow/src/gsFlowTerms.h>
 #include <gsIncompressibleFlow/src/gsINSTerms.h>
+#include <gsIncompressibleFlow/src/gsTMModels.h> 
 
 namespace gismo
 {
@@ -67,6 +68,15 @@ protected: // *** Class members ***
     // for periodicity in radially symmetric domains
     bool m_hasPeriodicBC;
     gsMatrix<T> m_periodicTransformMat;
+
+    // for stabilization methods
+    gsField<T> m_solField;
+    real_t m_viscosity;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
+    gsVector<T> m_TurbulentViscosityVals;
+    gsMatrix<T> m_tauS;
+    gsMatrix<T> m_USolVals;
+    gsMatrix<T> m_velocities;
     
 
 public: // *** Constructor/destructor ***
@@ -217,6 +227,9 @@ public: // *** Member functions ***
     /// @brief Add local contributions to the global right-hand side vector.
     /// @param[out] globalRhs reference to the global right-hand side
     virtual void localToGlobal(gsMatrix<T>& globalRhs);
+
+    /// @brief Evaluate stabilization parameters tauS at quadrature points.
+    virtual void evalTauS();
 
 };
 

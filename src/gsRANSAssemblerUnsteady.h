@@ -35,10 +35,6 @@ public:
 protected: // *** Class members ***
 
     typename gsRANSVisitorUU<T, MatOrder>::uPtr m_visitorRANSsymgradPtr;
-    gsRANSVisitorTCSDStabilization_time<T, MatOrder> m_visitorRANS_TCSD_time;
-    gsRANSVisitorTCSDStabilization_advection<T, MatOrder> m_visitorRANS_TCSD_advection;
-    gsRANSVisitorSUPGStabilization_diffusion<T, MatOrder> m_visitorRANS_SUPG_diffusion;
-    gsRANSVisitorSUPGStabilization_presssure<T, MatOrder> m_visitorRANS_SUPG_pressure;
     
     gsSparseMatrix<T, MatOrder> m_matRANSsymgrad, m_matRANS_TCSD_time, m_matRANS_TCSD_advection, m_matRANS_SUPG_diffusion, m_matRANS_SUPG_pressure, m_matRANS_TCSD_velocity_full;
     gsMatrix<T> m_rhsRANS, m_rhsRANS_TCSD_time, m_rhsRANS_TCSD_advection, m_rhsRANS_SUPG_diffusion, m_rhsRANS_SUPG_pressure, m_rhsRANS_TCSD_velocity_full;
@@ -63,6 +59,10 @@ protected: // *** Base class members ***
     using Base::m_currentVelField;
     using Base::m_blockTimeDiscr;
     using Base::m_rhsTimeDiscr;
+    using Base::m_visitorUUnonlin;
+    using Base::m_visitorUU_TCSD_time;
+    //using Base::m_visitorUP_SUPG_pressure;
+    //using Base::m_visitorPP_ResStab_continuity;
 
 public: // *** Constructor/destructor ***
 

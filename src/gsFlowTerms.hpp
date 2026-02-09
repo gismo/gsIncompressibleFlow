@@ -124,7 +124,7 @@ void gsFlowTerm_TCSDStabilization_advection<T>::assemble(const gsMapData<T>& map
 // ===================================================================================================================
 
 template<class T>
-void gsFlowTerm_SUPGStabilization_diffusion<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat)
+void gsFlowTerm_SUPGStabilization_diffusion<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat)
 {
     gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
 
@@ -144,9 +144,65 @@ void gsFlowTerm_SUPGStabilization_diffusion<T>::assemble(const gsMapData<T>& map
         transformLaplaceHgrad(mapData, k, trialFunGrads, trialFunHessians, trialFunPhysHess);
 
         // TODO: doplnit druhy clen s derivaci turbulentni viskozity
-        localMat[0].noalias() -= weight * m_tauS(0, k) * (m_viscosity + m_TurbulentViscosityVals(k)) * (trialFunPhysHess.transpose() * (this->m_solUVals.col(k).transpose() * testFunPhysGrad));
+        localMat.noalias() -= weight * m_tauS(0, k) * ((m_viscosity + m_TurbulentViscosityVals(k)) * (trialFunPhysHess.transpose() * (this->m_solUVals.col(k).transpose() * testFunPhysGrad)) +
+                                                    (m_TurbulentViscosityGrads[k] * trialFunPhysGrad).transpose() * (this->m_solUVals.col(k).transpose() * testFunPhysGrad));
     }
 }
+
+// ===================================================================================================================
+
+/*template<class T>
+void gsFlowTerm_SUPGStabilization_pressure<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat)
+{
+    gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
+
+    const gsMatrix<T>& testFunGrads = testFunData[1];
+    const gsMatrix<T>& trialFunGrads = trialFunData[1];
+
+    const index_t nQuPoints = quWeights.rows();
+    gsMatrix<T> testFunPhysGrad, trialFunPhysGrad;
+
+    for (index_t k = 0; k < nQuPoints; k++)
+    {
+        const T weight = quWeights(k) * coeffMeasure(k);
+
+        transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
+        transformGradients(mapData, k, trialFunGrads, trialFunPhysGrad);
+
+        //localMat.noalias() += weight * m_tauS(0, k) * (trialFunPhysGrad.transpose() * (this->m_solUVals.col(k).transpose() * testFunPhysGrad));
+
+        for (size_t i = 0; i != localMat.size(); ++i)
+            //localMat[i].noalias() += weight * (trialFunVals.col(k) * testFunPhysGrad.row(i)).transpose();
+            //localMat[i].noalias() += weight * m_tauS(0, k) * this->m_solUVals(i, k) * (testFunPhysGrad.transpose() * trialFunPhysGrad);
+            localMat[i].noalias() += weight * m_tauS(0, k) * ((this->m_solUVals.col(k).transpose() * testFunPhysGrad).transpose() * trialFunPhysGrad.row(i));
+    }
+}*/
+
+// ===================================================================================================================
+
+/*template<class T>
+void gsFlowTerm_ResidualStabilization_continuity<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat)
+{
+    gsVector<T> coeffMeasure = this->getCoeffGeoMapProduct(mapData);
+
+    const gsMatrix<T>& testFunGrads = testFunData[1];
+    const gsMatrix<T>& trialFunGrads = trialFunData[1];
+
+    const index_t nQuPoints = quWeights.rows();
+    gsMatrix<T> testFunPhysGrad, trialFunPhysGrad;
+
+    for (index_t k = 0; k < nQuPoints; k++)
+    {
+        const T weight = quWeights(k) * coeffMeasure(k);
+
+        transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
+        transformGradients(mapData, k, trialFunGrads, trialFunPhysGrad);
+
+        // Assembly of residual-based continuity stabilization:
+        // tau * (grad(p_trial) , grad(p_test))
+        localMat.noalias() += weight * m_tauS(0, k) * (testFunPhysGrad.transpose() * trialFunPhysGrad);
+    }
+}*/
 
 // ===================================================================================================================
 
@@ -164,6 +220,5 @@ void gsFlowTerm_rhs<T>::assemble(const gsMapData<T>& mapData, const gsVector<T>&
         localMat.noalias() += weight * (testFunData[0].col(k) *  m_rhsVals.col(k).transpose());
     }
 }
-
 
 } // namespace gismo

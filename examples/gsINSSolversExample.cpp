@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     // ========================================= Settings ========================================= 
 
     // solvers
-    bool steady = false;
+    bool steady = true;
     bool steadyIt = false;
     bool unsteady = false;
     bool unsteadyIt = false;
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     // domain definition
     int geo = 1; // 1 - step, 2 - cavity, 3 - blade profile 2D
     int dim = 2;
-    real_t a = 8;   // length of backward facing step domain behind step
+    real_t a = 16;   // length of backward facing step domain behind step
     real_t b = 2;   // height of backward facing step domain
     real_t c = 2;   // depth of backward facing step domain (3D)
     real_t h = 1;   // height of the backward facing step
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     int numElevate = 0; // number of degree elevations (before refinement)
 
     // problem parameters
-    real_t viscosity = 0.1;
+    real_t viscosity = 0.01;
     std::string UinStr = "default"; // inlet x-velocity for step (default = -4*(y-1.5)^2 + 1)
     std::string lidVelX = "1"; // x-velocity of the cavity lid
     std::string lidVelZ = "0"; // z-velocity of the cavity lid
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     real_t inVelY = 0.53; // inlet y-velocity for profile2D
     
     // solver settings
-    int maxIt = 10;
+    int maxIt = 100;
     int picardIt = 5;
     int linIt = 50;
     real_t timeStep = 0.1;
@@ -74,17 +74,19 @@ int main(int argc, char *argv[])
     std::string matFormation = "EbE";
     std::string precond = "MSIMPLER_FdiagEqual";
     bool stokesInit = false; // start unsteady problem from Stokes solution
+    bool TCSD_NS_stab = false; // use T-CSD stabilization
+    bool SUPG_NS_stab = true; // use SUPG stabilization
 
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
-    bool plot = false;
+    bool plot = true;
     bool plotMesh = false;
     int plotPts = 10000;
     bool animation = false;
     int animStep = 5;
 
     // OpenMP parallelization
-    int numThreads = 1;
+    int numThreads = 12;
 
     // ---------------------------------------------------------------------------------
 
@@ -129,6 +131,8 @@ int main(int argc, char *argv[])
     cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
+    cmd.addSwitch("TCSD_NS", "Use T-CSD stabilization of numerical solution of NS", TCSD_NS_stab);
+    cmd.addSwitch("SUPG_NS", "Use SUPG stabilization of numerical solution of NS", TCSD_NS_stab);
 
     cmd.addString("o", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
@@ -264,6 +268,8 @@ int main(int argc, char *argv[])
     gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger);
     params.options().setString("assemb.loop", matFormation);
     params.options().setInt("numThreads", numThreads);
+    params.options().setSwitch("TCSD_NS", TCSD_NS_stab);
+        params.options().setSwitch("SUPG_NS", SUPG_NS_stab);
 
     gsOptionList solveOpt;
     solveOpt.addInt("geo", "", geo);
@@ -276,6 +282,8 @@ int main(int argc, char *argv[])
     solveOpt.addSwitch("plotMesh", "", plotMesh);
     solveOpt.addSwitch("stokesInit", "", stokesInit);
     solveOpt.addString("id", "", "");
+    solveOpt.addSwitch("TCSD_NS", "", TCSD_NS_stab);
+    solveOpt.addSwitch("SUPG_NS", "", SUPG_NS_stab);
 
     if (steady)
     {

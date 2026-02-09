@@ -148,6 +148,8 @@ void gsTMAssemblerSST<T, MatOrder>::updateCurrentSolField(const gsMatrix<T>& sol
         m_oldTimeFieldK = m_currentFieldK;
         m_oldTimeFieldO = m_currentFieldO;
     }
+
+    m_TMModelPtr->updateTurbulentViscosityField(m_paramsPtr);
 }
 
 
@@ -281,6 +283,8 @@ void gsTMAssemblerSST<T, MatOrder>::initialize()
     // initialization of distance field
     gsField<T> distfield = computeDistanceField<T>(m_paramsPtr);
     m_paramsPtr->setDistanceField(distfield);
+
+    m_TMModelPtr->updateTurbulentViscosityField(m_paramsPtr);
 
     fillBaseSystem();
     

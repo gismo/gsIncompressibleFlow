@@ -15,6 +15,7 @@
 #include <gsIncompressibleFlow/src/gsFlowAssemblerBase.h>
 #include <gsIncompressibleFlow/src/gsINSVisitors.h>
 #include <gsIncompressibleFlow/src/gsFlowUtils.h>
+#include <gsIncompressibleFlow/src/gsTMModels.h>
 
 namespace gismo
 {
@@ -51,12 +52,23 @@ protected: // *** Class members ***
     gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsF, m_rhsG;
     gsField<T>  m_currentVelField, m_currentPresField;
 
+    /*gsINSVisitorPU_SUPG_presssure<T, MatOrder> m_visitorUP_SUPG_pressure;
+    gsSparseMatrix<T, MatOrder> m_blockUP_SUPG_pressure;
+    gsMatrix<T> m_rhsU_SUPG_pressure;
+
+    gsINSVisitorPP_ResidualStabilization_continuity<T, MatOrder> m_visitorPP_ResStab_continuity;
+    gsSparseMatrix<T, MatOrder> m_blockPP_ResStab_continuity;
+    gsMatrix<T> m_rhsP_ResStab_continuity;*/
+
     bool m_isMassMatReady;
     std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;
     std::vector< gsMatrix<T> > m_massMatRhs;
 
     // rotation members
     gsMatrix<T> m_omegaXrCoeffs;
+
+    // turbulence model member
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
 
     // PCD members
     // std::vector<index_t> m_presInIDs, m_presOutIDs, m_presWallIDs
@@ -375,19 +387,24 @@ protected: // *** Class members ***
     gsSparseMatrix<T, MatOrder> m_blockTimeDiscr;
     gsMatrix<T> m_rhsTimeDiscr;
     gsField<T> m_oldTimeVelField;
+    
+    gsINSVisitorUU_TCSD_time<T, MatOrder> m_visitorUU_TCSD_time;
+    gsSparseMatrix<T, MatOrder> m_blockUU_TCSD_time;
+    gsMatrix<T> m_rhsU_TCSD_time;
 
 
 protected: // *** Base class members ***
 
     using Base::m_paramsPtr;
     using Base::m_pshift;
+    using Base::m_tarDim;
     using Base::m_nnzPerOuterU;
     using Base::m_solution;
     using Base::m_baseMatrix;
     using Base::m_matrix;
     using Base::m_rhs;
     using Base::m_currentVelField;
-
+    using Base::m_TMModelPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -417,20 +434,23 @@ protected: // *** Member functions ***
     /// @brief Assemble the linear part of the matrix.
     virtual void assembleLinearPart();
 
+    /// @brief Assemble the non-linear part of the matrix.
+    virtual void assembleNonlinearPart();
+
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();
 
-    virtual void makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false)
-    {
-        Base::makeBlockUU(result, linPartOnly);
-        result += m_blockTimeDiscr;
-    }
+    virtual void makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false);
+    //{
+    //    Base::makeBlockUU(result, linPartOnly);
+    //    result += m_blockTimeDiscr;
+    //}
 
-    virtual void makeRhsU(gsMatrix<T>& result, bool linPartOnly = false)
-    {
-        Base::makeRhsU(result, linPartOnly);
-        result += m_rhsTimeDiscr;
-    }
+    virtual void makeRhsU(gsMatrix<T>& result, bool linPartOnly = false);
+    //{
+    //    Base::makeRhsU(result, linPartOnly);
+    //    result += m_rhsTimeDiscr;
+    //}
 
 
 public: // *** Member functions ***

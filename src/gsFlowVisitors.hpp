@@ -181,6 +181,8 @@ void gsFlowVisitor<T, MatOrder>::setCurrentSolution(gsField<T>& solution)
         if (termPtr)
             termPtr->setCurrentSolution(solution);
     }
+
+    m_solField = solution;
 }
 
 
@@ -307,6 +309,44 @@ void gsFlowVisitor<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
         m_trialFunData = m_testFunData;
     else
         evalBasisData(m_trialFunFlags, m_trialBasisPtr, m_trialFunActives, m_trialFunData);
+}
+
+
+template <class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::evalTauS()
+{
+    m_velocities = m_solField.value(m_quNodes);
+    const index_t nQuPoints = m_quNodes.cols();
+    short_t deg = m_paramsPtr->getBasis(m_trialUnkID).piece(m_patchID).maxDegree();
+    real_t timeStep = m_paramsPtr->options().getReal("timeStep");
+    gsMatrix<T> physPoints = m_mapData.values[0];
+    real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
+    m_tauS.resize(1, nQuPoints);
+
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")))
+    {
+        m_TurbulentViscosityVals.setZero(nQuPoints);
+        if (!m_paramsPtr->options().getSwitch("unsteady"))
+            for (index_t i = 0; i < nQuPoints; i++)
+                m_tauS(0, i) = 1. / math::sqrt(math::pow(2 * m_velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity) / math::pow(h, 2), 2));
+        else
+            for (index_t i = 0; i < nQuPoints; i++)
+                m_tauS(0, i) = 1. / math::sqrt(math::pow(2. / timeStep, 2) + math::pow(2 * deg * m_velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity) / math::pow(h, 2), 2));
+            //m_tauS(0, i) = 1. / (2. * deg * velocities.col(i).norm() / h + 4. * math::abs(m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2) + math::abs(2. / timeStep));   // Codina
+    }
+    else 
+    {
+        m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+        m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
+
+        if (!m_paramsPtr->options().getSwitch("unsteady"))
+            for (index_t i = 0; i < nQuPoints; i++)
+                m_tauS(0, i) = 1. / math::sqrt(math::pow(2 * m_velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+        else
+            for (index_t i = 0; i < nQuPoints; i++)
+                m_tauS(0, i) = 1. / math::sqrt(math::pow(2. / timeStep, 2) + math::pow(2 * deg * m_velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+            //m_tauS(0, i) = 1. / (2. * deg * velocities.col(i).norm() / h + 4. * math::abs(m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2) + math::abs(2. / timeStep));   // Codina
+    }
 }
 
 } // namespace gismo

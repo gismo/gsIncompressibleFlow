@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     // ========================================= Settings ========================================= 
 
     // lin. solvers
-    bool direct = true;
+    bool direct = false;
     bool iter = false;
 
     // domain definition
@@ -75,20 +75,20 @@ int main(int argc, char *argv[])
     bool stokesInit = false; // start unsteady problem from Stokes solution
     bool TCSD_RANS_stab = false; // use T-CSD stabilization
     bool TCSD_TM_stab = false; // use T-CSD stabilization
-    bool SUPG_RANS_stab = true; // use SUPG stabilization
-    bool SUPG_TM_stab = true; // use SUPG stabilization
+    bool SUPG_RANS_stab = false; // use SUPG stabilization
+    bool SUPG_TM_stab = false; // use SUPG stabilization
     bool TMaveraging = false;
 
     // output settings
-    std::string outMode = "all"; // terminal/file/all/quiet
-    bool plot = true;
+    std::string outMode = "terminal"; // terminal/file/all/quiet
+    bool plot = false;
     bool plotMesh = false;
     index_t plotPts = 20000;
     bool animation = false;
     index_t animStep = 10;
 
     // OpenMP parallelization
-    int numThreads = 12;
+    int numThreads = 1;
 
     // ---------------------------------------------------------------------------------
 

@@ -171,6 +171,92 @@ void gsINSVisitorUU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
 // ===================================================================================================================
 
 template <class T, int MatOrder>
+void gsINSVisitorUUnonlin<T, MatOrder>::evaluate(index_t testFunID)
+{
+    Base::evaluate(testFunID);
+
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        this->evalTauS();
+
+        gsFlowTerm_TCSDStabilization_advection<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_advection<T>* > (m_terms[1]);
+        if (termPtr)
+        {
+            termPtr->setTauS(m_tauS);
+            termPtr->setUSolVals(m_velocities);
+        }
+
+        if (m_terms.size() > 2)
+        {
+            if ((m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+            {
+                m_TMModelPtr->evalTurbulentViscosityGrads(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+                m_TurbulentViscosityGrads = m_TMModelPtr->getTurbulentViscosityGrads();
+            }
+            else
+            {
+                m_TurbulentViscosityGrads.resize(this->m_quRule.numNodes());
+                for (index_t i = 0; i < this->m_quRule.numNodes(); i++)
+                    m_TurbulentViscosityGrads[i].setZero(1, m_paramsPtr->getPde().dim());
+            }
+            
+            gsFlowTerm_SUPGStabilization_diffusion<T>* termPtr2 = dynamic_cast< gsFlowTerm_SUPGStabilization_diffusion<T>* > (m_terms[2]);
+            if (termPtr2)
+            {
+                termPtr2->setTauS(m_tauS);
+                termPtr2->setUSolVals(m_velocities);
+                termPtr2->setTurbulentViscosityVals(m_TurbulentViscosityVals);
+                termPtr2->setTurbulentViscosityGrads(m_TurbulentViscosityGrads);
+            }
+        }
+    }
+}
+
+template <class T, int MatOrder>
+void gsINSVisitorUUnonlin<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    Base::evaluate(domIt);
+
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        this->evalTauS();
+
+        gsFlowTerm_TCSDStabilization_advection<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_advection<T>* > (m_terms[1]);
+        if (termPtr)
+        {
+            termPtr->setTauS(m_tauS);
+            termPtr->setUSolVals(m_velocities);
+        }
+
+        if (m_terms.size() > 2)
+        {
+            if ((m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+            {
+                m_TMModelPtr->evalTurbulentViscosityGrads(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+                m_TurbulentViscosityGrads = m_TMModelPtr->getTurbulentViscosityGrads();
+            }
+            else
+            {
+                m_TurbulentViscosityGrads.resize(this->m_quRule.numNodes());
+                for (index_t i = 0; i < this->m_quRule.numNodes(); i++)
+                    m_TurbulentViscosityGrads[i].setZero(1, m_paramsPtr->getPde().dim());
+            }
+            
+            gsFlowTerm_SUPGStabilization_diffusion<T>* termPtr2 = dynamic_cast< gsFlowTerm_SUPGStabilization_diffusion<T>* > (m_terms[2]);
+            if (termPtr2)
+            {
+                termPtr2->setTauS(m_tauS);
+                termPtr2->setUSolVals(m_velocities);
+                termPtr2->setTurbulentViscosityVals(m_TurbulentViscosityVals);
+                termPtr2->setTurbulentViscosityGrads(m_TurbulentViscosityGrads);
+            }
+        }
+    }
+}
+
+// ===================================================================================================================
+
+template <class T, int MatOrder>
 void gsINSVisitorUUrotation<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
@@ -334,6 +420,50 @@ void gsINSVisitorUUrotation<T, MatOrder>::localToGlobal_per(const std::vector<gs
         }
     }
 } 
+
+// ===================================================================================================================
+
+template <class T, int MatOrder>
+void gsINSVisitorUU_TCSD_time<T, MatOrder>::initMembers()
+{
+    m_viscosity = m_paramsPtr->getPde().viscosity();
+}
+
+template <class T, int MatOrder>
+void gsINSVisitorUU_TCSD_time<T, MatOrder>::evaluate(index_t testFunID)
+{
+    gsINSVisitorUU<T, MatOrder>::evaluate(testFunID);
+
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        this->evalTauS();
+        
+        gsFlowTerm_TCSDStabilization_time<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_time<T>* > (m_terms.back());
+        if (termPtr)
+        {
+            termPtr->setTauS(m_tauS);
+            termPtr->setUSolVals(m_velocities);
+        }
+    }
+}
+
+template <class T, int MatOrder>
+void gsINSVisitorUU_TCSD_time<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    gsINSVisitorUU<T, MatOrder>::evaluate(domIt);
+
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        this->evalTauS();
+
+        gsFlowTerm_TCSDStabilization_time<T>* termPtr = dynamic_cast< gsFlowTerm_TCSDStabilization_time<T>* > (m_terms.back());
+        if (termPtr)
+        {
+            termPtr->setTauS(m_tauS);
+            termPtr->setUSolVals(m_velocities);
+        }
+    }
+}
 
 // ===================================================================================================================
 
@@ -623,6 +753,44 @@ void gsINSVisitorPU_withUPrhs<T, MatOrder>::localToGlobal_per(const std::vector<
 
 // ===================================================================================================================
 
+/*template <class T, int MatOrder>
+void gsINSVisitorPU_SUPG_presssure<T, MatOrder>::evaluate(index_t testFunID)
+{
+    Base::evaluate(testFunID);
+    
+    if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        this->evalTauS();
+
+        gsFlowTerm_SUPGStabilization_pressure<T>* termPtr = dynamic_cast< gsFlowTerm_SUPGStabilization_pressure<T>* > (m_terms.back());
+        if (termPtr)
+        {
+            termPtr->setTauS(m_tauS);
+            termPtr->setUSolVals(m_velocities);
+        }
+    }
+}
+
+template <class T, int MatOrder>
+void gsINSVisitorPU_SUPG_presssure<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    Base::evaluate(domIt);
+
+    if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        this->evalTauS();
+
+        gsFlowTerm_SUPGStabilization_pressure<T>* termPtr = dynamic_cast< gsFlowTerm_SUPGStabilization_pressure<T>* > (m_terms.back());
+        if (termPtr)
+        {
+            termPtr->setTauS(m_tauS);
+            termPtr->setUSolVals(m_velocities);
+        }
+    }
+}*/
+
+// ===================================================================================================================
+
 template <class T, int MatOrder>
 void gsINSVisitorUP<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
@@ -770,6 +938,42 @@ void gsINSVisitorPP<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatri
         }
     }
 } 
+
+// ===================================================================================================================
+
+/*template <class T, int MatOrder>
+void gsINSVisitorPP_ResidualStabilization_continuity<T, MatOrder>::evaluate(index_t testFunID)
+{
+    Base::evaluate(testFunID);
+    
+    if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        this->evalTauS();
+
+        gsFlowTerm_ResidualStabilization_continuity<T>* termPtr = dynamic_cast< gsFlowTerm_ResidualStabilization_continuity<T>* > (m_terms.back());
+        if (termPtr)
+        {
+            termPtr->setTauS(m_tauS);
+        }
+    }
+}
+
+template <class T, int MatOrder>
+void gsINSVisitorPP_ResidualStabilization_continuity<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+{
+    Base::evaluate(domIt);
+
+    if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        this->evalTauS();
+
+        gsFlowTerm_ResidualStabilization_continuity<T>* termPtr = dynamic_cast< gsFlowTerm_ResidualStabilization_continuity<T>* > (m_terms.back());
+        if (termPtr)
+        {
+            termPtr->setTauS(m_tauS);
+        }
+    }
+}*/
 
 // ===================================================================================================================
 
