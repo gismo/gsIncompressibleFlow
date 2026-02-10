@@ -225,24 +225,18 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
 
     if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
     {
-        //gsInfo << "blockUUlinWeakDirichlet_whole_In" << std::endl;
         m_blockUUlinWeakDirichlet_whole_In.reserve(gsVector<index_t>::Constant(m_blockUUlinWeakDirichlet_whole_In.outerSize(), 2 * m_nnzPerOuterU));
         this->assembleBlockBnd(m_visitorUUlinWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockUUlinWeakDirichlet_whole_In, m_rhsUlinWeakDirichlet_In);
-        //gsInfo << "blockUUlinWeakDirichlet_whole_Wall" << std::endl;
         m_blockUUlinWeakDirichlet_whole_Wall.reserve(gsVector<index_t>::Constant(m_blockUUlinWeakDirichlet_whole_Wall.outerSize(), 2 * m_nnzPerOuterU));
         this->assembleBlockBnd(m_visitorUUlinWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockUUlinWeakDirichlet_whole_Wall, m_rhsUlinWeakDirichlet_Wall);
         
-        //gsInfo << "blockPUWeakDirichlet_In" << std::endl;
         m_blockPUWeakDirichlet_In.reserve(gsVector<index_t>::Constant(m_blockPUWeakDirichlet_In.outerSize(), m_nnzPerOuterUP));
         this->assembleBlockBnd(m_visitorPUWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockPUWeakDirichlet_In, m_rhsPUWeakDirichlet_In);
-        //gsInfo << "blockPUWeakDirichlet_Wall" << std::endl;
         m_blockPUWeakDirichlet_Wall.reserve(gsVector<index_t>::Constant(m_blockPUWeakDirichlet_Wall.outerSize(), m_nnzPerOuterUP));
         this->assembleBlockBnd(m_visitorPUWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockPUWeakDirichlet_Wall, m_rhsPUWeakDirichlet_Wall);
 
-        //gsInfo << "blockUPWeakDirichlet_Out" << std::endl;
         m_blockUPWeakDirichlet_Out.reserve(gsVector<index_t>::Constant(m_blockUPWeakDirichlet_Out.outerSize(), m_nnzPerOuterUP));
         this->assembleBlockBnd(m_visitorUPWeakDirichlet, 0, m_paramsPtr->getBndOut(), m_blockUPWeakDirichlet_Out, m_rhsUPWeakDirichlet_Out);
-        //gsInfo << "blockPPWeakDirichlet_Out" << std::endl;
         m_blockPPWeakDirichlet_Out.reserve(gsVector<index_t>::Constant(m_blockPPWeakDirichlet_Out.outerSize(), m_nnzPerOuterUP));
         this->assembleBlockBnd(m_visitorPPWeakDirichlet, 1, m_paramsPtr->getBndOut(), m_blockPPWeakDirichlet_Out, m_rhsPPWeakDirichlet_Out);
     }
@@ -744,6 +738,18 @@ gsSparseMatrix<T, MatOrder> gsINSAssembler<T, MatOrder>::getBlockUU(bool linPart
         if(!linPartOnly)
             blockUU += m_blockUUnonlin_whole;
 
+        if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
+        {
+            fillGlobalMat_UU(m_baseMatrix, -m_blockUUlinWeakDirichlet_whole_In);
+            fillGlobalMat_UU(m_baseMatrix, -m_blockUUlinWeakDirichlet_whole_Wall);
+            if(!linPartOnly)
+            {
+                fillGlobalMat_UU(m_matrix, m_blockUUnonlinWeakDirichlet_whole_In);
+                fillGlobalMat_UU(m_matrix, m_blockUUnonlinWeakDirichlet_whole_Wall);
+            }
+            
+        }
+
         blockUU.makeCompressed();
 
         return blockUU;
@@ -759,6 +765,15 @@ gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU() const
     else
     {
         gsMatrix<T> rhsUpart = m_rhsF + m_rhsBtB.topRows(m_pshift);
+
+        if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
+        {
+            rhsUpart -= m_rhsUlinWeakDirichlet_In;
+            rhsUpart -= m_rhsUlinWeakDirichlet_Wall;
+            rhsUpart += m_rhsUnonlinWeakDirichlet_In;
+            rhsUpart += m_rhsUnonlinWeakDirichlet_Wall;
+        }
+
         return (rhsUpart + m_rhsUlin + m_rhsUnonlin);
     }
 }

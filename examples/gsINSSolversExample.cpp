@@ -74,6 +74,11 @@ int main(int argc, char *argv[])
     std::string matFormation = "EbE";
     std::string precond = "MSIMPLER_FdiagEqual";
     bool stokesInit = false; // start unsteady problem from Stokes solution
+    bool weakDir = true;
+    if (dim == 2)
+        std::vector<real_t> weakDir_penalties = {100.0, 10.0, 100.0};               // 2D
+    else
+        std::vector<real_t> weakDir_penalties = {100000.0, 10000.0, 100000.0};      // 3D
 
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
@@ -129,6 +134,7 @@ int main(int argc, char *argv[])
     cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
+    cmd.addSwitch("weakDir", "Weak imposition of Dirichlet BCs", weakDir);
 
     cmd.addString("o", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
@@ -201,6 +207,9 @@ int main(int argc, char *argv[])
             GISMO_ERROR("Unknown domain.");
     }
 
+    std::vector<std::pair<int, boxSide> > bndIn, bndOut, bndWall;
+    defineBndParts(geo, dim, bndIn, bndOut, bndWall);
+
 
     // ========================================= Define problem and basis ========================================= 
 
@@ -264,6 +273,8 @@ int main(int argc, char *argv[])
     gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger);
     params.options().setString("assemb.loop", matFormation);
     params.options().setInt("numThreads", numThreads);
+    params.options().setSwitch("weakDirichlet", weakDir);
+    params.setBndParts(bndIn, bndOut, bndWall);
 
     gsOptionList solveOpt;
     solveOpt.addInt("geo", "", geo);
@@ -275,6 +286,7 @@ int main(int argc, char *argv[])
     solveOpt.addSwitch("animation", "", animation);
     solveOpt.addSwitch("plotMesh", "", plotMesh);
     solveOpt.addSwitch("stokesInit", "", stokesInit);
+    solveOpt.addSwitch("weakDirichlet", "", weakDir);
     solveOpt.addString("id", "", "");
 
     if (steady)

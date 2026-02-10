@@ -31,6 +31,9 @@ void gsFlowAssemblerBase<T, MatOrder>::computeDirichletDofs(const index_t unk, c
 {
     GISMO_ASSERT(ddofVector.rows() == getMapper(basisID).boundarySize(), "Dirichlet DOF vector has wrong size.");
 
+    if ( getAssemblerOptions().dirStrategy == dirichlet::nitsche)
+        return; // Nothing to compute for Nitsche's method, the Dirichlet values are not explicitly used in the assembler (but they are used in the visitor for computing the penalty term)
+
     const gsDofMapper & mapper = getMapper(basisID);
     const gsMultiBasis<T> & mbasis = getBasis(basisID);
 

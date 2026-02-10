@@ -409,68 +409,26 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlockBnd(ElementVisitor& visitor,
         if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
         {
             // TODO: definition of evaluate(i) must be added to weak Dirichlet visitors
-            /*for(size_t p = 0; p < getPatches().nPatches(); p++)
-            {
-                visitor.initOnPatchSide(p, s);
-                index_t nBases = m_paramsPtr->getBasis(testBasisID).piece(p).size();
+            // for(size_t p = 0; p < getPatches().nPatches(); p++)
+            // {
+            //     visitor.initOnPatchSide(p, s);
+            //     index_t nBases = m_paramsPtr->getBasis(testBasisID).piece(p).size();
 
-                for(index_t i = 0; i < nBases; i++)
-                {
-                    visitor.evaluate(i);
-                    visitor.assemble();
-                    visitor.localToGlobal(m_ddof, block, blockRhs);
-                }
-            }*/        
+            //     for(index_t i = 0; i < nBases; i++)
+            //     {
+            //         visitor.evaluate(i);
+            //         visitor.assemble();
+            //         visitor.localToGlobal(m_ddof, block, blockRhs);
+            //     }
+            // }        
         }
         else        
         {
             if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
                 gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
 
-            /*#pragma omp parallel
-            { 
-                ElementVisitor
-                #ifdef _OPENMP
-                // Create thread-private visitor
-                visitor_(visitor);
-                const int threadId = omp_get_thread_num();
-                const int numThreads  = omp_get_num_threads();
-                #else
-                &visitor_ = visitor;
-                #endif
-
-                // iteration over all elements in all patches
-                typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->beginBdr(s);
-                typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->endBdr(s);
-
-                #ifdef _OPENMP
-                domIt += threadId;
-                for (; domIt < domItEnd; domIt+=(numThreads) )
-                #else
-                for (; domIt < domItEnd; ++domIt )
-                #endif
-                {
-                    //ndex_t p = domIt.patch();
-                    //if (p != patchID)
-                    //{
-                    //    patchID = p;
-                    //    visitor_.initOnPatch(patchID);
-                    //}
-                    visitor_.initOnPatchSide(p, s);
-
-                    visitor_.evaluate(domIt.get());
-                    visitor_.assemble();
-
-                    #pragma omp critical(localToGlobal) // only one thread at a time
-                    visitor_.localToGlobal(m_ddof, block, blockRhs);
-                }
-            }*/
-
             visitor.initOnPatchSide(p, s);
 
-            //gsInfo << "(LHS) Patch: " << p << ", side: " << s << " ... ";
-
-            // iteration over all elements in all patches
             typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->beginBdr(s);
             typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->endBdr(s);
 
@@ -482,11 +440,78 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleBlockBnd(ElementVisitor& visitor,
 
                 ++domIt;
             }
-
-           //gsInfo << "Done\n";
         }
     }
 }
+
+/*template<class T, int MatOrder>
+template<class ElementVisitor>
+void gsFlowAssemblerBase<T, MatOrder>::assembleBlockBnd(ElementVisitor& visitor, index_t testBasisID, const std::vector< std::pair<int, boxSide> >& bndPart, gsSparseMatrix<T, MatOrder>& block, gsMatrix<T>& blockRhs, bool compressMat)
+{
+    if (m_paramsPtr->options().getString("assemb.loop") == "RbR")
+    {
+        // TODO: definition of evaluate(i) must be added to weak Dirichlet visitors
+        // for(size_t p = 0; p < getPatches().nPatches(); p++)
+        // {
+        //     visitor.initOnPatchSide(p, s);
+        //     index_t nBases = m_paramsPtr->getBasis(testBasisID).piece(p).size();
+
+        //     for(index_t i = 0; i < nBases; i++)
+        //     {
+        //         visitor.evaluate(i);
+        //         visitor.assemble();
+        //         visitor.localToGlobal(m_ddof, block, blockRhs);
+        //     }
+        // }        
+    }
+    else        
+    {
+        if (m_paramsPtr->options().getString("assemb.loop") != "EbE")
+            gsWarn << "Unknown matrix formation method, using EbE (element by element)!\n";
+
+        #pragma omp parallel
+        { 
+            ElementVisitor
+            #ifdef _OPENMP
+            // Create thread-private visitor
+            visitor_(visitor);
+            const int threadId = omp_get_thread_num();
+            const int numThreads  = omp_get_num_threads();
+            #else
+            &visitor_ = visitor;
+            #endif
+
+            size_t bndIt = 0;
+
+            #ifdef _OPENMP
+            bndIt += threadId;
+            for(; bndIt < bndPart.size(); bndIt+=(numThreads) )
+            #else
+            for(; bndIt < bndPart.size(); bndIt++)
+            #endif
+            {
+                index_t p = bndPart[bndIt].first;
+                boxSide s = bndPart[bndIt].second;
+
+                // iteration over all elements in all patches
+                typename gsBasis<T>::domainIter domIt = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->beginBdr(s);
+                typename gsBasis<T>::domainIter domItEnd = m_paramsPtr->getBasis(testBasisID).basis(p).domain()->endBdr(s);
+
+                for (; domIt < domItEnd; ++domIt )
+                {
+                    visitor_.initOnPatchSide(p, s);
+
+                    visitor_.evaluate(domIt.get());
+                    visitor_.assemble();
+
+                    //#pragma omp critical(localToGlobal) // only one thread at a time
+                    visitor_.localToGlobal(m_ddof, block, blockRhs);
+                }
+            }
+        }
+    }
+    
+}*/
 
 
 template<class T, int MatOrder>

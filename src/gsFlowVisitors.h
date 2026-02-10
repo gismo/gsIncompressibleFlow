@@ -273,7 +273,6 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr)
     { }
 
-
 public: // *** Member functions ***
 
     virtual void assemble();
@@ -281,8 +280,6 @@ public: // *** Member functions ***
 };
 
 // ===================================================================================================================
-
-// TODO
 
 /// @brief              Base class for incompressible flow boundary visitors.
 /// @tparam T           real number type
@@ -313,8 +310,8 @@ protected: // *** Base class members ***
 protected: // *** Class members ***
 
     boxSide m_side;
-    typename gsBasis<T>::uPtr testBasisPtr;
-    typename gsBasis<T>::uPtr trialBasisPtr;
+    //typename gsBasis<T>::uPtr testBasisPtr;
+    //typename gsBasis<T>::uPtr trialBasisPtr;
 
 public: // *** Constructor/destructor ***
 
@@ -324,39 +321,10 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr)
     { }
 
-    /// @brief Copy constructor.
-    /*gsFlowVisitorBnd(const gsFlowVisitorBnd<T, MatOrder>& other):
-    gsFlowVisitorBnd()
-    {
-        // shallow copy of all members
-        *this = other;
-
-        // deep copy of m_terms
-        m_terms.clear();
-        m_terms.reserve(other.m_terms.size());
-        for (auto* t : other.m_terms)
-            m_terms.push_back(t->clone().release());
-    }
-
-
-    ~gsFlowVisitorBnd()
-    {
-        this->deleteTerms();
-    }
-    */
-
 protected: // *** Member functions ***
 
     /// @brief Setup the quadrature rule.
     void setupQuadrature();
-
-    /// @brief Evaluate required data for the given basis.
-    /// @param[in]  basisFlags      evaluation flags
-    /// @param[in]  basisPtr        the given basis
-    /// @param[out] activesUnique   vector of indices of basis functions that are nonzero in any of quNodes
-    /// @param[out] basisData       resulting data
-    //virtual void evalBasisData(const unsigned& basisFlags, const gsBasis<T>* basisPtr, gsMatrix<index_t>& activesUnique, std::vector< gsMatrix<T> >& basisData);
-
 
 public: // *** Member functions ***
 

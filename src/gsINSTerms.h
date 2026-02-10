@@ -194,6 +194,8 @@ public: // *** Constructor/destructor ***
         this->m_testFunFlags = NEED_VALUE;
     }
 
+    GISMO_CLONE_FUNCTION(gsINSTerm_RhsUVal_WeakDirichlet)
+
 protected: // *** Member functions ***
 
     virtual void computeCoeffSolU(const gsMapData<T>& mapData)
@@ -284,6 +286,8 @@ public: // *** Constructor/destructor ***
         this->m_testFunFlags = NEED_VALUE;
     }
 
+    GISMO_CLONE_FUNCTION(gsINSTerm_RhsUValPenalty_WeakDirichlet)
+
 public: // *** Member functions ***
 
     virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& shapeFunData, gsMatrix<T>& localMat);
@@ -359,6 +363,8 @@ public: // *** Constructor/destructor ***
         this->m_testFunFlags = NEED_VALUE;
     }
 
+    GISMO_CLONE_FUNCTION(gsINSTerm_RhsUdiv_WeakDirichlet)
+
 public: // *** Member functions ***
 
     virtual void evalCoeff(const gsMapData<T>& mapData);
@@ -420,6 +426,8 @@ public: // *** Constructor/destructor ***
         this->m_testFunFlags = NEED_VALUE;
     }
 
+    GISMO_CLONE_FUNCTION(gsINSTerm_RhsPvalU_WeakDirichlet)
+
 public: // *** Member functions ***
 
     virtual void evalCoeff(const gsMapData<T>& mapData);
@@ -480,6 +488,8 @@ public: // *** Constructor/destructor ***
         this->m_geoFlags = NEED_MEASURE | NEED_OUTER_NORMAL;
         this->m_testFunFlags = NEED_VALUE;
     }
+
+    GISMO_CLONE_FUNCTION(gsINSTerm_RhsUvalP_WeakDirichlet)
 
 public: // *** Member functions ***
 
@@ -551,6 +561,8 @@ public: // *** Constructor/destructor ***
         this->m_geoFlags = NEED_MEASURE;
         this->m_testFunFlags = NEED_VALUE;
     }
+
+    GISMO_CLONE_FUNCTION(gsINSTerm_RhsPvalP_WeakDirichlet)
 
 public: // *** Member functions ***
 
