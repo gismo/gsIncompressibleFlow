@@ -17,7 +17,7 @@ namespace gismo
 {
 
 template <class T, int MatOrder>
-typename gsTMSolverBase<T, MatOrder>::tmPtr gsTMSolverBase<T, MatOrder>::make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr)
+typename gsTMSolverBase<T, MatOrder>::Ptr gsTMSolverBase<T, MatOrder>::make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr)
 {
     std::string turbModel = paramsPtr->options().getString("TM");
     if (turbModel == "SST") 
@@ -74,7 +74,6 @@ void gsTMSolverBase<T, MatOrder>::nextIteration()
         
         this->updateAssembler(tmpSolution, false);
         this->applySolver(tmpSolution);
-
         this->writeSolChangeRelNorm(oldSol, tmpSolution, "TM");
 
         relNorm = this->solutionChangeRelNorm(oldSol, tmpSolution);

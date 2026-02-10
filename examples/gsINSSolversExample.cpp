@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     int numElevate = 0; // number of degree elevations (before refinement)
 
     // problem parameters
-    real_t viscosity = 0.1;
+    real_t viscosity = 0.01;
     std::string UinStr = "default"; // inlet x-velocity for step (default = -4*(y-1.5)^2 + 1)
     std::string lidVelX = "1"; // x-velocity of the cavity lid
     std::string lidVelZ = "0"; // z-velocity of the cavity lid
@@ -74,7 +74,9 @@ int main(int argc, char *argv[])
     std::string matFormation = "EbE";
     std::string precond = "MSIMPLER_FdiagEqual";
     bool stokesInit = false; // start unsteady problem from Stokes solution
-    bool weakDir = true;
+    bool TCSD_NS_stab = false; // use T-CSD stabilization
+    bool SUPG_NS_stab = false; // use SUPG stabilization
+    bool weakDir = false;
     if (dim == 2)
         std::vector<real_t> weakDir_penalties = {100.0, 10.0, 100.0};               // 2D
     else
@@ -134,6 +136,8 @@ int main(int argc, char *argv[])
     cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
+    cmd.addSwitch("TCSD_NS", "Use T-CSD stabilization of numerical solution of NS", TCSD_NS_stab);
+    cmd.addSwitch("SUPG_NS", "Use SUPG stabilization of numerical solution of NS", TCSD_NS_stab);
     cmd.addSwitch("weakDir", "Weak imposition of Dirichlet BCs", weakDir);
 
     cmd.addString("o", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
@@ -273,6 +277,8 @@ int main(int argc, char *argv[])
     gsFlowSolverParams<real_t> params(NSpde, discreteBases, &logger);
     params.options().setString("assemb.loop", matFormation);
     params.options().setInt("numThreads", numThreads);
+    params.options().setSwitch("TCSD_NS", TCSD_NS_stab);
+    params.options().setSwitch("SUPG_NS", SUPG_NS_stab);
     params.options().setSwitch("weakDirichlet", weakDir);
     params.setBndParts(bndIn, bndOut, bndWall);
 
@@ -288,6 +294,8 @@ int main(int argc, char *argv[])
     solveOpt.addSwitch("stokesInit", "", stokesInit);
     solveOpt.addSwitch("weakDirichlet", "", weakDir);
     solveOpt.addString("id", "", "");
+    solveOpt.addSwitch("TCSD_NS", "", TCSD_NS_stab);
+    solveOpt.addSwitch("SUPG_NS", "", SUPG_NS_stab);
 
     if (steady)
     {

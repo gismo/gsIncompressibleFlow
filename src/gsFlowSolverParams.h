@@ -61,6 +61,7 @@ protected: // *** Class members ***
     gsField<T> m_KSolField;
     gsField<T> m_OSolField;
     gsField<T> m_distanceField;
+    gsField<T> m_TurbulentViscosityField;
     
     bool m_hasPeriodicBC;
     typename gsFlowPeriodicHelper<T>::Ptr m_periodicHelperPtr;
@@ -147,6 +148,12 @@ public: // *** Static functions ***
         opt.addSwitch("unsteady", "Assemble the velocity mass matrix", false);
         opt.addReal("timeStep", "Time step size", 0.1);
         opt.addReal("omega", "Angular velocity (for rotating frame of reference)", 0.0);
+        opt.addSwitch("TCSD_NS", "Use T-CSD stabilization of numerical solution for NS", false);
+        opt.addSwitch("TCSD_RANS", "Use T-CSD stabilization of numerical solution for RANS", false);
+        opt.addSwitch("TCSD_TM", "Use T-CSD stabilization of numerical solution for TM", false);
+        opt.addSwitch("SUPG_NS", "Use SUPG stabilization of numerical solution for NS", false);
+        opt.addSwitch("SUPG_RANS", "Use SUPG stabilization of numerical solution for RANS", false);
+        opt.addSwitch("SUPG_TM", "Use SUPG stabilization of numerical solution for TM", false);
         
         // geometry jacobian evaluation
         opt.addInt("jac.npts", "Number of points along a patch side (in each direction) for geometry jacobian check", 100);
@@ -163,15 +170,18 @@ public: // *** Static functions ***
         opt.addReal("TM.turbIntensity", "Turbulent intensity", 0.05);
         opt.addReal("TM.viscosityRatio", "Specifies approximate ratio of turbulent viscosity to kinematic viscosity", 50.0);
         opt.addInt("TM.addRefsDF", "Number of additional uniform refinements of pressure basis for distance field computation", 2);
+        opt.addSwitch("TM.averaging", "Averaging of turbulent viscosity values on elements", true);
 
         // parallel
-        int maxThreads = 
+        int nThreads = 1;
         #ifdef _OPENMP
-        omp_get_max_threads();
-        #else
-        2;
+        int nt = omp_get_num_threads(); // currently set numbler of threads
+        if (nt > 1)
+            nThreads = nt;
+        else
+            nThreads = omp_get_max_threads() / 2;
         #endif
-        opt.addInt("numThreads", "Number of threads for OpenMP", maxThreads/2);
+        opt.addInt("numThreads", "Number of threads for OpenMP", nThreads);
 
         return opt;
     }
@@ -406,8 +416,18 @@ public: // *** Getters/setters ***
     void setDistanceField(gsField<T>& dfield) { m_distanceField = dfield; }
     gsField<T>& getDistanceField() { return m_distanceField; }
 
+    void setTurbulentViscosityField(gsField<T>& tvfield) { m_TurbulentViscosityField = tvfield; }
+    gsField<T>& getTurbulentViscosityField() { return m_TurbulentViscosityField; }
+
     gsFlowLogger& logger() { return *m_logger; }
     void setOutputMode(typename gsFlowLogger::mode mode) { m_logger->setMode(mode); }
+
+    void copyAllOptionsFrom(const gsFlowSolverParams<T>& other)
+    {
+        m_opt = other.m_opt;
+        m_assembOpt = other.m_assembOpt;
+        m_precOpt = other.m_precOpt;
+    }
 
 }; // class gsFlowSolverParams
 

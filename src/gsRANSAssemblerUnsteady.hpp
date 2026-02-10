@@ -19,10 +19,23 @@ template<class T, int MatOrder>
 void gsRANSAssemblerUnsteady<T, MatOrder>::initMembers()
 {
     Base::initMembers();
-    updateSizes();
+    
+    m_TMModelPtr = m_TMsolverPtr->getTMModel();
 
-    m_visitorRANSsymgrad = gsRANSVisitorUUSymmetricGradient<T, MatOrder>(m_paramsPtr);
-    m_visitorRANSsymgrad.initialize();
+    if (m_paramsPtr->options().getString("assemb.loop") == "EbE")
+        m_visitorRANSsymgradPtr = std::make_unique< gsRANSVisitorUU<T, MatOrder> >(m_paramsPtr);
+    else
+        m_visitorRANSsymgradPtr = std::make_unique< gsRANSVisitorUU_full<T, MatOrder> >(m_paramsPtr);
+
+    m_visitorRANSsymgradPtr->initialize();
+    m_visitorRANSsymgradPtr->setTurbulenceModel(m_TMModelPtr);
+
+    m_visitorUUnonlin.setTurbulenceModel(m_TMModelPtr);
+    m_visitorUU_TCSD_time.setTurbulenceModel(m_TMModelPtr);
+    //m_visitorUP_SUPG_pressure.setTurbulenceModel(m_TMModelPtr);
+    //m_visitorPP_ResStab_continuity.setTurbulenceModel(m_TMModelPtr);
+
+    updateSizes();
 
 }
 
@@ -41,9 +54,17 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::updateSizes()
 }
 
 template<class T, int MatOrder>
-void gsRANSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
+void gsRANSAssemblerUnsteady<T, MatOrder>::makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly)
 {
-    Base::assembleLinearPart();
+    Base::makeBlockUU(result, linPartOnly);
+    result += m_matRANSsymgrad;
+}
+
+template<class T, int MatOrder>
+void gsRANSAssemblerUnsteady<T, MatOrder>::makeRhsU(gsMatrix<T>& result, bool linPartOnly)
+{
+    Base::makeRhsU(result, linPartOnly);
+    result += m_rhsRANS;
 }
 
 template<class T, int MatOrder>
@@ -53,6 +74,9 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::fillSystem()
 
     this->fillGlobalMat_UU(m_matrix, m_matRANSsymgrad);
     m_rhs.topRows(m_pshift) += m_rhsRANS;
+
+    if (!m_matrix.isCompressed())
+        m_matrix.makeCompressed();
 }
 
 template<class T, int MatOrder>
@@ -64,12 +88,12 @@ void gsRANSAssemblerUnsteady<T, MatOrder>::update(const gsMatrix<T> & solVector,
     {
         m_rhsTimeDiscr = m_blockTimeDiscr * m_solution.topRows(m_pshift);
 
-        m_visitorRANSsymgrad.setTurbulenceSolver(m_TMsolverPtr);
-        m_visitorRANSsymgrad.setRANSsolution(solVector);
+        //m_visitorRANSsymgradPtr->setTurbulenceSolver(m_TMsolverPtr);
+        m_visitorRANSsymgradPtr->setRANSsolution(solVector);
         m_matRANSsymgrad.resize(m_pshift, m_pshift);
         m_matRANSsymgrad.reserve(gsVector<index_t>::Constant(m_matRANSsymgrad.outerSize(), m_tarDim * m_nnzPerOuterU));
         m_rhsRANS.setZero(m_pshift, 1);
-        this->assembleBlock(m_visitorRANSsymgrad, 0, m_matRANSsymgrad, m_rhsRANS);
+        this->assembleBlock(*m_visitorRANSsymgradPtr, 0, m_matRANSsymgrad, m_rhsRANS);
     }
 
     if (m_paramsPtr->options().getSwitch("fillGlobalSyst"))

@@ -230,7 +230,7 @@ public: // *** Constructor/destructor ***
 
 protected: // *** Member functions ***
 
-    virtual void evalCoeff(const gsMapData<T>& mapData0)
+    virtual void evalCoeff(const gsMapData<T>& mapData)
     { this->setConstCoeff(1./m_timeStep); }
 
 };
@@ -273,11 +273,11 @@ class gsFlowTerm_Diffusion : public gsFlowTerm_GradGrad<T>
 
 protected: // *** Class members ***
 
-    real_t m_viscosity;
+    T m_viscosity;
 
 public: // *** Constructor/destructor ***
 
-    gsFlowTerm_Diffusion(real_t viscosity) :
+    gsFlowTerm_Diffusion(T viscosity) :
     m_viscosity(viscosity)
     { }
 
@@ -290,6 +290,250 @@ protected: // *** Member functions ***
     { this->setConstCoeff(m_viscosity); }
 
 };
+
+// ===================================================================================================================
+
+/// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
+/// @tparam T   real number type
+/// @ingroup IncompressibleFlow
+template <class T>
+class gsFlowTerm_TCSDStabilization_time : public gsFlowTerm_TimeDiscr<T>
+{
+
+public:
+    typedef gsFlowTerm_TimeDiscr<T> Base;
+
+protected: // *** Base class members ***
+    
+    using Base::m_timeStep;
+
+protected: // *** Class members ***
+
+    gsMatrix<T> m_tauS;
+    gsMatrix<T> m_solUVals;
+
+public: // *** Constructor/destructor ***
+
+    gsFlowTerm_TCSDStabilization_time(real_t timeStep) :
+    Base(timeStep)
+    { 
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
+        this->m_testFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_VALUE;
+    }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_TCSDStabilization_time)
+
+
+protected: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat);
+
+public: // *** Getters/setters ***
+
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
+
+    gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
+};
+
+// ===================================================================================================================
+
+/// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
+/// @tparam T   real number type
+/// @ingroup IncompressibleFlow
+template <class T>
+class gsFlowTerm_TCSDStabilization_advection : public gsFlowTermNonlin<T>
+{
+
+public:
+    typedef gsFlowTermNonlin<T> Base;    
+
+protected: // *** Base class members ***
+    
+    using Base::m_currentSolU;
+    using Base::m_isCurrentSolSet;
+    using Base::m_solUVals;
+
+protected: // *** Class members ***
+
+    gsMatrix<T> m_tauS;
+
+public: // *** Constructor/destructor ***
+
+    gsFlowTerm_TCSDStabilization_advection()
+    { 
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
+        this->m_testFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
+    }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_TCSDStabilization_advection)
+
+
+protected: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat);
+
+public: // *** Getters/setters ***
+
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
+
+    gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
+};
+
+// ===================================================================================================================
+
+/// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
+/// @tparam T   real number type
+/// @ingroup IncompressibleFlow
+template <class T>
+class gsFlowTerm_SUPGStabilization_diffusion : public gsFlowTermNonlin<T>
+{
+
+public:
+    typedef gsFlowTermNonlin<T> Base;
+    
+protected: // *** Class members ***
+
+    real_t m_viscosity;
+    gsMatrix<T> m_tauS;
+    gsVector<T> m_TurbulentViscosityVals;
+    std::vector< gsMatrix<T> > m_TurbulentViscosityGrads;
+
+protected: // *** Base class members ***
+    
+    using Base::m_currentSolU;
+    using Base::m_isCurrentSolSet;
+    using Base::m_solUVals;
+
+public: // *** Constructor/destructor ***
+
+    gsFlowTerm_SUPGStabilization_diffusion(real_t viscosity) :
+    m_viscosity(viscosity)
+    { 
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_HESSIAN | NEED_VALUE;
+        this->m_testFunFlags = NEED_DERIV | NEED_DERIV2;
+        this->m_trialFunFlags = NEED_DERIV | NEED_DERIV2;
+    }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_SUPGStabilization_diffusion)
+
+
+protected: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat);
+
+public: // *** Getters/setters ***
+
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
+
+    gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
+
+    void setTurbulentViscosityVals(gsVector<T> mat) { m_TurbulentViscosityVals = mat; }
+
+    void setTurbulentViscosityGrads(std::vector< gsMatrix<T> > grads) { m_TurbulentViscosityGrads = grads; }
+};
+
+// ===================================================================================================================
+
+/// @brief      A class for integrals of the form: viscosity * test function gradient * trial function gradient.
+/// @tparam T   real number type
+/// @ingroup IncompressibleFlow
+/*template <class T>
+class gsFlowTerm_SUPGStabilization_pressure : public gsFlowTermNonlin<T>
+{
+
+public:
+    typedef gsFlowTermNonlin<T> Base;    
+
+protected: // *** Base class members ***
+    
+    using Base::m_currentSolU;
+    using Base::m_isCurrentSolSet;
+    using Base::m_solUVals;
+
+protected: // *** Class members ***
+
+    gsMatrix<T> m_tauS;
+
+public: // *** Constructor/destructor ***
+
+    gsFlowTerm_SUPGStabilization_pressure()
+    { 
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
+        this->m_testFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
+    }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_SUPGStabilization_pressure)
+
+
+protected: // *** Member functions ***
+
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, std::vector< gsMatrix<T> >& localMat);
+
+public: // *** Getters/setters ***
+
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS;}
+
+    gsMatrix<T> getTauS() { return m_tauS; }
+
+    void setUSolVals(gsMatrix<T> mat) { m_solUVals = mat; }
+};
+*/
+
+// ===================================================================================================================
+
+/// @brief      A class for residual-based stabilization of the continuity equation.
+/// @details    Implements the stabilization term: tau * (grad(p_trial) , grad(p_test))
+///             where tau is the element-wise stabilization parameter.
+/// @tparam T   real number type
+/// @ingroup IncompressibleFlow
+/*template <class T>
+class gsFlowTerm_ResidualStabilization_continuity : public gsFlowTerm<T>
+{
+
+public: // *** Smart pointers ***
+
+    typedef memory::shared_ptr<gsFlowTerm_ResidualStabilization_continuity<T>> Ptr;
+    typedef memory::unique_ptr<gsFlowTerm_ResidualStabilization_continuity<T>> uPtr;
+
+protected: // *** Class members ***
+
+    gsMatrix<T> m_tauS;  ///< Element-wise stabilization parameter
+
+public: // *** Constructor/destructor ***
+
+    /// @brief Default constructor.
+    gsFlowTerm_ResidualStabilization_continuity()
+    {
+        this->m_geoFlags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
+        this->m_testFunFlags = NEED_DERIV;
+        this->m_trialFunFlags = NEED_DERIV;
+    }
+
+    GISMO_CLONE_FUNCTION(gsFlowTerm_ResidualStabilization_continuity)
+
+protected: // *** Member functions ***
+
+    /// @brief Assemble the local matrix.
+    virtual void assemble(const gsMapData<T>& mapData, const gsVector<T>& quWeights, const std::vector< gsMatrix<T> >& testFunData, const std::vector< gsMatrix<T> >& trialFunData, gsMatrix<T>& localMat);
+
+public: // *** Getters/setters ***
+
+    /// @brief Set the stabilization parameter.
+    void setTauS(gsMatrix<T> tauS) { m_tauS = tauS; }
+
+    /// @brief Get the stabilization parameter.
+    gsMatrix<T> getTauS() { return m_tauS; }
+};
+*/
 
 // ===================================================================================================================
 // ===================================================================================================================

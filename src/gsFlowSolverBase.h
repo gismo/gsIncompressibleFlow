@@ -79,11 +79,15 @@ protected: // *** Member functions ***
     /// @brief Update sizes of members (when DOF numbers change after constructing the solver).
     virtual void updateSizes();
 
-    /// @brief Start measuring time (decides whether to use gsStopwatch or MPI_Wtime)
-    real_t stopwatchStart();
-
-    /// @brief Stop measuring time (decides whether to use gsStopwatch or MPI_Wtime)
-    real_t stopwatchStop();
+    /// @brief Print the options used by the solver to the logger.
+    void printOptions()
+    {
+        std::stringstream sstr;
+        sstr << "\n-----------------------------------\n";
+        sstr << "Flow solver options:\n";
+        sstr << m_paramsPtr->options() << "-----------------------------------\n";
+        m_paramsPtr->logger().log(sstr.str(), true); // true = log to file only
+    }
 
 
 public: // *** Member functions ***
@@ -110,7 +114,7 @@ public: // *** Member functions ***
 
     /// @brief Perform several iteration steps.
     /// @param[in] numberOfIterations the number of iterations to be performed
-    virtual void nextIteration(const unsigned numberOfIterations);
+    void nextIteration(const unsigned numberOfIterations);
     
     /// @brief Solve the incompressible Navier-Stokes problem.
     /// @param[in] maxIterations    the maximum number of linearization method iterations (in the steady case) or time steps (in the unsteady case)
@@ -176,7 +180,7 @@ public: // *** Getters/setters ***
     gsFlowLinSystSolver<T, MatOrder>* getLinSolver() const { return m_linSolverPtr; }
 
     /// @brief Returns the current solution vector.
-    const gsMatrix<T> & getSolution() const { return m_solution; }
+    const gsMatrix<T>& getSolution() const { return m_solution; }
 
     /// @brief Set a given solution vector as current solution.
     /// @param[in] solVector the given solution

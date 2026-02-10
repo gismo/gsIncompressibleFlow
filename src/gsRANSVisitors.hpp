@@ -16,24 +16,18 @@ namespace gismo
 {
 
 template <class T, int MatOrder>
-void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::initMembers()
+void gsRANSVisitorUU<T, MatOrder>::initMembers()
 {
     m_viscosity = m_paramsPtr->getPde().viscosity();
 }
 
-template<class T, int MatOrder>
-void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::initialize()
-{
-    Base::initialize();  
-}
-
 template <class T, int MatOrder>
-void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::evaluate(index_t testFunID)
+void gsRANSVisitorUU<T, MatOrder>::evaluate(index_t testFunID)
 {
     Base::evaluate(testFunID);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
-    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
 
     gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());
 
@@ -45,12 +39,12 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::evaluate(index_t testFunID)
 }
 
 template <class T, int MatOrder>
-void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
+void gsRANSVisitorUU<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
 {
     Base::evaluate(domIt);
 
-    m_TMsolverPtr->evalTurbulentViscosity(m_quNodes, m_patchID);
-    m_TurbulentViscosityVals = m_TMsolverPtr->getTurbulentViscosity();
+    m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+    m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
 
     gsRANSTerm_SymmetricGradient<T>* termPtr = dynamic_cast< gsRANSTerm_SymmetricGradient<T>* > (m_terms.back());
 
@@ -62,7 +56,7 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::evaluate(const gsDomainItera
 }
 
 template <class T, int MatOrder>
-void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+void gsRANSVisitorUU<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
     const index_t uCompSize = m_paramsPtr->getMapper(m_testUnkID).freeSize(); // number of dofs for one velocity component
@@ -131,7 +125,7 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_nonper(const s
 
 
 template <class T, int MatOrder>
-void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+void gsRANSVisitorUU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
 {
     index_t dim = m_paramsPtr->getPde().dim();
     const index_t uCompSize = m_paramsPtr->getPerHelperPtr()->numFreeDofs(); // number of dofs for one velocity component
@@ -301,6 +295,272 @@ void gsRANSVisitorUUSymmetricGradient<T, MatOrder>::localToGlobal_per(const std:
                                             globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * m_locMatVec[dim+r+t](i, j) * eliminatedDofs[m_trialUnkID](bb, r);
                                         else            // lower off-diagonal blocks
                                             globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * m_locMatVec[dim+r+t](j, i) * eliminatedDofs[m_trialUnkID](bb, r);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ===================================================================================================================
+
+template <class T, int MatOrder>
+void gsRANSVisitorUU_full<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+{
+    index_t dim = m_paramsPtr->getPde().dim();
+    const index_t uCompSize = m_paramsPtr->getMapper(m_testUnkID).freeSize(); // number of dofs for one velocity component
+    index_t nComponents = globalMat.rows() / uCompSize;
+
+    GISMO_ASSERT(nComponents == dim, "Wrong matrix size in gsRANSVisitorUU_full::localToGlobal.");
+
+    m_paramsPtr->getMapper(m_testUnkID).localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
+    m_paramsPtr->getMapper(m_trialUnkID).localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
+
+    index_t numActTest = m_testFunActives.rows();
+    index_t numActTrial = m_trialFunActives.rows();
+
+    index_t blockIndex = 0; // index of current block in m_locMatVec
+
+    for (index_t i = 0; i < numActTest; ++i)
+    {
+        const index_t ii = m_testFunActives(i);
+
+        if (m_paramsPtr->getMapper(m_testUnkID).is_free_index(ii))
+        {
+            for (index_t j = 0; j < numActTrial; ++j)
+            {
+                const index_t jj = m_trialFunActives(j);
+
+                if (m_paramsPtr->getMapper(m_trialUnkID).is_free_index(jj))
+                {
+                    // diagonal blocks
+                    for (index_t d = 0; d < dim; d++)
+                    {
+                        blockIndex = d * dim + d + 1; // index of block Edd in m_locMatVec
+                        globalMat.coeffRef(ii + d*uCompSize, jj + d*uCompSize) += m_locMatVec[0](i, j) + m_locMatVec[blockIndex](i, j); // block A + block Edd
+                    }
+
+                    // off-diagonal blocks asrising from symmetric gradient are put directly to right-hand side of the system
+                    for (index_t s = 0; s < dim; s++)
+                    {
+                        for (index_t t = 0; t < dim; t++)
+                        {
+                            if (s == t) // diagonal block 
+                                continue;
+
+                            blockIndex = s * dim + t + 1; // index of block Est in m_locMatVec
+                            globalRhs(ii + s*uCompSize, 0) -= m_locMatVec[blockIndex](i, j) * m_solution(jj + t*uCompSize, 0);
+                        }
+                    }
+                }
+                else // is_boundary_index(jj)
+                {
+                    const int bb = m_paramsPtr->getMapper(m_trialUnkID).global_to_bindex(jj);
+
+                    for (index_t d = 0; d < dim; d++) 
+                    {
+                        blockIndex = d * dim + d + 1;
+                        globalRhs(ii + d*uCompSize, 0) -= (m_locMatVec[0](i, j) + m_locMatVec[blockIndex](i, j)) * eliminatedDofs[m_trialUnkID](bb, d);    // block A + Edd
+                    }
+
+                    for (index_t s = 0; s < dim; s++)
+                    {
+                        for (index_t t = 0; t < dim; t++)
+                        {
+                            if (s == t) // diagonal block 
+                                continue;
+
+                            blockIndex = s * dim + t + 1; 
+                            globalRhs(ii + s*uCompSize, 0) -= m_locMatVec[blockIndex](i, j) * eliminatedDofs[m_trialUnkID](bb, t);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+template <class T, int MatOrder>
+void gsRANSVisitorUU_full<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T> >& eliminatedDofs, gsSparseMatrix<T, MatOrder>& globalMat, gsMatrix<T>& globalRhs)
+{
+    index_t dim = m_paramsPtr->getPde().dim();
+    const index_t uCompSize = m_paramsPtr->getPerHelperPtr()->numFreeDofs(); // number of dofs for one velocity component
+    index_t nComponents = globalMat.rows() / uCompSize;
+
+    GISMO_ASSERT(nComponents == dim, "Wrong matrix size in gsINSVisitorUU_full::localToGlobal_per, matrix has to contain all components.");
+
+    m_paramsPtr->getMapper(m_testUnkID).localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
+    m_paramsPtr->getMapper(m_trialUnkID).localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
+
+    index_t numActTest = m_testFunActives.rows();
+    index_t numActTrial = m_trialFunActives.rows();
+
+    index_t blockIndex = 0; // index of current block in m_locMatVec
+
+    for (index_t i = 0; i < numActTest; ++i)
+    {
+        const index_t ii = m_testFunActives(i);
+
+        if (m_paramsPtr->getMapper(m_testUnkID).is_free_index(ii))
+        {
+            bool iiElim = m_paramsPtr->getPerHelperPtr()->isEliminated(ii);
+            const index_t iiMapped = m_paramsPtr->getPerHelperPtr()->map(ii);
+
+            for (index_t j = 0; j < numActTrial; ++j)
+            {
+                const index_t jj = m_trialFunActives(j);
+
+                if (m_paramsPtr->getMapper(m_trialUnkID).is_free_index(jj))
+                {
+                    bool jjElim = m_paramsPtr->getPerHelperPtr()->isEliminated(jj);
+                    const index_t jjMapped = m_paramsPtr->getPerHelperPtr()->map(jj);
+
+                    // ii and jj are not eliminated periodic dofs:
+                    if (!iiElim && !jjElim) 
+                    {
+                        // diagonal blocks
+                        for (index_t d = 0; d < dim; d++)
+                        {
+                            blockIndex = d * dim + d + 1;
+                            globalMat.coeffRef(iiMapped + d*uCompSize, jjMapped + d*uCompSize) += m_locMatVec[0](i, j) + m_locMatVec[blockIndex](i, j); // block A + block Edd
+                        }
+
+                        // off-diagonal blocks asrising from symmetric gradient are put directly to right-hand side of the system
+                        for (index_t s = 0; s < dim; s++)
+                        {
+                            for (index_t t = 0; t < dim; t++)
+                            {
+                                if (s == t) // diagonal block 
+                                    continue;
+
+                                blockIndex = s * dim + t + 1; 
+                                globalRhs(iiMapped + s*uCompSize, 0) -= m_locMatVec[blockIndex](i, j) * m_solution(jjMapped + t*uCompSize, 0);
+                            }
+                        }
+                    }
+                    // only jj is eliminated periodic dof:
+                    else if ( (!iiElim && jjElim) )
+                    {
+                        for (int r = 0; r < dim; r++)
+                        {
+                            for (int s = 0; s < dim; s++)
+                            {
+                                for (int t = 0; t < dim; t++)
+                                {
+                                    T rotCoef = m_periodicTransformMat(s, t);
+
+                                    if (rotCoef != 0)
+                                    {
+                                        blockIndex = r * dim + t + 1; // index of block Ert in m_locMatVec
+
+                                        if (t == r)     // diagonal blocks
+                                            globalMat.coeffRef(iiMapped + r*uCompSize, jjMapped + s*uCompSize) += rotCoef * ( m_locMatVec[0](i, j) + m_locMatVec[blockIndex](i, j) );
+                                        else // off-diagonal blocks
+                                            globalRhs(iiMapped + r*uCompSize, 0) -= rotCoef * m_locMatVec[blockIndex](i, j) * m_solution(jjMapped + s*uCompSize, 0);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // only ii is eliminated periodic dof:
+                    else if ( (iiElim && !jjElim) )
+                    {
+                        for (int r = 0; r < dim; r++)
+                        {
+                            for (int s = 0; s < dim; s++)
+                            {
+                                for (int t = 0; t < dim; t++)
+                                {
+                                    T rotCoef = m_periodicTransformMat(s, t);
+
+                                    if (rotCoef != 0)
+                                    {
+                                        blockIndex = r * dim + t + 1; // index of block Ert in m_locMatVec
+
+                                        if (t == r)     // diagonal blocks
+                                            globalMat.coeffRef(iiMapped + s*uCompSize, jjMapped + r*uCompSize) += rotCoef * ( m_locMatVec[0](i, j) + m_locMatVec[blockIndex](i, j) );
+                                        else // off-diagonal blocks
+                                            globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * m_locMatVec[blockIndex](i, j) * m_solution(jjMapped + r*uCompSize, 0);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // both ii and jj are eliminated periodic dofs:
+                    else 
+                    {
+                        for (int q = 0; q < dim; q++)
+                        {
+                            for (int r = 0; r < dim; r++)
+                            {
+                                for (int s = 0; s < dim; s++)
+                                {
+                                    for (int t = 0; t < dim; t++)
+                                    {
+                                        T rotCoef = m_periodicTransformMat(q, s) * m_periodicTransformMat(r, t);
+
+                                        if (rotCoef != 0)
+                                        {
+                                            blockIndex = s * dim + t + 1; // index of block Est in m_locMatVec
+
+                                            if (s == t)     // diagonal blocks
+                                                globalMat.coeffRef(iiMapped + q*uCompSize, jjMapped + r*uCompSize) += rotCoef * ( m_locMatVec[0](i, j) + m_locMatVec[blockIndex](i, j) );
+                                            else // off-diagonal blocks
+                                                globalRhs(iiMapped + q*uCompSize, 0) -= rotCoef * m_locMatVec[blockIndex](i, j) * m_solution(jjMapped + r*uCompSize, 0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else // is_boundary_index(jj)
+                {
+                    const int bb = m_paramsPtr->getMapper(m_trialUnkID).global_to_bindex(jj);
+
+                    // ii is not eliminated periodic dof:
+                    if (!iiElim) 
+                    {
+                        for (index_t d = 0; d < dim; d++) 
+                            globalRhs(iiMapped + d*uCompSize, 0) -= (m_locMatVec[0](i, j) + m_locMatVec[d+1](i, j)) * eliminatedDofs[m_trialUnkID](bb, d);   // block A + Eii
+
+                        for (index_t s = 0; s < dim; s++)
+                        {
+                            for (index_t t = 0; t < dim; t++)
+                            {
+                                if (s == t) // diagonal block 
+                                    continue;
+
+                                blockIndex = s * dim + t + 1;
+                                globalRhs(iiMapped + s*uCompSize, 0) -= m_locMatVec[blockIndex](i, j) * eliminatedDofs[m_trialUnkID](bb, t);
+                            }
+                        }
+                        
+                    }
+                    // ii is eliminated periodic dof:
+                    else 
+                    {
+                        for (int r = 0; r < dim; r++)
+                        {
+                            for (int s = 0; s < dim; s++)
+                            {
+                                for (int t = 0; t < dim; t++)
+                                {
+                                    T rotCoef = m_periodicTransformMat(s, t);
+
+                                    if (rotCoef != 0)
+                                    {
+                                        blockIndex = r * dim + t + 1; // index of block Ert in m_locMatVec
+
+                                        if (t == r)     // diagonal blocks
+                                            globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * ( m_locMatVec[0](i, j) + m_locMatVec[blockIndex](i, j) ) * eliminatedDofs[m_trialUnkID](bb, r);
+                                        else // off-diagonal blocks
+                                            globalRhs(iiMapped + s*uCompSize, 0) -= rotCoef * m_locMatVec[blockIndex](i, j) * eliminatedDofs[m_trialUnkID](bb, r);
                                     }
                                 }
                             }

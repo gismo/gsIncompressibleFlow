@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     real_t cc = 1;  // depth of cavity (3D)
     
     // discretization settings
-    index_t numRefine = 4;
+    index_t numRefine = 1;
     index_t wallRefine = 0;
     index_t leadRefine = 0; // for profile2D
     int numElevate = 0; // number of degree elevations (before refinement)
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     real_t inVelY = 0.53; // inlet y-velocity for profile2D
     
     // solver settings
-    index_t maxIt = 20;
+    index_t maxIt = 200;
     index_t picardIt = 5;
     index_t maxItTM = 10;
     index_t linIt = 50;
@@ -73,14 +73,19 @@ int main(int argc, char *argv[])
     std::string matFormation = "EbE";
     std::string precond = "MSIMPLER_FdiagEqual";
     bool stokesInit = false; // start unsteady problem from Stokes solution
+    bool TCSD_RANS_stab = false; // use T-CSD stabilization
+    bool TCSD_TM_stab = false; // use T-CSD stabilization
+    bool SUPG_RANS_stab = false; // use SUPG stabilization
+    bool SUPG_TM_stab = false; // use SUPG stabilization
+    bool TMaveraging = false;
 
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
     bool plot = false;
     bool plotMesh = false;
-    index_t plotPts = 10000;
+    index_t plotPts = 20000;
     bool animation = false;
-    index_t animStep = 5;
+    index_t animStep = 10;
 
     // OpenMP parallelization
     int numThreads = 1;
@@ -127,6 +132,10 @@ int main(int argc, char *argv[])
     cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
+    cmd.addSwitch("TCSD_RANS", "Use T-CSD stabilization of numerical solution of RANS", TCSD_RANS_stab);
+    cmd.addSwitch("TCSD_TM", "Use T-CSD stabilization of numerical solution of TM", TCSD_TM_stab);
+    cmd.addSwitch("SUPG_RANS", "Use SUPG stabilization of numerical solution of RANS", SUPG_RANS_stab);
+    cmd.addSwitch("SUPG_TM", "Use SUPG stabilization of numerical solution of TM", SUPG_TM_stab);
 
     cmd.addString("o", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
@@ -263,6 +272,11 @@ int main(int argc, char *argv[])
     logger << "domain: " << patches;
     logger << "viscosity = " << viscosity << "\n";
     logger << "source function = " << f << "\n";
+    #ifdef _OPENMP
+        logger << "OpenMP = 1\n";
+    #else
+        logger << "OpenMP = 0\n";
+    #endif
 
     gsNavStokesPde<real_t> NSpde(patches, bcInfo, &f, viscosity);
     
@@ -276,6 +290,10 @@ int main(int argc, char *argv[])
     solveOpt.addSwitch("animation", "", animation);
     solveOpt.addSwitch("plotMesh", "", plotMesh);
     solveOpt.addSwitch("stokesInit", "", stokesInit);
+    solveOpt.addSwitch("TCSD_RANS", "", TCSD_RANS_stab);
+    solveOpt.addSwitch("TCSD_TM", "", TCSD_TM_stab);
+    solveOpt.addSwitch("SUPG_RANS", "", SUPG_RANS_stab);
+    solveOpt.addSwitch("SUPG_TM", "", SUPG_TM_stab);
     solveOpt.addString("id", "", "");
 
     if (direct)
@@ -295,6 +313,11 @@ int main(int argc, char *argv[])
         paramsDir.setBndParts(bndIn, bndOut, bndWall);
         paramsDir.options().setString("lin.solver", "direct");
         paramsDir.options().setInt("numThreads", numThreads);
+        paramsDir.options().setSwitch("TCSD_RANS", TCSD_RANS_stab);
+        paramsDir.options().setSwitch("TCSD_TM", TCSD_TM_stab);
+        paramsDir.options().setSwitch("SUPG_RANS", SUPG_RANS_stab);
+        paramsDir.options().setSwitch("SUPG_TM", SUPG_TM_stab);
+        paramsDir.options().setSwitch("TM.averaging", TMaveraging);
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsDir);
         solveProblem(NSsolver, solveOpt, geo, logger);
@@ -320,6 +343,11 @@ int main(int argc, char *argv[])
         paramsIter.options().setReal("lin.tol", linTol);
         paramsIter.options().setString("lin.precType", precond);
         paramsIter.options().setInt("numThreads", numThreads);
+        paramsIter.options().setSwitch("TCSD_RANS", TCSD_RANS_stab);
+        paramsIter.options().setSwitch("TCSD_TM", TCSD_TM_stab);
+        paramsIter.options().setSwitch("SUPG_RANS", SUPG_RANS_stab);
+        paramsIter.options().setSwitch("SUPG_TM", SUPG_TM_stab);
+        paramsIter.options().setSwitch("TM.averaging", TMaveraging);
 
         gsRANSSolverUnsteady<real_t, RowMajor> NSsolver(paramsIter);
         solveProblem(NSsolver, solveOpt, geo, logger);
@@ -390,9 +418,14 @@ void solveProblem(gsRANSSolverUnsteady<T, MatOrder>& NSsolver, gsOptionList opt,
     logger << "\nAssembly time:" << NSsolver.getAssemblyTime() << "\n";
     logger << "Solve time:" << NSsolver.getSolveTime() << "\n";
     logger << "Solver setup time:" << NSsolver.getSolverSetupTime() << "\n";
+    logger << "Total TM time: " << NSsolver.getTMtime() << "\n";
     logger << "Total solveProblem time:" << totalT << "\n\n";
 
+    logger << "RANS lin. it.:\n";
     NSsolver.getLinSolver()->reportLinIterations();
+
+    logger << "\nTM lin. it.:\n";
+    NSsolver.getTMsolver().getLinSolver()->reportLinIterations();
 
     // ------------------------------------
     // plot

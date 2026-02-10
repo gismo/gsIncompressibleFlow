@@ -34,10 +34,13 @@ public:
 
 protected: // *** Class members ***
 
-    gsRANSVisitorUUSymmetricGradient<T, MatOrder> m_visitorRANSsymgrad;
-    gsSparseMatrix<T, MatOrder> m_matRANSsymgrad;
-    gsMatrix<T> m_rhsRANS;
-    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
+    typename gsRANSVisitorUU<T, MatOrder>::uPtr m_visitorRANSsymgradPtr;
+    
+    gsSparseMatrix<T, MatOrder> m_matRANSsymgrad, m_matRANS_TCSD_time, m_matRANS_TCSD_advection, m_matRANS_SUPG_diffusion, m_matRANS_SUPG_pressure, m_matRANS_TCSD_velocity_full;
+    gsMatrix<T> m_rhsRANS, m_rhsRANS_TCSD_time, m_rhsRANS_TCSD_advection, m_rhsRANS_SUPG_diffusion, m_rhsRANS_SUPG_pressure, m_rhsRANS_TCSD_velocity_full;
+    
+    typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
     bool m_bComputeTMfirst;
     gsField<T> m_oldTimeFieldU, m_currentFieldU;
 
@@ -46,6 +49,7 @@ protected: // *** Base class members ***
     using Base::m_paramsPtr;
     using Base::m_pshift;
     using Base::m_udofs;
+    using Base::m_pdofs;
     using Base::m_tarDim;
     using Base::m_nnzPerOuterU;
     using Base::m_solution;
@@ -55,11 +59,15 @@ protected: // *** Base class members ***
     using Base::m_currentVelField;
     using Base::m_blockTimeDiscr;
     using Base::m_rhsTimeDiscr;
+    using Base::m_visitorUUnonlin;
+    using Base::m_visitorUU_TCSD_time;
+    //using Base::m_visitorUP_SUPG_pressure;
+    //using Base::m_visitorPP_ResStab_continuity;
 
 public: // *** Constructor/destructor ***
 
-    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr): 
-    Base(paramsPtr)
+    gsRANSAssemblerUnsteady(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMSolverBase<T, MatOrder>::Ptr TMsolverPtr): 
+    Base(paramsPtr), m_TMsolverPtr(TMsolverPtr)
     { 
         initMembers();
     }
@@ -76,8 +84,9 @@ protected: // *** Member functions ***
     /// @brief Update sizes of members (when DOF numbers change after constructing the assembler).
     virtual void updateSizes();
 
-    /// @brief Assemble the linear part of the matrix.
-    virtual void assembleLinearPart();
+    virtual void makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly = false);
+
+    virtual void makeRhsU(gsMatrix<T>& result, bool linPartOnly = false);
 
     /// @brief Add the nonlinear part to the given matrix and right-hand side.
     virtual void fillSystem();
@@ -86,14 +95,6 @@ protected: // *** Member functions ***
     /// @param solVector 
     /// @param[in] updateSol    true - save solVector into m_solution (false is used in the inner Picard iteration for unsteady problem)
     virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
-
-
-//public: // *** Member functions ***
-
-public: // Getter/setters
-
-    /// @brief Set turbulence solver to the member function.
-    void setTurbulenceSolver(typename gsTMSolverBase<T, MatOrder>::tmPtr TMsolver) { m_TMsolverPtr = TMsolver;}
 
 }; //gsRANSAssemblerUnsteady
 

@@ -40,8 +40,8 @@ public:
 
 public: // *** Class members ***
 
-    typename gsTMSolverBase<T, MatOrder>::tmPtr m_TMsolverPtr = NULL;
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr = NULL;
+    typename gsTMSolverBase<T, MatOrder>::Ptr m_TMsolverPtr = NULL;
+    typename gsTMModelData<T>::Ptr m_TMModelPtr = NULL;
     bool m_bComputeTMfirst;
     real_t m_turbT;
 
@@ -71,13 +71,13 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr, false)
     { 
         // create turbulence model
-        m_TMModelPtr = gsTMModelData<T>::make(paramsPtr);
+        m_TMModelPtr = gsTMModelData<T>::make(m_paramsPtr);
 
         // create turbulence solver
-        m_TMsolverPtr = gsTMSolverBase<T, MatOrder>::make(paramsPtr, m_TMModelPtr);
+        m_TMsolverPtr = gsTMSolverBase<T, MatOrder>::make(m_paramsPtr, m_TMModelPtr);
         
         // create assembler
-        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr);
+        m_assemblerPtr = new gsRANSAssemblerUnsteady<T, MatOrder>(paramsPtr, m_TMsolverPtr);
                         
         initMembers();
 
@@ -125,8 +125,17 @@ public: // *** Getters/setters ***
         return dynamic_cast<gsRANSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
     }
 
+    gsTMSolverBase<T, MatOrder>& getTMsolver() 
+    {
+        GISMO_ASSERT(m_TMsolverPtr != NULL, "TM solver not created yet.");
+        return *m_TMsolverPtr;
+    }
+
     /// @brief Returns the total number of DOFs for turbulent model (the matrix size).
     int numDofsTM() { return (m_TMsolverPtr->getAssembler())->numDofs(); }
+
+    /// @brief Returns time spent on turbulent model computation.
+    T getTMtime() const { return m_turbT; }
 
     /// @brief Retrurns the name of the class as a string.
     virtual std::string getName() { return "gsRANSSolverUnsteady"; }

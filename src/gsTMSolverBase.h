@@ -34,11 +34,11 @@ public:
 
 public: // *** Smart pointers ***
 
-    typedef memory::shared_ptr<gsTMSolverBase> tmPtr;
+    typedef memory::shared_ptr<gsTMSolverBase> Ptr;
 
 public: // *** Class members ***
 
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr;    
+    typename gsTMModelData<T>::Ptr m_TMModelPtr;    
     gsVector<T> m_TurbulentViscosityVals;
     T m_TMtime, m_TMtimeStepSize;
     T m_TMinnerIter, m_TMavgPicardIter;
@@ -60,13 +60,13 @@ protected: // *** Base class function ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsTMSolverBase(gsFlowSolverParams<T>& params):
-    Base(params)
+    gsTMSolverBase(gsFlowSolverParams<T>& params, typename gsTMModelData<T>::Ptr TMModelPtr):
+    Base(params), m_TMModelPtr(TMModelPtr)
     { }
 
     /// @brief Constructor.
-    gsTMSolverBase(typename gsFlowSolverParams<T>::Ptr paramsPtr):
-    Base(paramsPtr)
+    gsTMSolverBase(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr):
+    Base(paramsPtr), m_TMModelPtr(TMModelPtr)
     { }
 
     virtual ~gsTMSolverBase()
@@ -77,7 +77,7 @@ public: // *** Static functions ***
     /// @brief Returns a shared pointer to a newly created instance of the turbulence solver.
     /// @param[in] paramsPtr        a shared point to the instance of an object holding all parameters of the solver
     /// @param[in] TMModelPtr       a shared pointer to the chosen turbulence model
-    static tmPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr);
+    static Ptr make(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr);
 
 
 protected: // *** Member functions ***
@@ -90,8 +90,9 @@ public: // *** Member functions ***
 
     /// @brief Evaluates the turbulent viscosity.
     /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch
-    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
+    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Perform next iteration step.
@@ -115,6 +116,9 @@ public: // *** Getters/setters ***
     /// @brief Returns a pointer to the assembler.
     virtual gsTMAssemblerBase<T, MatOrder>* getAssembler() const
     { return dynamic_cast<gsTMAssemblerBase<T, MatOrder>*>(m_assemblerPtr); }
+
+    void setTMModel(typename gsTMModelData<T>::Ptr TMModel) { m_TMModelPtr = TMModel; }
+    typename gsTMModelData<T>::Ptr getTMModel() { return m_TMModelPtr; }
 
 };
 

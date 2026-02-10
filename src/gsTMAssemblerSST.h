@@ -38,16 +38,20 @@ protected: // *** Class members ***
     gsTMVisitorLinearSST<T, MatOrder> m_visitorLinearSST_K, m_visitorLinearSST_O;
     gsTMVisitorTimeIterationSST<T, MatOrder> m_visitorTimeIterationSST_K, m_visitorTimeIterationSST_O;
     gsTMVisitorNonlinearSST<T, MatOrder> m_visitorNonlinearSST_K, m_visitorNonlinearSST_O;
+    gsTMVisitorSSTTCSDStabilization_time<T, MatOrder> m_visitorSST_TCSD_time_K, m_visitorSST_TCSD_time_O;
+    gsTMVisitorSSTTCSDStabilization_advection<T, MatOrder> m_visitorSST_TCSD_advection_K, m_visitorSST_TCSD_advection_O;
 
     gsSparseMatrix<T, MatOrder> m_blockLinearK, m_blockLinearO, m_blockTimeIterationK, m_blockTimeIterationO, m_blockNonlinearK, m_blockNonlinearO;
+    gsSparseMatrix<T, MatOrder> m_matSST_TCSD_time_K, m_matSST_TCSD_time_O, m_matSST_TCSD_advection_K, m_matSST_TCSD_advection_O;
     gsMatrix<T> m_rhsLinearK, m_rhsLinearO, m_rhsTimeIterationK, m_rhsTimeIterationO, m_rhsNonlinearK, m_rhsNonlinearO;
+    gsMatrix<T> m_rhsSST_TCSD_time_K, m_rhsSST_TCSD_time_O, m_rhsSST_TCSD_advection_K, m_rhsSST_TCSD_advection_O;
 
     gsField<T> m_currentFieldK, m_currentFieldO;
     gsField<T> m_oldTimeFieldK, m_oldTimeFieldO;
 
     gsField<T> m_distanceField;
     
-    typename gsTMModelData<T>::tdPtr m_TMModelPtr; 
+    typename gsTMModelData<T>::Ptr m_TMModelPtr; 
 
     real_t m_kin, m_kwall, m_oin, m_owall;
 
@@ -84,7 +88,7 @@ public: // *** Base class member functions ***
 public: // *** Constructor/destructor ***
 
     /// @brief Constructor.
-    gsTMAssemblerSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::tdPtr TMModelPtr):
+    gsTMAssemblerSST(typename gsFlowSolverParams<T>::Ptr paramsPtr, typename gsTMModelData<T>::Ptr TMModelPtr):
     Base(paramsPtr), m_TMModelPtr(TMModelPtr)
     { 
         m_numVars = 2;

@@ -23,7 +23,7 @@ class gsTMModelData
     
 public: // *** Smart pointers ***
 
-    typedef memory::shared_ptr<gsTMModelData> tdPtr;
+    typedef memory::shared_ptr<gsTMModelData> Ptr;
 
 protected: // *** Class members ***
 
@@ -41,6 +41,7 @@ protected: // *** Class members ***
     real_t m_kappa;
     real_t m_visc;
     
+    gsMatrix<T> m_USolVals;
     gsMatrix<T> m_KSolVals;
     gsMatrix<T> m_OSolVals;
     std::vector< gsMatrix<T> > m_KSolDers;
@@ -51,9 +52,11 @@ protected: // *** Class members ***
     gsVector<T> m_StrainRateMag;
     std::vector< gsMatrix<T> > m_StrainRateTensor;
     gsVector<T> m_turbulentViscosityVals;
+    std::vector< gsMatrix<T> > m_turbulentViscosityGrads;
 
-    bool m_average = true;
+    bool m_average = false;
     bool m_isInitialized = false;
+    bool m_isTurbViscFieldReady = false;
 
 
 public: // *** Constructor/destructor ***
@@ -63,6 +66,7 @@ public: // *** Constructor/destructor ***
     m_paramsPtr(paramsPtr)
     { 
         m_visc = m_paramsPtr->getPde().viscosity();
+        m_average = m_paramsPtr->options().getSwitch("TM.averaging");
     }
     
     ~gsTMModelData() {}
@@ -74,29 +78,37 @@ public: // *** Static functions ***
 
     /// @brief Returns a sharedpointer to a newly created instance.
     /// @param[in] paramsPtr a shared point to the instance of an object holding all parameters of the solver
-    static tdPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr);
+    static Ptr make(typename gsFlowSolverParams<T>::Ptr paramsPtr);
 
 
 public: // *** Class functions ***
 
     /// @brief Evaluates the turbulent viscosity.
     /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch   
-    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
+    virtual void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// @brief Evaluates the turbulent viscosity.
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
+    /// @param[in] patchId          an index of the patch   
+    virtual void evalTurbulentViscosityGrads(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
     { GISMO_NO_IMPLEMENTATION }
 
     /// @brief Plots the turbulent viscosity.
     virtual void plotTurbulentViscosity(typename gsFlowSolverParams<T>::Ptr paramsPtr, std::string str = "turbVisc");
 
-    /// @brief Update the current turbuelnce model quantities for the given quNodes
-    /// @param[in] quNodes          a matrix holding evaluation points
-    /// @param[in] patchId          an index of the patch 
-    virtual void updateModel(gsMatrix<T>& quNodes, index_t patchId)
+    virtual void updateTurbulentViscosityField(typename gsFlowSolverParams<T>::Ptr paramsPtr)
     { GISMO_NO_IMPLEMENTATION }
 
-protected: // *** Class functions ***
-
-    void computeAverage(gsVector<T>& turbFn);
+    /// @brief Update the current turbuelnce model quantities for the given quNodes
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
+    /// @param[in] patchId          an index of the patch 
+    virtual void updateModel(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
+    { GISMO_NO_IMPLEMENTATION }
 
 
 public: // *** Getters/setters ***
@@ -112,6 +124,7 @@ public: // *** Getters/setters ***
     real_t get_beta2() { return m_beta2; }
     real_t get_kappa() { return m_kappa; }
 
+    gsMatrix<T> getUSolVals() { return m_USolVals; }
     gsMatrix<T> getKSolVals() { return m_KSolVals; }
     gsMatrix<T> getOSolVals() { return m_OSolVals; }
     std::vector< gsMatrix<T> > getKSolDers() { return m_KSolDers; }
@@ -122,8 +135,10 @@ public: // *** Getters/setters ***
     gsVector<T> getStrainRateMagVals() { return m_StrainRateMag; }
     std::vector< gsMatrix<T> > getStrainRateTensor() { return m_StrainRateTensor; }    
     gsVector<T> getTurbulentViscosityVals() { return m_turbulentViscosityVals; }
+    std::vector< gsMatrix<T> > getTurbulentViscosityGrads() { return m_turbulentViscosityGrads; }
     bool isInitialized() { return m_isInitialized; }
-
+    bool isTurbViscFieldReady() { return m_isTurbViscFieldReady; }
+    void setTurbViscFieldReady(bool b) { m_isTurbViscFieldReady = b; }
 };
 
 
@@ -142,7 +157,7 @@ public:
 
 public: // *** Smart pointers ***
 
-    typedef memory::shared_ptr<gsTMModelData_SST> tdPtr;    
+    typedef memory::shared_ptr<gsTMModelData_SST> Ptr;    
 
 protected: // *** Class members ***
 
@@ -164,6 +179,7 @@ protected: // *** Base class members ***
     using Base::m_kappa;
     using Base::m_visc;
 
+    using Base::m_USolVals;
     using Base::m_KSolVals;
     using Base::m_OSolVals;
     using Base::m_KSolDers;
@@ -174,9 +190,12 @@ protected: // *** Base class members ***
     using Base::m_StrainRateMag;
     using Base::m_StrainRateTensor;    
     using Base::m_turbulentViscosityVals;
+    using Base::m_turbulentViscosityGrads;
     using Base::m_isInitialized;
     using Base::m_average;
+    using Base::m_isTurbViscFieldReady;
 
+    using Base::isTurbViscFieldReady;
 
 public: // *** Constructor/destructor ***
     
@@ -207,7 +226,7 @@ public: // *** Static functions ***
 
     /// @brief Returns a shared pointer to a newly created instance.
     /// @param[in] paramsPtr a shared point to the instance of an object holding all parameters of the solver
-    static tdPtr make(typename gsFlowSolverParams<T>::Ptr paramsPtr)
+    static Ptr make(typename gsFlowSolverParams<T>::Ptr paramsPtr)
     {
         return memory::make_shared_not_owned(new gsTMModelData_SST<T>(paramsPtr));
     }
@@ -226,24 +245,30 @@ protected: // *** Class functions ***
     
     void evalF2(gsMatrix<T>& quNodes, index_t patchId);
     
-    void evalTurbViscFromData(gsMatrix<T>& quNodes, index_t patchId);
+    void evalTurbViscFromData(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
     
 
 public: // *** Class functions ***
 
     /// @brief Update the current turbuelnce model quantities for the given quNodes
     /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch 
-    void updateModel(gsMatrix<T>& quNodes, index_t patchId);
+    void updateModel(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
     
     /// @brief Evaluates the turbulent viscosity.
     /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
     /// @param[in] patchId          an index of the patch
-    void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId);
-    
-        
-public: // *** Getters/setters ***
-    
+    void evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
+
+    /// @brief Evaluates the turbulent viscosity.
+    /// @param[in] quNodes          a matrix holding evaluation points
+    /// @param[in] numNodesPerElem  number of evaluation points per element
+    /// @param[in] patchId          an index of the patch
+    void evalTurbulentViscosityGrads(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId);
+
+    void updateTurbulentViscosityField(typename gsFlowSolverParams<T>::Ptr paramsPtr);
     
 };
 

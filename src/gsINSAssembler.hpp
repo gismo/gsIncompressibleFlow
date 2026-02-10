@@ -48,10 +48,15 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 
     m_visitorUUnonlin = gsINSVisitorUUnonlin<T, MatOrder>(m_paramsPtr);
     m_visitorUUnonlin.initialize();
-    m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
 
     m_visitorUP = gsINSVisitorPU_withUPrhs<T, MatOrder>(m_paramsPtr);
     m_visitorUP.initialize();
+
+    /*m_visitorUP_SUPG_pressure = gsINSVisitorPU_SUPG_presssure<T, MatOrder>(m_paramsPtr);
+    m_visitorUP_SUPG_pressure.initialize();
+
+    m_visitorPP_ResStab_continuity = gsINSVisitorPP_ResidualStabilization_continuity<T, MatOrder>(m_paramsPtr);
+    m_visitorPP_ResStab_continuity.initialize();*/
 
     m_visitorF = gsINSVisitorRhsU<T, MatOrder>(m_paramsPtr);
     m_visitorF.initialize();
@@ -65,6 +70,11 @@ void gsINSAssembler<T, MatOrder>::initMembers()
 
     m_paramsPtr->updateDofMappers();
     updateSizes();
+
+    m_currentVelField = constructSolution(m_solution, 0, m_paramsPtr->isRotation());
+    m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
+    //m_visitorUP_SUPG_pressure.setCurrentSolution(m_currentVelField);
+    //m_visitorPP_ResStab_continuity.setCurrentSolution(m_currentVelField);
 
     if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
     {
@@ -105,7 +115,7 @@ void gsINSAssembler<T, MatOrder>::updateSizes()
     }
 
     m_solution.setZero(m_dofs, 1);
-    m_currentVelField = constructSolution(m_solution, 0);
+    m_currentVelField = constructSolution(m_solution, 0, m_paramsPtr->isRotation());
 
     m_blockUUlin_comp.resize(m_udofs, m_udofs);
     m_blockUUnonlin_comp.resize(m_udofs, m_udofs);
@@ -156,6 +166,8 @@ void gsINSAssembler<T, MatOrder>::updateCurrentSolField(const gsMatrix<T> & solV
 
     m_currentVelField = constructSolution(solVector, 0, m_paramsPtr->isRotation()); // construct relative velocity if isRotation() = true
     m_visitorUUnonlin.setCurrentSolution(m_currentVelField);
+    //m_visitorUP_SUPG_pressure.setCurrentSolution(m_currentVelField);
+    //m_visitorPP_ResStab_continuity.setCurrentSolution(m_currentVelField);
     m_visitorUUnonlinWeakDirichlet.setCurrentSolution(m_currentVelField);
 }
 
@@ -339,6 +351,21 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
         }
     }
 
+    /*if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        m_visitorUP_SUPG_pressure.setCurrentSolution(m_currentVelField);
+        m_blockUP_SUPG_pressure.resize(m_pshift, m_pshift);
+        m_blockUP_SUPG_pressure.reserve(gsVector<index_t>::Constant(m_blockUP_SUPG_pressure.outerSize(), m_tarDim * m_nnzPerOuterU));
+        m_rhsU_SUPG_pressure.setZero(m_pshift, 1);
+        this->assembleBlock(m_visitorUP_SUPG_pressure, 0, m_blockUP_SUPG_pressure, m_rhsU_SUPG_pressure);
+        
+        m_visitorPP_ResStab_continuity.setCurrentSolution(m_currentVelField);
+        m_blockPP_ResStab_continuity.resize(m_pdofs, m_pdofs);
+        m_blockPP_ResStab_continuity.reserve(gsVector<index_t>::Constant(m_blockPP_ResStab_continuity.outerSize(), m_nnzPerOuterP));
+        m_rhsP_ResStab_continuity.setZero(m_pdofs, 1);
+        this->assembleBlock(m_visitorPP_ResStab_continuity, 0, m_blockPP_ResStab_continuity, m_rhsP_ResStab_continuity);
+    }*/
+
     // linear operators needed for PCD preconditioner
     // if ( m_paramsPtr->options().getString("lin.solver") == "iter" &&  m_paramsRef.options().getString("lin.precType").substr(0, 3) == "PCD" )
     // {
@@ -359,6 +386,71 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
 
     //     this->assembleBlock(visitorPPconv, 0, m_pcdBlocks[2], dummyRhsP);
     // }
+}
+
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly)
+{
+    if (m_blockUUlin_comp.nonZeros() > 0)
+    {
+        gsSparseMatrix<T, MatOrder> blockUUcomp = m_blockUUlin_comp;
+
+        if(!linPartOnly)
+            blockUUcomp += m_blockUUnonlin_comp;
+
+        gsVector<index_t> nonZerosVector(m_pshift);
+        gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);
+
+        for (short_t d = 0; d < m_tarDim; d++)
+            nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
+
+        result.reserve(nonZerosVector);
+        fillGlobalMat_UU(result, blockUUcomp);
+    }
+    
+    result += m_blockUUlin_whole;
+
+    if(!linPartOnly)
+        result += m_blockUUnonlin_whole;
+
+    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
+    {
+        fillGlobalMat_UU(result, -m_blockUUlinWeakDirichlet_whole_In);
+        fillGlobalMat_UU(result, -m_blockUUlinWeakDirichlet_whole_Wall);
+        if(!linPartOnly)
+        {
+            fillGlobalMat_UU(result, m_blockUUnonlinWeakDirichlet_whole_In);
+            fillGlobalMat_UU(result, m_blockUUnonlinWeakDirichlet_whole_Wall);
+        }
+        
+    }
+
+    result.makeCompressed();
+}
+
+
+template<class T, int MatOrder>
+void gsINSAssembler<T, MatOrder>::makeRhsU(gsMatrix<T>& result, bool linPartOnly)
+{
+    result = m_rhsF + m_rhsUlin + m_rhsBtB.topRows(m_pshift);
+
+    if(!linPartOnly)
+        result += m_rhsUnonlin;
+
+    //if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    //    result += m_rhsU_SUPG_pressure;
+    
+    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
+    {
+        result -= m_rhsUlinWeakDirichlet_In;
+        result -= m_rhsUlinWeakDirichlet_Wall;
+        if(!linPartOnly)
+        {
+            result += m_rhsUnonlinWeakDirichlet_In;
+            result += m_rhsUnonlinWeakDirichlet_Wall;
+        }
+    }
 }
 
 
@@ -516,9 +608,6 @@ void gsINSAssembler<T, MatOrder>::fillSystem()
         fillGlobalMat_UU(m_matrix, m_blockUUnonlinWeakDirichlet_whole_Wall);
     }
 
-    if (!m_matrix.isCompressed())
-        m_matrix.makeCompressed();
-
     m_rhs = m_baseRhs;
     m_rhs.topRows(m_pshift) += m_rhsUnonlin;
 
@@ -527,6 +616,18 @@ void gsINSAssembler<T, MatOrder>::fillSystem()
         m_rhs.topRows(m_pshift) += m_rhsUnonlinWeakDirichlet_In;
         m_rhs.topRows(m_pshift) += m_rhsUnonlinWeakDirichlet_Wall;
     }
+
+    /*if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        fillGlobalMat_UP(m_matrix, m_blockUP_SUPG_pressure);
+        m_rhs.topRows(m_pshift) += m_rhsU_SUPG_pressure;
+
+        fillGlobalMat_PP(m_baseMatrix, m_blockPP_ResStab_continuity);
+        m_baseRhs.bottomRows(m_pdofs) += m_rhsP_ResStab_continuity;
+    }*/
+
+    if (!m_matrix.isCompressed())
+        m_matrix.makeCompressed();
 
     m_isSystemReady = true;
 }
@@ -715,66 +816,24 @@ gsSparseMatrix<T, MatOrder> gsINSAssembler<T, MatOrder>::getBlockUU(bool linPart
     else
     {
         gsSparseMatrix<T, MatOrder> blockUU(m_pshift, m_pshift);
-
-        if (m_blockUUlin_comp.nonZeros() > 0)
-        {
-            gsSparseMatrix<T, MatOrder> blockUUcomp = m_blockUUlin_comp;
-
-            if(!linPartOnly)
-                blockUUcomp += m_blockUUnonlin_comp;
-    
-            gsVector<index_t> nonZerosVector(m_pshift);
-            gsVector<index_t> nonZerosVector_UUcomp = getNnzVectorPerOuter(blockUUcomp);
-    
-            for (short_t d = 0; d < m_tarDim; d++)
-                nonZerosVector.middleRows(d * m_udofs, m_udofs) = nonZerosVector_UUcomp;
-    
-            blockUU.reserve(nonZerosVector);
-            fillGlobalMat_UU(blockUU, blockUUcomp);
-        }
-        
-        blockUU += m_blockUUlin_whole;
-
-        if(!linPartOnly)
-            blockUU += m_blockUUnonlin_whole;
-
-        if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-        {
-            fillGlobalMat_UU(m_baseMatrix, -m_blockUUlinWeakDirichlet_whole_In);
-            fillGlobalMat_UU(m_baseMatrix, -m_blockUUlinWeakDirichlet_whole_Wall);
-            if(!linPartOnly)
-            {
-                fillGlobalMat_UU(m_matrix, m_blockUUnonlinWeakDirichlet_whole_In);
-                fillGlobalMat_UU(m_matrix, m_blockUUnonlinWeakDirichlet_whole_Wall);
-            }
-            
-        }
-
-        blockUU.makeCompressed();
-
+        makeBlockUU(blockUU, linPartOnly);
         return blockUU;
     }
 }
 
 
 template<class T, int MatOrder>
-gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU() const
+gsMatrix<T> gsINSAssembler<T, MatOrder>::getRhsU(bool linPartOnly)
 { 
-    if (m_isSystemReady)
+    if (m_isSystemReady && !linPartOnly)
         return m_rhs.topRows(m_pshift);
+    else if (m_isBaseReady && linPartOnly)
+        return m_baseRhs.topRows(m_pshift);
     else
     {
-        gsMatrix<T> rhsUpart = m_rhsF + m_rhsBtB.topRows(m_pshift);
-
-        if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-        {
-            rhsUpart -= m_rhsUlinWeakDirichlet_In;
-            rhsUpart -= m_rhsUlinWeakDirichlet_Wall;
-            rhsUpart += m_rhsUnonlinWeakDirichlet_In;
-            rhsUpart += m_rhsUnonlinWeakDirichlet_Wall;
-        }
-
-        return (rhsUpart + m_rhsUlin + m_rhsUnonlin);
+        gsMatrix<T> rhsU;
+        makeRhsU(rhsU, linPartOnly);
+        return rhsU;
     }
 }
 
@@ -969,6 +1028,9 @@ void gsINSAssemblerUnsteady<T, MatOrder>::initMembers()
 
     m_visitorTimeDiscr = gsINSVisitorUUtimeDiscr<T, MatOrder>(m_paramsPtr);
     m_visitorTimeDiscr.initialize();
+
+    m_visitorUU_TCSD_time = gsINSVisitorUU_TCSD_time<T, MatOrder>(m_paramsPtr);
+    m_visitorUU_TCSD_time.initialize();
 }
 
 
@@ -981,6 +1043,28 @@ void gsINSAssemblerUnsteady<T, MatOrder>::updateSizes()
 
     m_blockTimeDiscr.resize(m_pshift, m_pshift);
     m_rhsTimeDiscr.setZero(m_pshift, 1);
+}
+
+
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::makeBlockUU(gsSparseMatrix<T, MatOrder>& result, bool linPartOnly)
+{
+    Base::makeBlockUU(result, linPartOnly);
+    result += m_blockTimeDiscr;
+
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+        this->fillGlobalMat_UU(result, m_blockUU_TCSD_time);
+}
+
+
+template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::makeRhsU(gsMatrix<T>& result, bool linPartOnly)
+{
+    Base::makeRhsU(result, linPartOnly);
+    result += m_rhsTimeDiscr;
+
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+        result += m_rhsU_TCSD_time;
 }
 
 
@@ -1013,12 +1097,35 @@ void gsINSAssemblerUnsteady<T, MatOrder>::assembleLinearPart()
 
 
 template<class T, int MatOrder>
+void gsINSAssemblerUnsteady<T, MatOrder>::assembleNonlinearPart()
+{
+    Base::assembleNonlinearPart();
+    
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {
+        m_visitorUU_TCSD_time.setCurrentSolution(m_currentVelField);
+        m_blockUU_TCSD_time.resize(m_pshift, m_pshift);
+        m_blockUU_TCSD_time.reserve(gsVector<index_t>::Constant(m_blockUU_TCSD_time.outerSize(), m_tarDim * m_nnzPerOuterU));
+        m_rhsU_TCSD_time.setZero(m_pshift, 1);
+        this->assembleBlock(m_visitorUU_TCSD_time, 0, m_blockUU_TCSD_time, m_rhsU_TCSD_time);
+        m_rhsU_TCSD_time = m_blockUU_TCSD_time * m_solution.topRows(m_pshift);
+    }
+}
+
+
+template<class T, int MatOrder>
 void gsINSAssemblerUnsteady<T, MatOrder>::fillSystem()
 {
     Base::fillSystem();
 
     this->fillGlobalMat_UU(m_matrix, m_blockTimeDiscr);
     m_rhs.topRows(m_pshift) += m_rhsTimeDiscr;
+
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("TCSD_RANS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
+    {   
+        this->fillGlobalMat_UU(m_matrix, m_blockUU_TCSD_time);
+        m_rhs.topRows(m_pshift) += m_rhsU_TCSD_time;
+    }
 }
 
 

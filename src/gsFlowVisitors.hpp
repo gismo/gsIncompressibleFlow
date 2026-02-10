@@ -37,8 +37,8 @@ void gsFlowVisitor<T, MatOrder>::evalSingleFunData(const unsigned& basisFlags, c
         basisPtr->derivSingle_into(funID, m_quNodes, basisData[1]);
 
     // currently not needed
-    // if(basisFlags & NEED_DERIV2)
-    //     basisPtr->deriv2Single_into(funID, m_quNodes, basisData[2]);
+    if(basisFlags & NEED_DERIV2)
+        basisPtr->deriv2Single_into(funID, m_quNodes, basisData[2]);
 }
 
 
@@ -105,30 +105,30 @@ void gsFlowVisitor<T, MatOrder>::evalBasisData(const unsigned& basisFlags, const
     }
 
     // currently not needed
-    // if(basisFlags & NEED_DERIV2)
-    // {
-    //     gsMatrix<real_t> basisDers2;
-    //     basisPtr->deriv2_into(m_quNodes, basisDers2);
+    if(basisFlags & NEED_DERIV2)
+    {
+        gsMatrix<real_t> basisDers2;
+        basisPtr->deriv2_into(m_quNodes, basisDers2);
 
-    //     if (multipleElem)
-    //     {
-    //         index_t dimSq = dim*dim;
-    //         basisData[2].setZero(dimSq*numAct, m_quNodes.cols());
+        if (multipleElem)
+        {
+            index_t dimSq = dim*dim;
+            basisData[2].setZero(dimSq*numAct, m_quNodes.cols());
 
-    //         for (index_t i = 0; i < actives.rows(); i++)
-    //         {
-    //             for (index_t j = 0; j < actives.cols(); j++)
-    //             {
-    //                 index_t ii = activesUnique_val_to_ID[actives(i, j)];
-    //                 basisData[2].block(dimSq*ii, j, dimSq, 1) = basisDers2.block(dimSq*i, dimSq ,j, 1);
-    //             }
-    //         }
-    //     }
-    //     else
-    //     {
-    //         basisData[2] = basisDers2;
-    //     }
-    // }
+            for (index_t i = 0; i < actives.rows(); i++)
+            {
+                for (index_t j = 0; j < actives.cols(); j++)
+                {
+                    index_t ii = activesUnique_val_to_ID[actives(i, j)];
+                    basisData[2].block(dimSq*ii, j, dimSq, 1) = basisDers2.block(dimSq*i, dimSq ,j, 1);
+                }
+            }
+        }
+        else
+        {
+            basisData[2] = basisDers2;
+        }
+    }
     
 }
 
@@ -153,8 +153,8 @@ void gsFlowVisitor<T, MatOrder>::initOnPatch(index_t patchID)
     setupQuadrature();          
 
     m_testFunData.clear(); m_trialFunData.clear();
-    m_testFunData.resize(2); // 0 - value, 1 - deriv (2nd derivative not needed at the moment)
-    m_trialFunData.resize(2); // 0 - value, 1 - deriv
+    m_testFunData.resize(3); // 0 - value, 1 - deriv (2nd derivative not needed at the moment)
+    m_trialFunData.resize(3); // 0 - value, 1 - deriv
 }
 
 
@@ -181,6 +181,8 @@ void gsFlowVisitor<T, MatOrder>::setCurrentSolution(gsField<T>& solution)
         if (termPtr)
             termPtr->setCurrentSolution(solution);
     }
+
+    m_solField = solution;
 }
 
 
@@ -216,7 +218,7 @@ void gsFlowVisitor<T, MatOrder>::localToGlobal(gsMatrix<T>& globalRhs)
 template <class T, int MatOrder>
 void gsFlowVisitorVectorValued<T, MatOrder>::assemble()
 {
-    m_locMatVec.resize(m_paramsPtr->getPde().dim());
+    resizeMatVec();
 
     for (size_t i = 0; i < m_locMatVec.size(); i++)
         m_locMatVec[i].setZero(m_testFunActives.rows(), m_trialFunActives.rows());
@@ -249,40 +251,20 @@ void gsFlowVisitor<T, MatOrder>::evaluate(index_t testFunID)
 
     index_t dim = m_testBasisPtr->domainDim();
     gsMatrix<T> support = m_testBasisPtr->support(testFunID);
-    //typename gsBasis<T>::domainIter domIt = m_testBasisPtr->makeDomainIterator(boundary::none);
 
     gsMatrix<T> quNodes; // quad. nodes for the current element
     gsVector<T> quWeights; // weights for the current element
     std::vector< gsMatrix<T> > quNodesOnElem; // quad. nodes for all elements in support
     std::vector< gsVector<T> > quWeightsOnElem; // weights for all elements in support
 
-    typename gsBasis<T>::domainIter domIt = m_testBasisPtr->domain()->beginAll();
-    typename gsBasis<T>::domainIter domItEnd = m_testBasisPtr->domain()->endAll();
+    gsMatrix<T> lowerCorners, upperCorners; // bounding boxes of all elements in support
+    elementsInSupport(*m_testBasisPtr, testFunID, lowerCorners, upperCorners);
 
-    // loop over elements
-    while(domIt != domItEnd)
+    for (index_t i = 0; i < lowerCorners.cols(); i++)
     {
-        bool inSupport = true; 
-
-        // check if the current element lies in support of test function with testFunID
-        for (index_t d = 0; d < dim; d++)
-        {
-            if ( (domIt.lowerCorner()[d] < support(d,0)) ||  (domIt.upperCorner()[d] > support(d,1)))
-            {
-                inSupport = false;
-                break;
-            }
-        }
-
-        // if so, compute and store the quadrature nodes and weights
-        if (inSupport)
-        {
-            m_quRule.mapTo(domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights);
-            quNodesOnElem.push_back(quNodes);
-            quWeightsOnElem.push_back(quWeights);
-        }
-
-        ++domIt;
+        m_quRule.mapTo((gsVector<T>)(lowerCorners.col(i)), (gsVector<T>)(upperCorners.col(i)), quNodes, quWeights);
+        quNodesOnElem.push_back(quNodes);
+        quWeightsOnElem.push_back(quWeights);
     }
 
     size_t numElemInSupport = quNodesOnElem.size();
@@ -327,6 +309,44 @@ void gsFlowVisitor<T, MatOrder>::evaluate(const gsDomainIterator<T>* domIt)
         m_trialFunData = m_testFunData;
     else
         evalBasisData(m_trialFunFlags, m_trialBasisPtr, m_trialFunActives, m_trialFunData);
+}
+
+
+template <class T, int MatOrder>
+void gsFlowVisitor<T, MatOrder>::evalTauS()
+{
+    m_velocities = m_solField.value(m_quNodes);
+    const index_t nQuPoints = m_quNodes.cols();
+    short_t deg = m_paramsPtr->getBasis(m_trialUnkID).piece(m_patchID).maxDegree();
+    real_t timeStep = m_paramsPtr->options().getReal("timeStep");
+    gsMatrix<T> physPoints = m_mapData.values[0];
+    real_t h = (physPoints.col(physPoints.cols()-1) - physPoints.col(0)).norm();
+    m_tauS.resize(1, nQuPoints);
+
+    if ((m_paramsPtr->options().getSwitch("TCSD_NS")) || (m_paramsPtr->options().getSwitch("SUPG_NS")))
+    {
+        m_TurbulentViscosityVals.setZero(nQuPoints);
+        if (!m_paramsPtr->options().getSwitch("unsteady"))
+            for (index_t i = 0; i < nQuPoints; i++)
+                m_tauS(0, i) = 1. / math::sqrt(math::pow(2 * m_velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity) / math::pow(h, 2), 2));
+        else
+            for (index_t i = 0; i < nQuPoints; i++)
+                m_tauS(0, i) = 1. / math::sqrt(math::pow(2. / timeStep, 2) + math::pow(2 * deg * m_velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity) / math::pow(h, 2), 2));
+            //m_tauS(0, i) = 1. / (2. * deg * velocities.col(i).norm() / h + 4. * math::abs(m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2) + math::abs(2. / timeStep));   // Codina
+    }
+    else 
+    {
+        m_TMModelPtr->evalTurbulentViscosity(m_quNodes, this->m_quRule.numNodes(), m_patchID);
+        m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
+
+        if (!m_paramsPtr->options().getSwitch("unsteady"))
+            for (index_t i = 0; i < nQuPoints; i++)
+                m_tauS(0, i) = 1. / math::sqrt(math::pow(2 * m_velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+        else
+            for (index_t i = 0; i < nQuPoints; i++)
+                m_tauS(0, i) = 1. / math::sqrt(math::pow(2. / timeStep, 2) + math::pow(2 * deg * m_velocities.col(i).norm() / h, 2) + 9. * math::pow(4. * (m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2), 2));
+            //m_tauS(0, i) = 1. / (2. * deg * velocities.col(i).norm() / h + 4. * math::abs(m_viscosity + m_TurbulentViscosityVals(i)) / math::pow(h, 2) + math::abs(2. / timeStep));   // Codina
+    }
 }
 
 

@@ -24,12 +24,18 @@ void gsTMSolverSST<T, MatOrder>::initMembers()
 
 // upravit
 template<class T, int MatOrder>
-void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t patchId)
+void gsTMSolverSST<T, MatOrder>::evalTurbulentViscosity(gsMatrix<T>& quNodes, index_t numNodesPerElem, index_t patchId)
 {
     m_TurbulentViscosityVals.setZero(quNodes.cols());
     if ((getAssembler()->isInitialized()) && (m_TMModelPtr->isInitialized()))
     {
-        m_TMModelPtr->evalTurbulentViscosity(quNodes, patchId);
+        m_TMModelPtr->evalTurbulentViscosity(quNodes, numNodesPerElem, patchId);
+        m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
+    }
+    else
+    {
+        m_TMModelPtr->updateModel(quNodes, numNodesPerElem, patchId);
+        m_TMModelPtr->evalTurbulentViscosity(quNodes, numNodesPerElem, patchId);
         m_TurbulentViscosityVals = m_TMModelPtr->getTurbulentViscosityVals();
     }
     

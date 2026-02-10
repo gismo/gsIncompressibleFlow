@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
     real_t timeStep = 0.1;
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
+    std::string matFormation = "EbE";
 
     // linear solver settings
     std::string linSolver = "direct"; // direct / iter
@@ -86,7 +87,8 @@ int main(int argc, char *argv[])
     cmd.addReal("", "timeStep", "Time discretization step for unsteady problem", timeStep);
     cmd.addReal("", "tol", "Stopping tolerance", tol);
     cmd.addReal("", "picardTol", "Tolerance for inner Picard iteration for unsteady problem", picardTol);
-    
+    cmd.addString("", "loop", "Matrix formation method (EbE = element by element, RbR = row by row)", matFormation);
+
     cmd.addString("", "linSolver", "Linear system solver (direct / iter)", linSolver);
     cmd.addInt("", "linIt", "Max. number of GMRES iterations (if the lin. systems are solved iteratively)", linIt);
     cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
@@ -166,6 +168,7 @@ int main(int argc, char *argv[])
     params.options().setInt("lin.maxIt", linIt);
     params.options().setReal("lin.tol", linTol);
     params.options().setInt("numThreads", numThreads);
+    params.options().setString("assemb.loop", matFormation);
 
     gsOptionList solveOpt;
     solveOpt.addInt("maxIt", "", maxIt);

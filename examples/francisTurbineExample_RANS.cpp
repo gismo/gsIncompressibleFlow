@@ -41,12 +41,15 @@ int main(int argc, char *argv[])
     index_t picardIt = 5;
     index_t maxItTM = 10;
     index_t linIt = 50;
-    real_t timeStep = 0.1;
+    real_t timeStep = 0.05;
     real_t tol = 1e-5;
     real_t picardTol = 1e-4;
     real_t linTol = 1e-6;
     std::string precond = "MSIMPLER_FdiagEqual";
     bool stokesInit = false; // start unsteady problem from Stokes solution
+    bool TCSD_RANS_stab = false; // use T-CSD stabilization
+    bool TCSD_TM_stab = false; // use T-CSD stabilization
+    bool TMaveraging = false;
     
     // output settings
     std::string outMode = "terminal"; // terminal/file/all/quiet
@@ -54,6 +57,8 @@ int main(int argc, char *argv[])
     index_t plotPts = 50000;
     bool plotMesh = false;
     std::string outPath = "";
+    bool animation = true;
+    index_t animStep = 10;
     
     // ---------------------------------------------------------------------------------
 
@@ -80,12 +85,16 @@ int main(int argc, char *argv[])
     cmd.addReal("", "linTol", "Tolerance for iterative linear solver", linTol);
     cmd.addString("p", "precond", "Preconditioner type (format: PREC_Fstrategy, PREC = {PCD, PCDmod, LSC, AL, SIMPLE, SIMPLER, MSIMPLER}, Fstrategy = {FdiagEqual, Fdiag, Fmod, Fwhole})", precond);
     cmd.addSwitch("stokesInit", "Set Stokes initial condition", stokesInit);
+    cmd.addSwitch("TCSD_RANS", "Use T-CSD stabilization of numerical solution of RANS", TCSD_RANS_stab);
+    cmd.addSwitch("TCSD_TM", "Use T-CSD stabilization of numerical solution of TM", TCSD_TM_stab);
 
     cmd.addString("", "outMode", "Output mode (terminal/file/all/quiet)", outMode);
     cmd.addSwitch("plot", "Plot the final result in ParaView format", plot);
     cmd.addInt("", "plotPts", "Number of sample points for plotting", plotPts);
     cmd.addSwitch("plotMesh", "Plot the computational mesh", plotMesh);
     cmd.addString("", "outPath", "Path to the output directory", outPath);
+    cmd.addSwitch("animation", "Plot animation of the unsteady problem", animation);
+    cmd.addInt("", "animStep", "Number of iterations between screenshots for animation (used when animation = true)", animStep);
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
@@ -194,18 +203,28 @@ int main(int argc, char *argv[])
     params.options().setString("lin.solver", "iter");
     params.options().setInt("lin.maxIt", linIt);
     params.options().setReal("lin.tol", linTol);
+    params.options().setReal("timeStep", timeStep);
     params.options().setString("lin.precType", precond);
     params.options().setReal("omega", omega);
     params.options().setInt("TM.maxIt", maxItTM);
+    params.options().setSwitch("unsteady", true);
+    params.options().setSwitch("TCSD_RANS", TCSD_RANS_stab);
+    params.options().setSwitch("TCSD_TM", TCSD_TM_stab);
+    params.options().setSwitch("TM.averaging", TMaveraging);
     params.setBndParts(bndIn, bndOut, bndWall);
 
     gsOptionList solveOpt;
+    solveOpt.addReal("timeStep", "", timeStep);
     solveOpt.addInt("maxIt", "", maxIt);
     solveOpt.addInt("plotPts", "", plotPts);
     solveOpt.addReal("tol", "", tol);
     solveOpt.addSwitch("plot", "", plot);
     solveOpt.addSwitch("plotMesh", "", plotMesh);
+    solveOpt.addSwitch("animation", "", animation);
     solveOpt.addSwitch("stokesInit", "", stokesInit);
+    solveOpt.addSwitch("TCSD_RANS", "", TCSD_RANS_stab);
+    solveOpt.addSwitch("TCSD_TM", "", TCSD_TM_stab);
+    solveOpt.addSwitch("unsteady", "", true);
 
     logger << "\n-----------------------------------------------------------\n";
     logger << "Solving the unsteady RANS problem with direct linear solver\n";
