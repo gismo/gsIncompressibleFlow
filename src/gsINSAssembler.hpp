@@ -43,6 +43,17 @@ void gsINSAssembler<T, MatOrder>::initMembers()
         m_nnzPerOuterUP *= m_tarDim;
     }
 
+    if (MatOrder == ColMajor)
+        m_nnzPerOuterPU = m_nnzPerOuterP;
+    else 
+    {
+        m_nnzPerOuterPU = 1;
+        for (short_t i = 0; i < m_tarDim; i++)
+            m_nnzPerOuterPU *= 3 * getBasis(0).maxDegree(i) - 1;
+
+        m_nnzPerOuterPU *= m_tarDim;
+    }
+
     m_visitorUUlin = gsINSVisitorUUlin<T, MatOrder>(m_paramsPtr);
     m_visitorUUlin.initialize();
 
@@ -134,27 +145,6 @@ void gsINSAssembler<T, MatOrder>::updateSizes()
     m_baseRhs.setZero(m_dofs, 1);
     m_rhs.setZero(m_dofs, 1);
 
-    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-    {
-        m_blockUUnonlinWeakDirichlet_comp_In.resize(m_udofs, m_udofs);
-        m_blockUUnonlinWeakDirichlet_comp_Wall.resize(m_udofs, m_udofs);
-        m_blockUUnonlinWeakDirichlet_whole_In.resize(m_pshift, m_pshift);
-        m_blockUUnonlinWeakDirichlet_whole_Wall.resize(m_pshift, m_pshift);
-        m_blockUUlinWeakDirichlet_whole_In.resize(m_pshift, m_pshift);
-        m_blockUUlinWeakDirichlet_whole_Wall.resize(m_pshift, m_pshift);
-        m_rhsUnonlinWeakDirichlet_In.setZero(m_pshift, 1);
-        m_rhsUnonlinWeakDirichlet_Wall.setZero(m_pshift, 1);
-        m_rhsUlinWeakDirichlet_In.setZero(m_pshift, 1);
-        m_rhsUlinWeakDirichlet_Wall.setZero(m_pshift, 1);
-        m_blockPUWeakDirichlet_In.resize(m_pdofs, m_pshift);
-        m_blockPUWeakDirichlet_Wall.resize(m_pdofs, m_pshift);
-        m_rhsPUWeakDirichlet_In.setZero(m_pdofs, 1);
-        m_rhsPUWeakDirichlet_Wall.setZero(m_pdofs, 1);
-        m_blockUPWeakDirichlet_Out.resize(m_pshift, m_pdofs);
-        m_rhsUPWeakDirichlet_Out.setZero(m_pshift, 1);
-        m_blockPPWeakDirichlet_Out.resize(m_pdofs, m_pdofs);
-        m_rhsPPWeakDirichlet_Out.setZero(m_pdofs, 1);
-    }
 }
 
 
@@ -179,6 +169,8 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
     m_blockUUlin_comp.resize(m_udofs, m_udofs);
     m_blockUUlin_whole.resize(m_pshift, m_pshift);
     m_blockUP.resize(m_pshift, m_pdofs);
+    m_blockPU.resize(m_pdofs, m_pshift);
+    m_blockPP.resize(m_pdofs, m_pdofs);
     m_rhsUlin.setZero();
     m_rhsBtB.setZero();
     m_rhsF.setZero();
@@ -237,20 +229,18 @@ void gsINSAssembler<T, MatOrder>::assembleLinearPart()
 
     if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
     {
-        m_blockUUlinWeakDirichlet_whole_In.reserve(gsVector<index_t>::Constant(m_blockUUlinWeakDirichlet_whole_In.outerSize(), 2 * m_nnzPerOuterU));
-        this->assembleBlockBnd(m_visitorUUlinWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockUUlinWeakDirichlet_whole_In, m_rhsUlinWeakDirichlet_In);
-        m_blockUUlinWeakDirichlet_whole_Wall.reserve(gsVector<index_t>::Constant(m_blockUUlinWeakDirichlet_whole_Wall.outerSize(), 2 * m_nnzPerOuterU));
-        this->assembleBlockBnd(m_visitorUUlinWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockUUlinWeakDirichlet_whole_Wall, m_rhsUlinWeakDirichlet_Wall);
-        
-        m_blockPUWeakDirichlet_In.reserve(gsVector<index_t>::Constant(m_blockPUWeakDirichlet_In.outerSize(), m_nnzPerOuterUP));
-        this->assembleBlockBnd(m_visitorPUWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockPUWeakDirichlet_In, m_rhsPUWeakDirichlet_In);
-        m_blockPUWeakDirichlet_Wall.reserve(gsVector<index_t>::Constant(m_blockPUWeakDirichlet_Wall.outerSize(), m_nnzPerOuterUP));
-        this->assembleBlockBnd(m_visitorPUWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockPUWeakDirichlet_Wall, m_rhsPUWeakDirichlet_Wall);
+        m_blockUUlin_whole.reserve(gsVector<index_t>::Constant(m_blockUUlin_whole.outerSize(), m_tarDim * m_nnzPerOuterU));
+        m_blockPU.reserve(gsVector<index_t>::Constant(m_blockPU.outerSize(), m_nnzPerOuterPU));
+        m_blockPP.reserve(gsVector<index_t>::Constant(m_blockPP.outerSize(), m_nnzPerOuterP));
 
-        m_blockUPWeakDirichlet_Out.reserve(gsVector<index_t>::Constant(m_blockUPWeakDirichlet_Out.outerSize(), m_nnzPerOuterUP));
-        this->assembleBlockBnd(m_visitorUPWeakDirichlet, 0, m_paramsPtr->getBndOut(), m_blockUPWeakDirichlet_Out, m_rhsUPWeakDirichlet_Out);
-        m_blockPPWeakDirichlet_Out.reserve(gsVector<index_t>::Constant(m_blockPPWeakDirichlet_Out.outerSize(), m_nnzPerOuterUP));
-        this->assembleBlockBnd(m_visitorPPWeakDirichlet, 1, m_paramsPtr->getBndOut(), m_blockPPWeakDirichlet_Out, m_rhsPPWeakDirichlet_Out);
+        this->assembleBlockBnd(m_visitorUUlinWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockUUlin_whole, m_rhsUlin);
+        this->assembleBlockBnd(m_visitorUUlinWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockUUlin_whole, m_rhsUlin);
+        
+        this->assembleBlockBnd(m_visitorPUWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockPU, m_rhsG);
+        this->assembleBlockBnd(m_visitorPUWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockPU, m_rhsG);
+
+        this->assembleBlockBnd(m_visitorUPWeakDirichlet, 0, m_paramsPtr->getBndOut(), m_blockUP, m_rhsF);
+        this->assembleBlockBnd(m_visitorPPWeakDirichlet, 1, m_paramsPtr->getBndOut(), m_blockPP, m_rhsG);
     }
 
     // velocity and pressure mass matrix (needed for preconditioners)
@@ -315,26 +305,14 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
     m_blockUUnonlin_whole.resize(m_pshift, m_pshift);
     m_rhsUnonlin.setZero();
 
-    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-    {
-        m_blockUUnonlinWeakDirichlet_comp_In.resize(m_udofs, m_udofs);
-        m_blockUUnonlinWeakDirichlet_comp_Wall.resize(m_udofs, m_udofs);
-        m_blockUUnonlinWeakDirichlet_whole_In.resize(m_pshift, m_pshift);
-        m_blockUUnonlinWeakDirichlet_whole_Wall.resize(m_pshift, m_pshift);
-        m_rhsUnonlinWeakDirichlet_In.setZero();
-        m_rhsUnonlinWeakDirichlet_Wall.setZero();
-    }
-
     if (!m_paramsPtr->hasPeriodicBC())
     {
         m_blockUUnonlin_comp.reserve(gsVector<index_t>::Constant(m_blockUUnonlin_comp.outerSize(), m_nnzPerOuterU));
         this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_comp, m_rhsUnonlin);
         if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
         {
-            m_blockUUnonlinWeakDirichlet_comp_In.reserve(gsVector<index_t>::Constant(m_blockUUnonlinWeakDirichlet_comp_In.outerSize(), m_nnzPerOuterU));
-            this->assembleBlockBnd(m_visitorUUnonlinWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockUUnonlinWeakDirichlet_comp_In, m_rhsUnonlinWeakDirichlet_In);
-            m_blockUUnonlinWeakDirichlet_comp_Wall.reserve(gsVector<index_t>::Constant(m_blockUUnonlinWeakDirichlet_comp_Wall.outerSize(), m_nnzPerOuterU));
-            this->assembleBlockBnd(m_visitorUUnonlinWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockUUnonlinWeakDirichlet_comp_Wall, m_rhsUnonlinWeakDirichlet_Wall);
+            this->assembleBlockBnd(m_visitorUUnonlinWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockUUnonlin_comp, m_rhsUnonlin);
+            this->assembleBlockBnd(m_visitorUUnonlinWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockUUnonlin_comp, m_rhsUnonlin);
         }
     }
     else
@@ -344,10 +322,8 @@ void gsINSAssembler<T, MatOrder>::assembleNonlinearPart()
         this->assembleBlock(m_visitorUUnonlin, 0, m_blockUUnonlin_whole, m_rhsUnonlin);
         if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
         {
-            m_blockUUnonlinWeakDirichlet_whole_In.reserve(gsVector<index_t>::Constant(m_blockUUnonlinWeakDirichlet_whole_In.outerSize(), 2 * m_nnzPerOuterU));
-            this->assembleBlockBnd(m_visitorUUnonlinWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockUUnonlinWeakDirichlet_whole_In, m_rhsUnonlinWeakDirichlet_In);
-            m_blockUUnonlinWeakDirichlet_whole_Wall.reserve(gsVector<index_t>::Constant(m_blockUUnonlinWeakDirichlet_whole_Wall.outerSize(), 2 * m_nnzPerOuterU));
-            this->assembleBlockBnd(m_visitorUUnonlinWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockUUnonlinWeakDirichlet_whole_Wall, m_rhsUnonlinWeakDirichlet_Wall);
+            this->assembleBlockBnd(m_visitorUUnonlinWeakDirichlet, 0, m_paramsPtr->getBndIn(), m_blockUUnonlin_whole, m_rhsUnonlin);
+            this->assembleBlockBnd(m_visitorUUnonlinWeakDirichlet, 0, m_paramsPtr->getBndWall(), m_blockUUnonlin_whole, m_rhsUnonlin);
         }
     }
 
@@ -414,18 +390,6 @@ void gsINSAssembler<T, MatOrder>::makeBlockUU(gsSparseMatrix<T, MatOrder>& resul
     if(!linPartOnly)
         result += m_blockUUnonlin_whole;
 
-    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-    {
-        fillGlobalMat_UU(result, -m_blockUUlinWeakDirichlet_whole_In);
-        fillGlobalMat_UU(result, -m_blockUUlinWeakDirichlet_whole_Wall);
-        if(!linPartOnly)
-        {
-            fillGlobalMat_UU(result, m_blockUUnonlinWeakDirichlet_whole_In);
-            fillGlobalMat_UU(result, m_blockUUnonlinWeakDirichlet_whole_Wall);
-        }
-        
-    }
-
     result.makeCompressed();
 }
 
@@ -441,16 +405,6 @@ void gsINSAssembler<T, MatOrder>::makeRhsU(gsMatrix<T>& result, bool linPartOnly
     //if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
     //    result += m_rhsU_SUPG_pressure;
     
-    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-    {
-        result -= m_rhsUlinWeakDirichlet_In;
-        result -= m_rhsUlinWeakDirichlet_Wall;
-        if(!linPartOnly)
-        {
-            result += m_rhsUnonlinWeakDirichlet_In;
-            result += m_rhsUnonlinWeakDirichlet_Wall;
-        }
-    }
 }
 
 
@@ -525,31 +479,6 @@ void gsINSAssembler<T, MatOrder>::fillBaseSystem()
         nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(blockPU);
     }
 
-    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-    {
-        nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(m_blockUUlinWeakDirichlet_whole_In);
-        nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(m_blockUUlinWeakDirichlet_whole_Wall);
-        nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(m_blockPPWeakDirichlet_Out);
-
-        gsSparseMatrix<T, MatOrder> blockUPWeakDirichlet_In = gsSparseMatrix<T, MatOrder>(m_blockPUWeakDirichlet_In.transpose());
-        gsSparseMatrix<T, MatOrder> blockUPWeakDirichlet_Wall = gsSparseMatrix<T, MatOrder>(m_blockPUWeakDirichlet_Wall.transpose());
-
-        if (MatOrder == ColMajor)
-        {
-            nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(m_blockPUWeakDirichlet_In);
-            nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(blockUPWeakDirichlet_In);
-            nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(m_blockPUWeakDirichlet_Wall);
-            nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(blockUPWeakDirichlet_Wall);
-        }
-        else
-        {
-            nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(blockUPWeakDirichlet_In);
-            nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(m_blockPUWeakDirichlet_In);
-            nonZerosVector.topRows(m_pshift) += getNnzVectorPerOuter(blockUPWeakDirichlet_Wall);
-            nonZerosVector.bottomRows(m_pdofs) = getNnzVectorPerOuter(m_blockPUWeakDirichlet_Wall);
-        }
-    }
-
     m_baseMatrix.resize(m_dofs, m_dofs);
     m_baseMatrix.reserve(nonZerosVector);
 
@@ -560,34 +489,16 @@ void gsINSAssembler<T, MatOrder>::fillBaseSystem()
 
     if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
     {
-        fillGlobalMat_UU(m_baseMatrix, -m_blockUUlinWeakDirichlet_whole_In);
-        fillGlobalMat_UU(m_baseMatrix, -m_blockUUlinWeakDirichlet_whole_Wall);
+        gsSparseMatrix<T, MatOrder> blockUP = gsSparseMatrix<T, MatOrder>(m_blockPU.transpose());
         
-        gsSparseMatrix<T, MatOrder> blockUPWeakDirichlet_In = gsSparseMatrix<T, MatOrder>(m_blockPUWeakDirichlet_In.transpose());
-        gsSparseMatrix<T, MatOrder> blockUPWeakDirichlet_Wall = gsSparseMatrix<T, MatOrder>(m_blockPUWeakDirichlet_Wall.transpose());
-        
-        fillGlobalMat_PU(m_baseMatrix, m_blockPUWeakDirichlet_In);
-        fillGlobalMat_UP(m_baseMatrix, -blockUPWeakDirichlet_In);
-        fillGlobalMat_PU(m_baseMatrix, m_blockPUWeakDirichlet_Wall);
-        fillGlobalMat_UP(m_baseMatrix, -blockUPWeakDirichlet_Wall);
-        
-        //fillGlobalMat_UP(m_baseMatrix, m_blockUPWeakDirichlet_Out);
-        fillGlobalMat_PP(m_baseMatrix, m_blockPPWeakDirichlet_Out);
+        fillGlobalMat_PU(m_baseMatrix, m_blockPU);
+        fillGlobalMat_UP(m_baseMatrix, -blockUP);
+        fillGlobalMat_PP(m_baseMatrix, m_blockPP);
     }
 
     m_baseRhs = m_rhsBtB;
     m_baseRhs.topRows(m_pshift) += m_rhsF + m_rhsUlin;
     m_baseRhs.bottomRows(m_pdofs) += m_rhsG;
-
-    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-    {
-        m_baseRhs.topRows(m_pshift) -= m_rhsUlinWeakDirichlet_In;
-        m_baseRhs.topRows(m_pshift) -= m_rhsUlinWeakDirichlet_Wall;
-        m_baseRhs.bottomRows(m_pdofs) += m_rhsPUWeakDirichlet_In;
-        m_baseRhs.bottomRows(m_pdofs) += m_rhsPUWeakDirichlet_Wall;
-        m_baseRhs.topRows(m_pshift) -= m_rhsUPWeakDirichlet_Out;
-        m_baseRhs.bottomRows(m_pdofs) += m_rhsPPWeakDirichlet_Out;
-    }
 
     m_isBaseReady = true;
     m_isSystemReady = false;
@@ -602,29 +513,8 @@ void gsINSAssembler<T, MatOrder>::fillSystem()
     fillGlobalMat_UU(m_matrix, m_blockUUnonlin_comp);
     fillGlobalMat_UU(m_matrix, m_blockUUnonlin_whole);
 
-    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-    {
-        fillGlobalMat_UU(m_matrix, m_blockUUnonlinWeakDirichlet_whole_In);
-        fillGlobalMat_UU(m_matrix, m_blockUUnonlinWeakDirichlet_whole_Wall);
-    }
-
     m_rhs = m_baseRhs;
     m_rhs.topRows(m_pshift) += m_rhsUnonlin;
-
-    if (this->getAssemblerOptions().dirStrategy == dirichlet::nitsche)
-    {
-        m_rhs.topRows(m_pshift) += m_rhsUnonlinWeakDirichlet_In;
-        m_rhs.topRows(m_pshift) += m_rhsUnonlinWeakDirichlet_Wall;
-    }
-
-    /*if ((m_paramsPtr->options().getSwitch("SUPG_NS")) || (m_paramsPtr->options().getSwitch("SUPG_RANS")))
-    {
-        fillGlobalMat_UP(m_matrix, m_blockUP_SUPG_pressure);
-        m_rhs.topRows(m_pshift) += m_rhsU_SUPG_pressure;
-
-        fillGlobalMat_PP(m_baseMatrix, m_blockPP_ResStab_continuity);
-        m_baseRhs.bottomRows(m_pdofs) += m_rhsP_ResStab_continuity;
-    }*/
 
     if (!m_matrix.isCompressed())
         m_matrix.makeCompressed();

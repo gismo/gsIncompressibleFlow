@@ -165,10 +165,10 @@ void gsINSTerm_CoeffUvalUvalPenalty_WeakDirichlet<T>::assemble(const gsMapData<T
         gsVector<T> normal = mapData.outNormal(k);
         normal.normalize();
 
-        localMat[0].noalias() += weight * gama1/h * (testFunVals.col(k) * trialFunVals.col(k).transpose());
+        localMat[0].noalias() -= weight * gama1/h * (testFunVals.col(k) * trialFunVals.col(k).transpose());
         for (index_t i = 0; i < dim; i++)
             for (index_t j = 0; j < dim; j++)
-                localMat[j + i*dim].noalias() += weight * gama2/h * (normal(i) * normal(j) * testFunVals.col(k) * trialFunVals.col(k).transpose());
+                localMat[j + i*dim].noalias() -= weight * gama2/h * (normal(i) * normal(j) * testFunVals.col(k) * trialFunVals.col(k).transpose());
     }
 }
 
@@ -189,7 +189,7 @@ void gsINSTerm_RhsUValPenalty_WeakDirichlet<T>::assemble(const gsMapData<T>& map
         gsVector<T> normal = mapData.outNormal(k);
         normal.normalize();
         
-        localMat.noalias() += weight * (gama1/h * (testFunData[0].col(k) *  m_vals.col(k).transpose()) + gama2/h * normal.dot(m_vals.col(k)) * (testFunData[0].col(k) * normal.asRowVector()));
+        localMat.noalias() -= weight * (gama1/h * (testFunData[0].col(k) *  m_vals.col(k).transpose()) + gama2/h * normal.dot(m_vals.col(k)) * (testFunData[0].col(k) * normal.asRowVector()));
     }
 }
 
@@ -214,7 +214,7 @@ void gsINSTerm_CoeffUvalUdiv_WeakDirichlet<T>::assemble(const gsMapData<T>& mapD
         normal.normalize();
         transformGradients(mapData, k, testFunGrads, testFunPhysGrad);
 
-        localMat.noalias() += weight * (trialFunVals.col(k) *  (normal.reshape(1, normal.rows()) * testFunPhysGrad));
+        localMat.noalias() -= weight * (trialFunVals.col(k) *  (normal.reshape(1, normal.rows()) * testFunPhysGrad));
     }
 }
 
@@ -227,7 +227,7 @@ void gsINSTerm_RhsUdiv_WeakDirichlet<T>::evalCoeff(const gsMapData<T>& mapData)
     m_rhsVals.setZero(1, nQuPoints);
 
     for (index_t k = 0; k < nQuPoints; k++)
-        m_rhsVals(0, k) = m_viscosity;
+        m_rhsVals(0, k) = -m_viscosity;
 }
 
 template<class T>

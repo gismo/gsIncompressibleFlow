@@ -41,13 +41,13 @@ protected: // *** Class members ***
     index_t m_udofs;
     index_t m_pdofs;
     index_t m_pshift;
-    index_t m_nnzPerOuterU, m_nnzPerOuterP, m_nnzPerOuterUP;
+    index_t m_nnzPerOuterU, m_nnzPerOuterP, m_nnzPerOuterUP, m_nnzPerOuterPU;
     gsINSVisitorUUlin<T, MatOrder> m_visitorUUlin;
     gsINSVisitorUUnonlin<T, MatOrder> m_visitorUUnonlin;
     gsINSVisitorPU_withUPrhs<T, MatOrder> m_visitorUP;
     gsINSVisitorRhsU<T, MatOrder> m_visitorF;
     gsINSVisitorRhsP<T, MatOrder> m_visitorG;
-    gsSparseMatrix<T, MatOrder> m_blockUUlin_comp, m_blockUUnonlin_comp, m_blockUP;
+    gsSparseMatrix<T, MatOrder> m_blockUUlin_comp, m_blockUUnonlin_comp, m_blockUP, m_blockPU, m_blockPP;
     gsSparseMatrix<T, MatOrder> m_blockUUlin_whole, m_blockUUnonlin_whole;
     gsMatrix<T> m_rhsUlin, m_rhsUnonlin, m_rhsBtB, m_rhsF, m_rhsG;
     gsField<T>  m_currentVelField, m_currentPresField;
@@ -65,9 +65,7 @@ protected: // *** Class members ***
     gsINSVisitorPUWeakDirichlet<T, MatOrder> m_visitorPUWeakDirichlet;
     gsINSVisitorUPWeakDirichlet<T, MatOrder> m_visitorUPWeakDirichlet;
     gsINSVisitorPPWeakDirichlet<T, MatOrder> m_visitorPPWeakDirichlet;
-    gsSparseMatrix<T, MatOrder> m_blockUUnonlinWeakDirichlet_comp_In, m_blockUUnonlinWeakDirichlet_comp_Wall, m_blockUUnonlinWeakDirichlet_whole_In, m_blockUUnonlinWeakDirichlet_whole_Wall, m_blockUUlinWeakDirichlet_whole_In, m_blockUUlinWeakDirichlet_whole_Wall, m_blockPUWeakDirichlet_In, m_blockPUWeakDirichlet_Wall, m_blockUPWeakDirichlet_Out, m_blockPPWeakDirichlet_Out;
-    gsMatrix<T> m_rhsUnonlinWeakDirichlet_In, m_rhsUnonlinWeakDirichlet_Wall, m_rhsUlinWeakDirichlet_In, m_rhsUlinWeakDirichlet_Wall, m_rhsPUWeakDirichlet_In, m_rhsPUWeakDirichlet_Wall, m_rhsUPWeakDirichlet_Out, m_rhsPPWeakDirichlet_Out;
-
+    
     bool m_isMassMatReady;
     std::vector< gsSparseMatrix<T, MatOrder> > m_massMatBlocks;
     std::vector< gsMatrix<T> > m_massMatRhs;
