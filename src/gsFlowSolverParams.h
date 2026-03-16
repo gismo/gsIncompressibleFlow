@@ -118,6 +118,52 @@ public: // *** Constructor/destructor ***
             m_logger = std::make_shared<gsFlowLogger>(gsFlowLogger::mode::quiet, "");
     }
 
+    /// @brief Constructor with owning PDE pointer (useful for Python bindings).
+    /// @param pdePtr an owning shared_ptr to an incompressible Navier-Stokes problem
+    /// @param bases vector of discretization bases {velocity, pressure, (bases for turb. model, if needed)}
+    gsFlowSolverParams(typename gsNavStokesPde<T>::Ptr pdePtr, const std::vector<gsMultiBasis<T> >& bases, gsFlowLogger* extLogger = NULL)
+        : m_pdePtr(pdePtr), m_bases(bases)
+    {
+        m_assembOpt.dirStrategy = dirichlet::elimination;
+        m_assembOpt.dirValues = dirichlet::l2Projection;
+        m_assembOpt.intStrategy = iFace::glue;
+
+        m_opt = gsFlowSolverParams<T>::defaultOptions();
+        m_precOpt = gsINSPreconditioner<T, RowMajor>::defaultOptions();
+
+        m_BC = m_pdePtr->bc();
+        m_isBndSet = false;
+        m_hasPeriodicBC = false;
+
+        updateDofMappers();
+
+        size_t numPerSides = m_pdePtr->bc().numPeriodic();
+
+        if (numPerSides != 0)
+        {
+            m_hasPeriodicBC = true;
+
+            for (size_t i = 0; i < numPerSides; i++)
+            {
+                boundaryInterface ppair = m_pdePtr->bc().periodicPairs().at(i);
+
+                for (size_t j = 1; j < m_bases.size(); j++)
+                {
+                    gsMultiBasis<T>* basisPtr = &m_bases.at(j);
+                    basisPtr->addInterface(&basisPtr->basis(ppair.first().patch), ppair.first().side(), &basisPtr->basis(ppair.second().patch), ppair.second().side());
+                }
+            }
+
+            updateDofMappers();
+            updatePeriodicHelper();
+        }
+
+        if (extLogger)
+            m_logger = memory::make_shared_not_owned(extLogger);
+        else
+            m_logger = std::make_shared<gsFlowLogger>(gsFlowLogger::mode::quiet, "");
+    }
+
 
 public: // *** Static functions ***
 
@@ -323,7 +369,7 @@ public: // *** Getters/setters ***
         return m_dofMappers.at(unk);
     }
 
-    const gsMultiBasis<T>& getMapper(index_t unk) const
+    const gsDofMapper& getMapper(index_t unk) const
     { 
         GISMO_ASSERT(unk < (index_t)m_dofMappers.size(), "Index of unknown out of range.");
         return m_dofMappers.at(unk);
@@ -433,6 +479,13 @@ public: // *** Getters/setters ***
 
 // ======================================================================================================================================
 
+#ifdef GISMO_WITH_PYBIND11
 
+  /**
+   * @brief Initializes the Python wrapper for the class: gsFlowSolverParams
+   */
+  void pybind11_init_gsFlowSolverParams(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo

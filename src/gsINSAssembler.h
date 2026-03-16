@@ -106,6 +106,10 @@ public: // *** Constructor/destructor ***
     Base(paramsPtr)
     { }
 
+    gsINSAssembler(gsFlowSolverParams<T>& paramsRef):
+    Base(memory::shared_ptr<gsFlowSolverParams<T>>(&paramsRef, [](gsFlowSolverParams<T>*){}))
+    { }
+
     virtual ~gsINSAssembler()
     { }
 
@@ -368,6 +372,12 @@ public: // *** Constructor/destructor ***
         Base::initMembers();
     }
 
+    gsINSAssemblerSteady(gsFlowSolverParams<T>& paramsRef): 
+    Base(paramsRef)
+    {
+        Base::initMembers();
+    }
+
     virtual ~gsINSAssemblerSteady()
     { }
 
@@ -422,6 +432,12 @@ public: // *** Constructor/destructor ***
         initMembers();
     }
 
+    gsINSAssemblerUnsteady(gsFlowSolverParams<T>& paramsRef): 
+    Base(paramsRef)
+    {
+        initMembers();
+    }
+
     virtual ~gsINSAssemblerUnsteady()
     { }
 
@@ -469,6 +485,18 @@ public: // *** Member functions ***
     virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
 
 }; //gsINSAssemblerUnsteady
+
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsINSAssembler
+   */
+  void pybind11_init_gsINSAssembler(pybind11::module &m);
+  void pybind11_init_gsINSAssemblerSteady(pybind11::module &m);
+  void pybind11_init_gsINSAssemblerUnsteady(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

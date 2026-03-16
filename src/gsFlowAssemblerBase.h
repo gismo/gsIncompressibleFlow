@@ -607,6 +607,16 @@ void gsFlowAssemblerBase<T, MatOrder>::assembleRhsBnd(ElementVisitorRhs& visitor
 
 } // namespace gismo
 
+#ifdef GISMO_WITH_PYBIND11
+
+namespace py = pybind11;
+
+namespace gismo {
+  void pybind11_init_gsFlowAssemblerBase(py::module &m);
+}
+
+#endif
+
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsFlowAssemblerBase.hpp)
 #endif

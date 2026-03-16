@@ -100,7 +100,6 @@ void gsINSSolverUnsteady<T, MatOrder>::nextIteration()
     GISMO_ASSERT(this->getAssembler()->isInitialized(), "Assembler must be initialized first, call initialize()");
 
     this->updateAssembler();
-
     if (!m_iterationNumber)
         this->initIteration();
 

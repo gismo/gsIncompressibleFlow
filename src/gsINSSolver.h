@@ -243,6 +243,14 @@ public: // *** Getters/setters ***
 
 }; // gsINSSolverUnsteady
 
+#ifdef GISMO_WITH_PYBIND11
+
+  void pybind11_init_gsINSSolver(pybind11::module &m);
+  void pybind11_init_gsINSSolverSteady(pybind11::module &m);
+  void pybind11_init_gsINSSolverUnsteady(pybind11::module &m);
+
+#endif
+
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

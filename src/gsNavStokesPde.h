@@ -111,4 +111,14 @@ public: // *** Member functions ***
 
 }; // class gsNavStokesPde
 
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsNavStokesPde
+   */
+  void pybind11_init_gsNavStokesPde(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
 } // namespace gismo
