@@ -139,6 +139,18 @@ public: // *** Member functions ***
     /// @param[in] updateSol    true - save solVector into m_solution
     virtual void update(const gsMatrix<T> & solVector, bool updateSol = true);
 
+    /// @brief Notify the assembler that the underlying patches' control point
+    ///        coefficients have been overwritten in place. Default: no-op.
+    ///
+    /// Overrides should re-evaluate Dirichlet DOFs (control points on Dirichlet
+    /// boundaries moved in physical space) and re-assemble all blocks whose
+    /// values depend on the geometric Jacobian (M, K, ...) WITHOUT touching the
+    /// DOF mapper, basis, sparsity-pattern allocation framework, or visitor
+    /// initialization. The DOF count, basis, BC topology, and patch topology
+    /// must be unchanged since initialize().
+    virtual void refreshGeometry()
+    { GISMO_NO_IMPLEMENTATION }
+
     /// @brief Construct solution from computed solution vector for unknown \a unk.
     /// @param[in]  solVector    the solution vector obtained from the linear system
     /// @param[in]  unk          the considered unknown

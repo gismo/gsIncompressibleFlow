@@ -154,6 +154,7 @@ public: // *** Static functions ***
         opt.addSwitch("SUPG_NS", "Use SUPG stabilization of numerical solution for NS", false);
         opt.addSwitch("SUPG_RANS", "Use SUPG stabilization of numerical solution for RANS", false);
         opt.addSwitch("SUPG_TM", "Use SUPG stabilization of numerical solution for TM", false);
+        opt.addReal("graddiv.gamma", "Grad-div stabilization parameter (0 = disabled)", 0.0);
         
         // geometry jacobian evaluation
         opt.addInt("jac.npts", "Number of points along a patch side (in each direction) for geometry jacobian check", 100);
