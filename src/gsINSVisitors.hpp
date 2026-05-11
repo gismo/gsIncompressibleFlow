@@ -25,6 +25,14 @@ void gsINSVisitorUU<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatri
 
     GISMO_ASSERT(nComponents == 1 || nComponents == dim, "Wrong matrix size in gsINSVisitorUU::localToGlobal_nonper.");
 
+    // Safety check: ensure eliminatedDofs has proper dimensions for the trial unknown
+    if (m_trialUnkID >= static_cast<int>(eliminatedDofs.size()) ||
+        eliminatedDofs[m_trialUnkID].rows() == 0 ||
+        eliminatedDofs[m_trialUnkID].cols() == 0)
+    {
+        return; // No boundary DOFs to process
+    }
+
     m_paramsPtr->getMapper(m_testUnkID).localToGlobal(m_testFunActives, m_patchID, m_testFunActives);
     m_paramsPtr->getMapper(m_trialUnkID).localToGlobal(m_trialFunActives, m_patchID, m_trialFunActives);
 
@@ -50,9 +58,15 @@ void gsINSVisitorUU<T, MatOrder>::localToGlobal_nonper(const std::vector<gsMatri
                 else // is_boundary_index(jj)
                 {
                     const int bb = m_paramsPtr->getMapper(m_trialUnkID).global_to_bindex(jj);
-
-                    for (index_t d = 0; d < dim; d++)
-                        globalRhs(ii + d*uCompSize, 0) -= m_localMat(i, j) * eliminatedDofs[m_trialUnkID](bb, d);
+                    if (bb >= 0 && bb < static_cast<int>(eliminatedDofs[m_trialUnkID].rows()))
+                    {
+                        const index_t numCols = eliminatedDofs[m_trialUnkID].cols();
+                        for (index_t d = 0; d < dim; d++)
+                        {
+                            if (d < numCols)
+                                globalRhs(ii + d*uCompSize, 0) -= m_localMat(i, j) * eliminatedDofs[m_trialUnkID](bb, d);
+                        }
+                    }
                 }
             }
         }
@@ -141,24 +155,30 @@ void gsINSVisitorUU<T, MatOrder>::localToGlobal_per(const std::vector<gsMatrix<T
                 else // is_boundary_index(jj)
                 {
                     const int bb = m_paramsPtr->getMapper(m_trialUnkID).global_to_bindex(jj);
-
-                    // ii is not eliminated periodic dof:
-                    if (!iiElim) 
+                    if (bb >= 0 && bb < static_cast<int>(eliminatedDofs[m_trialUnkID].rows()))
                     {
-                        for (index_t d = 0; d < dim; d++)
-                            globalRhs(iiMapped + d*uCompSize, 0) -= m_localMat(i, j) * eliminatedDofs[m_trialUnkID](bb, d);
-                    }
-                    // ii is eliminated periodic dof:
-                    else 
-                    {
-                        for (int s = 0; s < nComponents; s++)
+                        // ii is not eliminated periodic dof:
+                        if (!iiElim)
                         {
-                            for (int t = 0; t < nComponents; t++)
+                            for (index_t d = 0; d < dim; d++)
+                                globalRhs(iiMapped + d*uCompSize, 0) -= m_localMat(i, j) * eliminatedDofs[m_trialUnkID](bb, d);
+                        }
+                        // ii is eliminated periodic dof:
+                        else
+                        {
+                            const index_t numCols = eliminatedDofs[m_trialUnkID].cols();
+                            for (int s = 0; s < nComponents; s++)
                             {
-                                T tmp = m_periodicTransformMat(t, s) * m_localMat(i, j) * eliminatedDofs[m_trialUnkID](bb, s);
+                                for (int t = 0; t < nComponents; t++)
+                                {
+                                    if (s < static_cast<int>(numCols))
+                                    {
+                                        T tmp = m_periodicTransformMat(t, s) * m_localMat(i, j) * eliminatedDofs[m_trialUnkID](bb, s);
 
-                                if (tmp != 0)
-                                    globalRhs(iiMapped + t*uCompSize, 0) -= tmp;
+                                        if (tmp != 0)
+                                            globalRhs(iiMapped + t*uCompSize, 0) -= tmp;
+                                    }
+                                }
                             }
                         }
                     }
@@ -408,10 +428,10 @@ void gsINSVisitorUUrotation<T, MatOrder>::localToGlobal_per(const std::vector<gs
                             T tmp1 = m_periodicTransformMat(s, 1) * m_omega * m_localMat(i, j) * eliminatedDofs[m_trialUnkID](bb, 0);
 
                             if (tmp0 != 0)
-                                globalRhs(iiMapped + s*uCompSize) -= tmp0;
+                                globalRhs(iiMapped + s*uCompSize, 0) -= tmp0;
 
                             if (tmp1 != 0)
-                                globalRhs(iiMapped + s*uCompSize) -= tmp1;
+                                globalRhs(iiMapped + s*uCompSize, 0) -= tmp1;
 
                         }
                     }

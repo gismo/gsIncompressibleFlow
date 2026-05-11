@@ -95,6 +95,20 @@ public: // *** Member functions ***
     /// @brief Initialize the solver.
     virtual void initialize();
 
+    /// @brief Notify the solver that the underlying patches' control point
+    ///        coefficients have been overwritten in place. Forwards to the
+    ///        assembler's refreshGeometry() so that Dirichlet DOFs and the
+    ///        linear part of the system are re-evaluated on the new geometry,
+    ///        WITHOUT rebuilding the DOF mapper, the basis, the sparsity
+    ///        pattern allocation framework, or the linear solver wrapper.
+    ///
+    /// Use this when the geometry of getAssembler()->getPatches() has been
+    /// modified in place across time steps but the basis, BCs, and DOF
+    /// topology stay constant — typical for ALE rotor flows where the patch
+    /// control points move but the discretization stays fixed.
+    virtual void refreshGeometry()
+    { m_assemblerPtr->refreshGeometry(); }
+
     /// @brief Prepare for the solution process.
     virtual void initIteration()
     { getLinSolver()->setupSolver(getAssembler()->matrix()); }
@@ -204,6 +218,17 @@ public: // *** Getters/setters ***
     /// @brief Returns the total time spent on solving of the linear systems.
     virtual const T getSolveTime() const { return getLinSolver()->getSolveTime(); }
 
+    /// @brief Get solution coefficients for a specific unknown
+    /// @param[in] unk index of the unknown
+    /// @return matrix of coefficients for the specified unknown
+    virtual gsMatrix<T> solutionCoefs(index_t unk) const
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// @brief Set solution coefficients for a specific unknown
+    /// @param[in] coefs coefficient matrix to set
+    /// @param[in] unk index of the unknown
+    virtual void setSolutionCoefs(const gsMatrix<T>& coefs, index_t unk)
+    { GISMO_NO_IMPLEMENTATION }
 
 }; // gsFlowSolverBase
 

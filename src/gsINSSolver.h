@@ -206,7 +206,7 @@ public: // *** Constructor/destructor ***
 protected: // *** Member functions ***
 
     /// @brief Initialize all members.
-    virtual void initMembers();
+    virtual void initMembers() override;
 
     void plotCurrentTimeStep(std::ofstream& fileU, std::ofstream& fileP, std::string fileNamePrefix, unsigned plotPts);
 
@@ -214,7 +214,7 @@ protected: // *** Member functions ***
 public: // *** Member functions ***
 
     /// @brief Perform next iteration step.
-    virtual void nextIteration();
+    virtual void nextIteration() override;
 
     void solveWithAnimation(const int totalIter, const int iterStep, std::string fileNamePrefix = "", const T epsilon = 1e-3, unsigned plotPts = 10000, const int minIterations = 1);
 
@@ -226,7 +226,7 @@ public: // *** Member functions ***
 public: // *** Getters/setters ***
 
     /// @brief Returns a pointer to the assembler.
-    gsINSAssemblerUnsteady<T, MatOrder>* getAssembler() const
+    gsINSAssemblerUnsteady<T, MatOrder>* getAssembler() const override
     {
         return dynamic_cast<gsINSAssemblerUnsteady<T, MatOrder>*>(m_assemblerPtr);
     }
@@ -238,8 +238,62 @@ public: // *** Getters/setters ***
     T getAvgPicardIterations() const { return m_avgPicardIter / m_iterationNumber; }
 
     /// @brief Retrurns the name of the class as a string.
-    virtual std::string getName() { return "gsINSSolverUnsteady"; }
+    virtual std::string getName() override { return "gsINSSolverUnsteady"; }
 
+    /// @brief Get solution coefficients for a specific unknown
+    /// @param[in] unk index of the unknown
+    /// @return matrix of coefficients for the specified unknown
+    virtual gsMatrix<T> solutionCoefs(index_t unk) const override
+    {
+        GISMO_ASSERT(unk < 2, "Unknown index out of range. Only 0 (velocity) and 1 (pressure) are valid.");
+        
+        // Get the number of velocity DOFs 
+        const index_t fullUdofs = this->getAssembler()->getUdofs();
+        // Get the target dimension (usually 2 or 3)
+        // Get the dimension from the PDE's geometric information
+        const index_t tarDim = this->m_paramsPtr->getPde().domain().geoDim();
+        const index_t pShift = tarDim * fullUdofs;
+        
+        if (unk == 0) // velocity
+        {
+            return this->m_solution.topRows(pShift);
+        }
+        else // pressure
+        {
+            return this->m_solution.bottomRows(this->m_solution.rows() - pShift);
+        }
+    }
+
+    /// @brief Set solution coefficients for a specific unknown
+    /// @param[in] coefs coefficient matrix to set
+    /// @param[in] unk index of the unknown
+    virtual void setSolutionCoefs(const gsMatrix<T>& coefs, index_t unk) override
+    {
+        GISMO_ASSERT(unk < 2, "Unknown index out of range. Only 0 (velocity) and 1 (pressure) are valid.");
+
+        // Get the number of velocity and pressure DOFs
+        const index_t fullUdofs = this->getAssembler()->getUdofs();
+        // Get the dimension from the PDE's geometric information
+        const index_t tarDim = this->m_paramsPtr->getPde().domain().geoDim();
+        const index_t pShift = tarDim * fullUdofs;
+
+        // If m_solution has not been initialized yet, initialize it
+        if (this->m_solution.size() == 0)
+        {
+            const index_t totalSize = pShift + (unk == 0 ? coefs.rows() : fullUdofs);
+            this->m_solution.resize(totalSize, 1);
+            this->m_solution.setZero();
+        }
+        
+        if (unk == 0) // velocity
+        {
+            this->m_solution.topRows(pShift) = coefs;
+        }
+        else // pressure
+        {
+            this->m_solution.bottomRows(this->m_solution.rows() - pShift) = coefs;
+        }
+    }
 
 }; // gsINSSolverUnsteady
 
